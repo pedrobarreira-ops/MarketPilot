@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html lang="pt"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Gerando Relatório | MarketPilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#0d1c2e",
+                    "secondary-container": "#d5e3fc",
+                    "tertiary": "#2d0700",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-primary": "#ffffff",
+                    "background": "#f7f9fb",
+                    "error": "#ba1a1a",
+                    "tertiary-container": "#501300",
+                    "outline": "#757682",
+                    "surface-tint": "#435b9f",
+                    "on-primary-fixed-variant": "#2a4386",
+                    "outline-variant": "#c5c6d2",
+                    "on-error": "#ffffff",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-variant": "#e0e3e5",
+                    "primary": "#00113a",
+                    "on-surface": "#191c1e",
+                    "tertiary-fixed-dim": "#ffb59e",
+                    "on-tertiary-fixed-variant": "#783018",
+                    "on-tertiary-container": "#d37758",
+                    "inverse-primary": "#b3c5ff",
+                    "surface-container": "#eceef0",
+                    "surface-container-low": "#f2f4f6",
+                    "on-primary-container": "#758dd5",
+                    "on-primary-fixed": "#00174a",
+                    "surface-dim": "#d8dadc",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "tertiary-fixed": "#ffdbd0",
+                    "surface-container-highest": "#e0e3e5",
+                    "on-background": "#191c1e",
+                    "secondary": "#515f74",
+                    "surface": "#f7f9fb",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed": "#d5e3fc",
+                    "on-secondary-container": "#57657a",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "on-tertiary-fixed": "#390b00",
+                    "primary-container": "#002366",
+                    "on-surface-variant": "#444650",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-bright": "#f7f9fb",
+                    "on-tertiary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .progress-pulse {
+            animation: pulse-width 3s ease-in-out infinite;
+        }
+        @keyframes pulse-width {
+            0% { width: 30%; }
+            50% { width: 45%; }
+            100% { width: 40%; }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col">
+<!-- TopNavBar Shell -->
+<!-- Active State: None as this is a transactional/focused screen, but maintaining structure for identity -->
+<header class="bg-[#f7f9fb] dark:bg-slate-950 fixed top-0 w-full z-50">
+<nav class="flex justify-between items-center w-full px-8 py-4 max-w-full">
+<div class="text-2xl font-black text-[#00113a] dark:text-white tracking-tighter">
+                MarketPilot
+            </div>
+</nav>
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow flex items-center justify-center px-6 pt-24 pb-12">
+<div class="w-full max-w-[560px] space-y-8">
+<!-- Contextual Illustration (Glassmorphism Tonal Layering) -->
+<div class="flex justify-center mb-4">
+<div class="relative w-32 h-32 flex items-center justify-center bg-surface-container-low rounded-full">
+<div class="absolute inset-0 bg-gradient-to-tr from-primary to-primary-container opacity-5 rounded-full"></div>
+<span class="material-symbols-outlined text-primary text-5xl" data-icon="analytics" style="font-variation-settings: 'FILL' 1;">analytics</span>
+</div>
+</div>
+<!-- Progress Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 md:p-12 shadow-[0_12px_24px_rgba(25,28,30,0.04)] text-center">
+<h1 class="text-2xl md:text-3xl font-bold text-primary tracking-tight mb-8">
+                    A gerar o teu relatório...
+                </h1>
+<!-- Custom Performance Indicator: The Pulse Bar -->
+<div class="w-full h-1.5 bg-surface-variant rounded-full overflow-hidden mb-4">
+<div class="h-full bg-primary progress-pulse rounded-full"></div>
+</div>
+<div class="flex flex-col items-center gap-2 mb-10">
+<p class="text-on-surface-variant font-medium text-sm tracking-wide">
+                        A obter catálogo... <span class="text-primary">(12.400 / 31.179 produtos)</span>
+</p>
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-sm animate-spin" data-icon="progress_activity">progress_activity</span>
+<span class="text-[10px] font-bold uppercase tracking-widest font-label text-slate-400">Processamento em tempo real</span>
+</div>
+</div>
+<!-- Highlighted Link Box -->
+<div class="bg-surface-container-low rounded-lg p-6 text-left space-y-4">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest font-label">Guarda este link — o relatório fica disponível 48 horas</span>
+<div class="flex items-center justify-between bg-surface-container-lowest border border-outline-variant/20 rounded-md p-3 group">
+<code class="text-xs md:text-sm text-primary font-medium truncate pr-4">https://marketpilot.pt/report/abc-123</code>
+<button class="flex items-center gap-2 text-primary hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+<p class="mt-6 text-slate-400 text-xs font-medium italic">
+                    Vais receber também um email com o link quando estiver pronto.
+                </p>
+</div>
+<!-- Supporting Brand Texture -->
+<div class="flex justify-center gap-12 opacity-30">
+<div class="w-16 h-1.5 rounded-full bg-primary"></div>
+<div class="w-16 h-1.5 rounded-full bg-outline-variant"></div>
+<div class="w-16 h-1.5 rounded-full bg-outline-variant"></div>
+</div>
+</div>
+</main>
+<!-- Footer Shell -->
+<footer class="bg-[#f7f9fb] dark:bg-slate-950 py-12 border-t border-[#eceef0] dark:border-slate-800 mt-auto">
+<div class="flex flex-col md:flex-row justify-between items-center px-8 w-full max-w-7xl mx-auto gap-6">
+<div class="text-sm font-bold text-[#00113a] dark:text-white">
+                MarketPilot © 2026
+            </div>
+<div class="flex gap-8">
+<a class="text-xs font-medium Inter uppercase tracking-widest text-slate-400 dark:text-slate-600 hover:text-[#00113a] dark:hover:text-white transition-opacity" href="#">Privacy Policy</a>
+<a class="text-xs font-medium Inter uppercase tracking-widest text-slate-400 dark:text-slate-600 hover:text-[#00113a] dark:hover:text-white transition-opacity" href="#">Terms of Service</a>
+<a class="text-xs font-medium Inter uppercase tracking-widest text-slate-400 dark:text-slate-600 hover:text-[#00113a] dark:hover:text-white transition-opacity" href="#">Support</a>
+</div>
+</div>
+</footer>
+</body></html>

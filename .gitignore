@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+.mcp.json
+*.db
+*.db-shm
+*.db-wal

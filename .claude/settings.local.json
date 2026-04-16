@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe /c \"where python\")",
+      "Bash(grep -E \"\\\\.csv$\")",
+      "mcp__mirakl__search",
+      "mcp__mirakl__list-apis",
+      "mcp__mirakl__get-endpoints",
+      "Bash(grep -E \"\\\\.\\(ts|js|tsx\\)$\")",
+      "Bash(grep -E \"\\\\.\\(sql|ts\\)$\")",
+      "WebSearch",
+      "WebFetch(domain:www.worten.pt)",
+      "WebFetch(domain:www.boostmyshop.com)",
+      "WebFetch(domain:multiply.cloud)",
+      "WebFetch(domain:support.channelengine.com)",
+      "WebFetch(domain:www.boardfy.com)",
+      "WebFetch(domain:www.sellermania.com)",
+      "mcp__mirakl__get-security-schemes",
+      "mcp__mirakl__get-full-api-description",
+      "Bash(python \".claude/skills/bmad-init/scripts/bmad_init.py\" load --project-root \"d:\\\\Plannae Project\\\\DynamicPriceIdea\" --all)"
+    ]
+  }
+}
