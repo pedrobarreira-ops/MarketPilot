@@ -1,0 +1,106 @@
+# generated: 2026-04-16
+# last_updated: 2026-04-16
+# project: MarketPilot Free Report
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-04-16
+last_updated: 2026-04-16
+project: MarketPilot Free Report
+# last code review: 1-1-project-scaffold → done (2026-04-16)
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ── Epic 1: Project Foundation & Infrastructure ──────────────────────────
+  epic-1: in-progress
+  1-1-project-scaffold: done
+  1-2-fastify-server-with-log-redaction: backlog
+  1-3-sqlite-schema-and-drizzle-setup: backlog
+  1-4-bullmq-queue-and-redis-connection: backlog
+  1-5-docker-and-coolify-deployment-config: backlog
+  epic-1-retrospective: optional
+
+  # ── Epic 2: API Key Security Layer ───────────────────────────────────────
+  epic-2: backlog
+  2-1-keystore-module: backlog
+  2-2-bullmq-worker-scaffold-with-key-lifecycle: backlog
+  epic-2-retrospective: optional
+
+  # ── Epic 3: Report Generation Pipeline ───────────────────────────────────
+  epic-3: backlog
+  3-1-mirakl-api-client-with-retry: backlog
+  3-2-of21-catalog-fetch-with-pagination: backlog
+  3-3-p11-competitor-scan: backlog
+  3-4-wow-score-and-quick-wins-scoring: backlog
+  3-5-report-persistence-and-csv-generation: backlog
+  3-6-email-dispatch-via-resend: backlog
+  3-7-full-worker-orchestration-and-phase-updates: backlog
+  epic-3-retrospective: optional
+
+  # ── Epic 4: HTTP API Layer ────────────────────────────────────────────────
+  epic-4: backlog
+  4-1-post-api-generate-route: backlog
+  4-2-get-api-jobs-polling-endpoint: backlog
+  4-3-get-api-reports-and-csv-routes: backlog
+  epic-4-retrospective: optional
+
+  # ── Epic 5: Frontend — Form & Progress Pages ─────────────────────────────
+  epic-5: backlog
+  5-1-form-js-validation-loading-and-submission: backlog
+  5-2-progress-js-bar-copy-redirect-error: backlog
+  epic-5-retrospective: optional
+
+  # ── Epic 6: Frontend — Report Page ───────────────────────────────────────
+  epic-6: backlog
+  6-1-report-js-data-fetch-skeleton-and-your-position: backlog
+  6-2-biggest-opportunities-and-quick-wins-tables: backlog
+  6-3-csv-download-and-cta: backlog
+  6-4-mobile-and-screen-share-layout-verification: backlog
+  6-5-expired-report-and-fetch-error-states: backlog
+  6-6-accessibility-baseline: backlog
+  epic-6-retrospective: optional
+
+  # ── Epic 7: Error Handling & Edge Cases ──────────────────────────────────
+  epic-7: backlog
+  7-1-empty-catalog-and-auth-failure-path: backlog
+  7-2-total-count-mismatch-handling: backlog
+  7-3-p11-rate-limit-and-partial-data-recovery: backlog
+  epic-7-retrospective: optional
+
+  # ── Epic 8: Data Governance & Cleanup ────────────────────────────────────
+  epic-8: backlog
+  8-1-hourly-ttl-deletion-cron: backlog
+  8-2-no-listing-endpoint-and-cross-seller-isolation: backlog
+  epic-8-retrospective: optional
