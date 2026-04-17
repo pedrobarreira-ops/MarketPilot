@@ -18,12 +18,14 @@ export const redisConnection = new Redis(config.REDIS_URL, {
 
 // Fail fast if Redis is unreachable — exit the process rather than hang or retry silently.
 // Log error type/code only (not full message which may contain connection URL details).
+// Listener is registered BEFORE the Queue constructor to avoid a race condition where
+// the connection error fires during BullMQ initialisation before the handler is attached.
 redisConnection.on('error', (err) => {
-  console.error(JSON.stringify({
+  process.stderr.write(JSON.stringify({
     error_type: err.constructor.name,
     error_code: err.code,
     msg: 'Redis connection failed — server cannot start without Redis',
-  }))
+  }) + '\n')
   process.exit(1)
 })
 
