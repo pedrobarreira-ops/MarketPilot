@@ -16,17 +16,23 @@ export const redisConnection = new Redis(config.REDIS_URL, {
   maxRetriesPerRequest: null,
 })
 
-// Fail fast if Redis is unreachable — exit the process rather than hang or retry silently.
-// Log error type/code only (not full message which may contain connection URL details).
-// Listener is registered BEFORE the Queue constructor to avoid a race condition where
-// the connection error fires during BullMQ initialisation before the handler is attached.
+// Fail fast if Redis is unreachable at startup.
+// After the initial connection succeeds, ioredis retries automatically — calling
+// process.exit(1) on a transient post-startup error would kill a healthy server.
+let redisConnected = false
+redisConnection.on('ready', () => { redisConnected = true })
+
 redisConnection.on('error', (err) => {
   process.stderr.write(JSON.stringify({
     error_type: err.constructor.name,
     error_code: err.code,
-    msg: 'Redis connection failed — server cannot start without Redis',
+    msg: redisConnected
+      ? 'Redis connection error — ioredis will retry'
+      : 'Redis connection failed — server cannot start without Redis',
   }) + '\n')
-  process.exit(1)
+  if (!redisConnected) {
+    process.exit(1)
+  }
 })
 
 // BullMQ Queue — all report generation jobs flow through this queue.
