@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
 import { config } from './config.js'
+import { reportQueue } from './queue/reportQueue.js'  // establishes Redis connection at startup (fail-fast)
 import { errorHandler } from './middleware/errorHandler.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
