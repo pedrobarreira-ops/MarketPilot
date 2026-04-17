@@ -5,6 +5,7 @@
 
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'node:fs'
 import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
 import { config } from './config.js'
@@ -33,6 +34,15 @@ const fastify = Fastify({
   // Required so Traefik's X-Forwarded-Proto header is trusted for HTTPS detection (NFR-S1)
   trustProxy: true,
 })
+
+// Guard: fail fast if public/ directory is missing (misconfigured Docker build or local dev issue).
+// Deferred from Story 1.2 code review (per deferred-work.md).
+// Without this check, @fastify/static throws an unhandled rejection at module-eval time.
+// NOTE: fastify.log IS available here — the Fastify instance is constructed before register() is called.
+if (!fs.existsSync(PUBLIC_DIR)) {
+  fastify.log.error({ public_dir: PUBLIC_DIR }, 'public/ directory not found — cannot start server')
+  process.exit(1)
+}
 
 // Serve all static files from /public/** — handles index.html, progress.html, etc.
 // await is needed here so the plugin is fully registered before route declarations
@@ -77,6 +87,44 @@ try {
   fastify.log.error(err)
   process.exit(1)
 }
+
+// Graceful shutdown — Docker sends SIGTERM on container stop
+// Without this handler, in-flight requests are dropped abruptly.
+// Deferred from Story 1.2 code review (per deferred-work.md).
+let shuttingDown = false
+const shutdown = async (signal) => {
+  // Re-entrancy guard: a second SIGTERM/SIGINT (or docker stop + docker kill)
+  // would otherwise spin up a second timer and call fastify.close() twice.
+  if (shuttingDown) {
+    fastify.log.warn({ signal }, 'Shutdown already in progress — ignoring additional signal')
+    return
+  }
+  shuttingDown = true
+
+  fastify.log.info({ signal }, 'Shutdown signal received — closing server')
+  const forceExitTimer = setTimeout(() => {
+    fastify.log.error('Graceful shutdown timed out — forcing exit')
+    process.exit(1)
+  }, 10_000)
+  forceExitTimer.unref() // don't prevent Node from exiting naturally if close resolves
+
+  try {
+    // TODO (future story): close BullMQ workers here before closing Fastify,
+    // so in-flight jobs drain gracefully before the server stops accepting requests.
+    // e.g.: await worker.close()
+    await fastify.close()
+    clearTimeout(forceExitTimer)
+    fastify.log.info('Server closed cleanly')
+    process.exit(0)
+  } catch (err) {
+    clearTimeout(forceExitTimer)
+    fastify.log.error({ error_type: err.constructor.name }, 'Error during shutdown')
+    process.exit(1)
+  }
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
 
 // Exported for future test stories that need to inject requests without binding a port
 export { fastify }

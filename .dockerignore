@@ -1,0 +1,34 @@
+# Secrets — NEVER copy into image
+.env
+.env.*
+
+# Dependencies — installed fresh in image via npm ci
+node_modules/
+
+# Database files — use named volumes in Docker
+*.db
+*.db-shm
+*.db-wal
+
+# Version control
+.git/
+
+# Tests — not needed at runtime
+tests/
+
+# BMAD planning artifacts
+_bmad-output/
+_bmad/
+
+# Development scripts
+scripts/
+
+# Claude Code config
+.claude/
+
+# Git worktrees
+.worktrees/
+
+# Documentation — recursive exclusion covers nested markdown files; *.md catches top-level files
+*.md
+**/*.md

@@ -1,0 +1,48 @@
+# docker-compose.yml
+# No top-level 'version:' key — deprecated in Docker Compose v2 (current standard).
+# Use 'docker compose' (v2 CLI) not 'docker-compose' (v1 legacy).
+
+services:
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    # Redis data is transient — BullMQ jobs are ephemeral and do not require persistence.
+    # No named volume: data is lost on container removal, which is acceptable for job queues.
+    # No port mapping — only accessible within Docker network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Override .env values for Docker networking and production settings
+      REDIS_URL: redis://redis:6379
+      SQLITE_PATH: /data/marketpilot.db
+      # Use variable substitution so NODE_ENV can be overridden locally (e.g. NODE_ENV=development docker compose up)
+      NODE_ENV: ${NODE_ENV:-production}
+    volumes:
+      - sqlite_data:/data
+    # Bind to loopback only — cloud deployments should route through a reverse proxy (e.g. Traefik/Nginx).
+    # Change to "3000:3000" only for local development without a proxy.
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # 60s start_period accounts for Redis startup time before BullMQ connects
+      start_period: 60s
+
+volumes:
+  sqlite_data:
