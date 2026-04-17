@@ -29,5 +29,6 @@ scripts/
 # Git worktrees
 .worktrees/
 
-# Documentation — recursive exclusion covers nested markdown files
+# Documentation — recursive exclusion covers nested markdown files; *.md catches top-level files
+*.md
 **/*.md

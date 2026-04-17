@@ -2,8 +2,8 @@
 FROM node:22.14.0-alpine3.21
 
 # OCI standard image labels
-LABEL org.opencontainers.image.source="https://github.com/pedrobarreira-ops/DynamicPriceIdea"
-LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.source="https://github.com/pedrobarreira-ops/MarketPilot"
+LABEL org.opencontainers.image.version="1.0.0-story-1.5"
 
 # Install build tools needed by better-sqlite3 native bindings on Alpine (musl libc).
 # better-sqlite3 v11 ships prebuilt binaries for glibc (Debian/Ubuntu) but NOT musl (Alpine).
