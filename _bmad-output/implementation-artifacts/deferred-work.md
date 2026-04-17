@@ -14,3 +14,12 @@ Items deferred during code review. Each entry includes the review date and sourc
 - **Add `license` field to package.json** — add before any public release.
 - **Strict Node version enforcement** (preinstall hook or `engine-strict=true` in .npmrc) [package.json] — `engines` is advisory but acceptable for internal scaffold.
 - **Run `npm audit` on committed package-lock.json** — ops housekeeping; verify no transitive vulnerabilities before deploy.
+
+## Deferred from: code review of 1-2-fastify-server-with-log-redaction (2026-04-17)
+
+- **No SIGTERM/SIGINT handler for graceful shutdown** [src/server.js] — on Coolify/Docker `docker stop` sends SIGTERM; without a handler in-flight requests may be dropped. Out of scope for Story 1.2; address in Story 1.5 (Docker/Coolify deployment config).
+- **No test for missing static file returning 404** [tests/server.atdd.test.js] — `@fastify/static` default 404 for missing files is not explicitly tested. Low priority; add to integration test suite in a later story.
+- **`fastify.log.error(err)` on listen failure passes full error object** [src/server.js:61] — low-probability leak if startup error carries sensitive content; consider logging only `err.code`/`err.constructor.name`/`err.message` explicitly once startup error classes are known.
+- **Exported `fastify` from `server.js` is side-effectful** [src/server.js:66] — top-level `await fastify.listen()` means importing the exported instance binds a port; current tests avoid via `buildApp()`. Pattern matches spec; revisit when a future story needs to import the instance without starting the server.
+- **`errorApp` before() block duplicates `buildApp()` boilerplate** [tests/server.atdd.test.js:195-238] — DRY violation; `buildApp()` could accept a routes-setup callback. No correctness impact; refactor in a future test maintenance pass.
+- **Missing `public/` dir causes unhandled rejection at container start** [src/server.js:37-40] — `@fastify/static` plugin registration runs at module-eval time via top-level ESM await, bypassing the `try/catch` around `listen()`. Add a `fs.existsSync(PUBLIC_DIR)` pre-check or handle in Docker build to ensure `public/` is always present.
