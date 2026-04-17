@@ -3,7 +3,7 @@
 **Epic:** 1 — Project Foundation & Infrastructure
 **Story:** 1.4
 **Story Key:** 1-4-bullmq-queue-and-redis-connection
-**Status:** ready-for-dev
+**Status:** done
 **Date Created:** 2026-04-17
 
 ---
@@ -67,6 +67,12 @@ So that the generation pipeline has a reliable, pre-configured job queue that en
   - [ ] Test: `defaultJobOptions` has `attempts: 3` and `backoff.type === 'exponential'` and `backoff.delay === 5000`
   - [ ] Test: exported `redisConnection` is an ioredis `Redis` instance (use `instanceof Redis`)
   - [ ] In `after()` hook: call `await reportQueue.close()` and `await redisConnection.quit()` to avoid open handles warning
+
+### Review Findings
+
+- [x] [Review][Patch] Delete `src/queue/.gitkeep` per verification checklist [src/queue/.gitkeep] — the story spec explicitly required removing the placeholder once `reportQueue.js` exists. Fixed by `git rm src/queue/.gitkeep`.
+- [x] [Review][Patch] `tests/server.atdd.test.js` `after()` hook did not close the imported Redis connection [tests/server.atdd.test.js:107] — `before()` imports `redisConnection` from `reportQueue.js` (establishing an ioredis socket) but `after()` only called `app.close()`. The open socket kept `node --test` alive indefinitely after all 17 tests passed; running the suite required SIGTERM to exit. Fixed by closing `reportQueue`/`redisConnection` with 2s timeout races and a final `disconnect()` in `after()`. `npm test` now exits cleanly in ~2.7s with 27/27 passing.
+- [x] [Review][Patch] `tests/queue.atdd.test.js` `after()` cleanup lacked a timeout on `reportQueue.close()` [tests/queue.atdd.test.js:64] — `close()` can hang if BullMQ is mid-reconnect against an unreachable Redis; only `quit()` had a timeout wrapper. Fixed by wrapping `close()` in the same 2s `Promise.race` and adding a final `redisConnection.disconnect()` to guarantee socket teardown in CI.
 
 ---
 

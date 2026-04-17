@@ -63,15 +63,23 @@ describe('Story 1.4 — BullMQ Queue and Redis Connection', async () => {
 
   after(async () => {
     // Graceful cleanup to avoid open handles warning from the test runner.
-    // close() and quit() work even without an active Redis connection.
-    try { await reportQueue.close() } catch (_) { /* ignore */ }
-    // Wrap quit() in a 2s timeout to prevent test runner hang when Redis is unreachable.
+    // Each step is wrapped with a 2s timeout — close() can hang if BullMQ is
+    // mid-reconnect against an unreachable Redis, which would pin the runner.
+    try {
+      await Promise.race([
+        reportQueue.close(),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ])
+    } catch (_) { /* ignore */ }
     try {
       await Promise.race([
         redisConnection.quit(),
         new Promise(resolve => setTimeout(resolve, 2000)),
       ])
     } catch (_) { /* ignore */ }
+    // Ensure the socket is destroyed even if quit() did not drain cleanly —
+    // otherwise the open ioredis socket keeps node --test alive.
+    try { redisConnection.disconnect() } catch (_) { /* ignore */ }
   })
 
   // ── AC-1: Queue instance and name ─────────────────────────────────────────
