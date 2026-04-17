@@ -303,3 +303,17 @@ claude-sonnet-4-6 (2026-04-17)
 ### Change Log
 
 - 2026-04-17: Implemented `src/queue/keyStore.js` — in-memory API key store with set/get/delete/has exports, zero imports, all ACs satisfied.
+- 2026-04-17: Code review complete — 1 patch applied (B3), 2 deferred (B1/E1, B2/E2/E3). See Review Findings below.
+
+---
+
+## Review Findings
+
+### Patches Applied
+
+- [x] [Review][Patch] `del` function declaration changed to `const` arrow for consistency with `set`/`get`/`has` [src/queue/keyStore.js:20]
+
+### Deferred
+
+- [x] [Review][Defer] `set()` accepts `undefined`/`null` jobId silently [src/queue/keyStore.js:16] — deferred, pre-existing design choice; spec reference implementation omits guards; caller responsibility (Story 4.1)
+- [x] [Review][Defer] `set()` accepts falsy/null apiKey silently [src/queue/keyStore.js:16] — deferred, pre-existing design choice; no AC requires validation; guard belongs in Story 4.1 route handler

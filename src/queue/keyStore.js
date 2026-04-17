@@ -17,5 +17,5 @@ export const set    = (jobId, apiKey) => { _store.set(jobId, apiKey) }
 export const get    = (jobId)         => _store.get(jobId)
 export const has    = (jobId)         => _store.has(jobId)
 
-function del(jobId) { _store.delete(jobId) }
+const del = (jobId) => { _store.delete(jobId) }
 export { del as delete }
