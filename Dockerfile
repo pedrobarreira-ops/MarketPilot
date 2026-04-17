@@ -1,6 +1,10 @@
 # syntax=docker/dockerfile:1
 FROM node:22.14.0-alpine3.21
 
+# OCI standard image labels
+LABEL org.opencontainers.image.source="https://github.com/pedrobarreira-ops/DynamicPriceIdea"
+LABEL org.opencontainers.image.version="1.0.0"
+
 # Install build tools needed by better-sqlite3 native bindings on Alpine (musl libc).
 # better-sqlite3 v11 ships prebuilt binaries for glibc (Debian/Ubuntu) but NOT musl (Alpine).
 # These tools are needed at build time only — they add ~50 MB to the build layer but are not
@@ -18,7 +22,7 @@ USER node
 # Install production deps only — copy package files first for layer caching
 # --chown ensures files are owned by node user, not root
 COPY --chown=node:node package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev
 
 # Copy application source and static files
 COPY --chown=node:node src/ ./src/

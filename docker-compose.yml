@@ -6,10 +6,8 @@ services:
   redis:
     image: redis:7.4.2-alpine
     restart: unless-stopped
-    # Named volume persists queued BullMQ jobs across Redis restarts (AC-2).
-    # BullMQ job data survives restart, preventing loss of in-flight jobs on Coolify redeploys.
-    volumes:
-      - redis_data:/data
+    # Redis data is transient — BullMQ jobs are ephemeral and do not require persistence.
+    # No named volume: data is lost on container removal, which is acceptable for job queues.
     # No port mapping — only accessible within Docker network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -34,15 +32,17 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
     volumes:
       - sqlite_data:/data
+    # Bind to loopback only — cloud deployments should route through a reverse proxy (e.g. Traefik/Nginx).
+    # Change to "3000:3000" only for local development without a proxy.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      # 60s start_period accounts for Redis startup time before BullMQ connects
+      start_period: 60s
 
 volumes:
-  redis_data:
   sqlite_data:
