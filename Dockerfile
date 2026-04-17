@@ -7,22 +7,32 @@ FROM node:22-alpine
 # present in the final image if you use multi-stage builds (optional future optimisation).
 RUN apk add --no-cache python3 make g++
 
-# Set working directory
+# Create /app as root, then hand ownership to the built-in 'node' user.
+# Must be done before USER switch — WORKDIR as non-root creates dir owned by root.
 WORKDIR /app
+RUN chown node:node /app
 
-# Install production dependencies first (layer caching — deps change less often than src)
-COPY package.json package-lock.json ./
+# Switch to non-root for all subsequent instructions
+USER node
+
+# Install production deps only — copy package files first for layer caching
+# --chown ensures files are owned by node user, not root
+COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 # Copy application source and static files
-COPY src/ ./src/
-COPY public/ ./public/
+COPY --chown=node:node src/ ./src/
+COPY --chown=node:node public/ ./public/
 
-# Run as non-root node user (built into node:22-alpine)
-USER node
+# SQLite DB lives on a Docker volume mounted here at runtime
+VOLUME ["/data"]
 
 # Expose the port Fastify listens on (config.PORT defaults to 3000)
 EXPOSE 3000
+
+# Coolify polls this for container health; 30s start period accommodates BullMQ Redis connect
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:3000/health || exit 1
 
 # Start the server (ESM; server.js starts Fastify + the imported queue module triggers Redis connection)
 CMD ["node", "src/server.js"]

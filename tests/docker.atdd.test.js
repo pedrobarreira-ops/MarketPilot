@@ -85,6 +85,28 @@ describe('Story 1.5 — Docker and Coolify Deployment Config', () => {
         'Dockerfile must contain "EXPOSE 3000"'
       )
     })
+
+    test('Dockerfile declares /data as a VOLUME (AC-2: SQLite persistence)', () => {
+      const content = readFile('Dockerfile')
+      assert.ok(content !== null, 'Dockerfile must exist')
+      assert.ok(
+        content.includes('VOLUME') && content.includes('/data'),
+        'Dockerfile must declare /data as a VOLUME for SQLite persistence across restarts'
+      )
+    })
+
+    test('Dockerfile has HEALTHCHECK instruction using /health endpoint (AC-5)', () => {
+      const content = readFile('Dockerfile')
+      assert.ok(content !== null, 'Dockerfile must exist')
+      assert.ok(
+        content.includes('HEALTHCHECK'),
+        'Dockerfile must contain a HEALTHCHECK instruction for Coolify health probes'
+      )
+      assert.ok(
+        content.includes('/health'),
+        'Dockerfile HEALTHCHECK must call the /health endpoint'
+      )
+    })
   })
 
   // ── AC-2: docker-compose.yml ──────────────────────────────────────────────
@@ -157,8 +179,8 @@ describe('Story 1.5 — Docker and Coolify Deployment Config', () => {
     })
   })
 
-  // ── AC-4: SIGTERM / SIGINT handlers in src/server.js ─────────────────────
-  describe('AC-4: src/server.js contains graceful shutdown signal handlers', () => {
+  // ── AC-4/AC-6: SIGTERM / SIGINT handlers in src/server.js ───────────────
+  describe('AC-6: src/server.js contains graceful shutdown signal handlers', () => {
     test('src/server.js contains SIGTERM listener', () => {
       const content = readFile('src/server.js')
       assert.ok(content !== null, 'src/server.js must exist')
@@ -174,6 +196,35 @@ describe('Story 1.5 — Docker and Coolify Deployment Config', () => {
       assert.ok(
         content.includes('SIGINT'),
         'src/server.js must register a SIGINT signal listener for graceful local dev shutdown'
+      )
+    })
+
+    test('src/server.js has force-exit guard (10s timeout) in shutdown handler (AC-6)', () => {
+      const content = readFile('src/server.js')
+      assert.ok(content !== null, 'src/server.js must exist')
+      assert.ok(
+        content.includes('forceExitTimer') || content.includes('setTimeout'),
+        'src/server.js shutdown handler must have a force-exit timer guard to prevent hung shutdowns'
+      )
+      assert.ok(
+        content.includes('10_000') || content.includes('10000'),
+        'src/server.js force-exit timer must be set to 10 seconds (10_000 ms)'
+      )
+    })
+
+    test('src/server.js shutdown handlers are registered after fastify.listen() (AC-6)', () => {
+      const content = readFile('src/server.js')
+      assert.ok(content !== null, 'src/server.js must exist')
+      // SIGTERM handler must appear after the fastify.listen() try/catch block
+      const listenIdx = content.indexOf('await fastify.listen(')
+      const sigtermIdx = content.indexOf("process.on('SIGTERM'")
+      assert.ok(
+        listenIdx !== -1,
+        'src/server.js must contain fastify.listen()'
+      )
+      assert.ok(
+        sigtermIdx > listenIdx,
+        'SIGTERM handler must be registered AFTER fastify.listen() to avoid handler leak on listen failure'
       )
     })
   })

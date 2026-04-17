@@ -6,8 +6,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    volumes:
-      - redis_data:/data
+    # No persistent volume — BullMQ job data is transient; retries handle Redis restarts
     # No port mapping — only accessible within Docker network
 
   app:
@@ -34,5 +33,4 @@ services:
       start_period: 10s
 
 volumes:
-  redis_data:
   sqlite_data:
