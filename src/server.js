@@ -9,6 +9,7 @@ import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
 import { config } from './config.js'
 import { errorHandler } from './middleware/errorHandler.js'
+import { runMigrations } from './db/migrate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // Absolute path required by @fastify/static — server.js lives in src/, public/ is one level up
@@ -52,6 +53,15 @@ fastify.get('/report/:report_id', async (_req, reply) => {
 
 // Global error handler — maps all unhandled errors to safe { error, message } (NFR-S4)
 fastify.setErrorHandler(errorHandler)
+
+// Initialise SQLite schema (idempotent — runs on every startup)
+try {
+  runMigrations()
+  fastify.log.info('Database migrations complete')
+} catch (err) {
+  fastify.log.error({ error_type: err.constructor.name }, 'Migration failed — aborting startup')
+  process.exit(1)
+}
 
 // Start listening — v5 requires object syntax; positional args from v4 are not supported
 try {
