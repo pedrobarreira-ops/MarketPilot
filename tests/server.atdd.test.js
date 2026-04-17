@@ -349,7 +349,8 @@ describe('Story 1.2 — Fastify server with log redaction', async () => {
             paths: [
               'req.headers.authorization',
               'req.body.api_key',
-              '*.api_key',
+              'api_key',       // top-level api_key (e.g. logged request bodies)
+              '*.api_key',     // nested api_key in any object
               '*.Authorization',
             ],
             censor: '[REDACTED]',

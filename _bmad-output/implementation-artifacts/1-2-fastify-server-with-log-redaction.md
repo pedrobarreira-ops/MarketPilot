@@ -324,8 +324,11 @@ claude-sonnet-4-6 (2026-04-17)
 - [x] [Review][Decision] `errorHandler` validation branch: only use `err.message` when `err.validation` is set (Fastify schema failure); removed `err.statusCode === 400` check to prevent manually-thrown 400s leaking raw messages [src/middleware/errorHandler.js:7] — **fixed**
 - [x] [Review][Decision] `errorHandler` always returns HTTP 500 for non-validation errors; removed `err.statusCode` passthrough to prevent status code leakage from misbehaving plugins [src/middleware/errorHandler.js:22] — **fixed**
 - [x] [Review][Patch] `buildApp()` and `errorApp` in tests used 4-path redact config; updated both to 5-path config matching server.js (added top-level `api_key` path) [tests/server.atdd.test.js:55-63, 206-219] — **fixed**
+- [x] [Review][Patch] Second VERIFY test's inline Pino redact config still used the 4-path list after the prior patch aligned `buildApp()` and `errorApp`; updated to 5-path config for consistency with server.js [tests/server.atdd.test.js:349-354] — **fixed**
 - [x] [Review][Defer] No SIGTERM/SIGINT handler for graceful shutdown [src/server.js] — deferred, out of scope for 1.2, pre-existing gap
 - [x] [Review][Defer] No test for missing static file returning 404 [tests/server.atdd.test.js] — deferred, low priority
+- [x] [Review][Defer] `fastify.log.error(err)` on listen failure passes full error object; low-probability leak if startup error carries sensitive content [src/server.js:61] — deferred, hardening candidate
+- [x] [Review][Defer] Exported `fastify` from `server.js` is side-effectful (top-level `listen()`); naive consumers would bind a port on import; current tests avoid this via `buildApp()` [src/server.js:66] — deferred, matches spec-mandated pattern
 
 ### Change Log
 
