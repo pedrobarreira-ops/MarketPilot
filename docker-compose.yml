@@ -6,7 +6,10 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    # No persistent volume — BullMQ job data is transient; retries handle Redis restarts
+    # Named volume persists queued BullMQ jobs across Redis restarts (AC-2).
+    # BullMQ job data survives restart, preventing loss of in-flight jobs on Coolify redeploys.
+    volumes:
+      - redis_data:/data
     # No port mapping — only accessible within Docker network
 
   app:
@@ -33,4 +36,5 @@ services:
       start_period: 10s
 
 volumes:
+  redis_data:
   sqlite_data:

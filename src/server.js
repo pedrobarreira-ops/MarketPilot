@@ -75,7 +75,16 @@ try {
 // Graceful shutdown — Docker sends SIGTERM on container stop
 // Without this handler, in-flight requests are dropped abruptly.
 // Deferred from Story 1.2 code review (per deferred-work.md).
+let shuttingDown = false
 const shutdown = async (signal) => {
+  // Re-entrancy guard: a second SIGTERM/SIGINT (or docker stop + docker kill)
+  // would otherwise spin up a second timer and call fastify.close() twice.
+  if (shuttingDown) {
+    fastify.log.warn({ signal }, 'Shutdown already in progress — ignoring additional signal')
+    return
+  }
+  shuttingDown = true
+
   fastify.log.info({ signal }, 'Shutdown signal received — closing server')
   const forceExitTimer = setTimeout(() => {
     fastify.log.error('Graceful shutdown timed out — forcing exit')
@@ -89,6 +98,7 @@ const shutdown = async (signal) => {
     fastify.log.info('Server closed cleanly')
     process.exit(0)
   } catch (err) {
+    clearTimeout(forceExitTimer)
     fastify.log.error({ error_type: err.constructor.name }, 'Error during shutdown')
     process.exit(1)
   }
