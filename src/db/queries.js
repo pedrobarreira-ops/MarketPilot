@@ -56,7 +56,7 @@ export function updateJobError(jobId, errorMessage) {
 
 /**
  * Insert a completed report.
- * expires_at is always generated_at + 172800 (48 hours), computed at insert time.
+ * expires_at is always generated_at + TTL_SECONDS (48 hours), computed at insert time.
  */
 export function insertReport(
   reportId, email, summaryJson,

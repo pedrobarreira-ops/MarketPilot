@@ -63,7 +63,9 @@ try {
   // Small delay lets Pino flush its write buffer before the process exits.
   // Pino writes asynchronously; exiting synchronously can silently drop the
   // error log line, making startup failures very hard to diagnose.
+  // return prevents fastify.listen() from being reached while the timer runs.
   setTimeout(() => process.exit(1), 100)
+  return
 }
 
 // Start listening — v5 requires object syntax; positional args from v4 are not supported
