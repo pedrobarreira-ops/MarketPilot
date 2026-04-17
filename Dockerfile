@@ -11,10 +11,11 @@ LABEL org.opencontainers.image.version="1.0.0-story-1.5"
 # present in the final image if you use multi-stage builds (optional future optimisation).
 RUN apk add --no-cache python3 make g++
 
-# Create /app as root, then hand ownership to the built-in 'node' user.
+# Create /app and /data as root, then hand ownership to the built-in 'node' user.
 # Must be done before USER switch — WORKDIR as non-root creates dir owned by root.
+# /data must be chowned here so Docker initialises the named volume with node:node ownership.
 WORKDIR /app
-RUN chown node:node /app
+RUN chown node:node /app && mkdir -p /data && chown node:node /data
 
 # Switch to non-root for all subsequent instructions
 USER node
