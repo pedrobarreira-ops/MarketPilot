@@ -11,7 +11,8 @@ export function errorHandler(err, request, reply) {
   if (err.validation) {
     return reply.status(400).send({
       error: 'validation_error',
-      message: err.message,
+      // err.message is guaranteed a string by Fastify/Ajv, but guard defensively
+      message: typeof err.message === 'string' ? err.message : 'Validation error',
     })
   }
 

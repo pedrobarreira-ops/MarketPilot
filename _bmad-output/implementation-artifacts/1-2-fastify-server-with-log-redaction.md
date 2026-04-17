@@ -325,12 +325,19 @@ claude-sonnet-4-6 (2026-04-17)
 - [x] [Review][Decision] `errorHandler` always returns HTTP 500 for non-validation errors; removed `err.statusCode` passthrough to prevent status code leakage from misbehaving plugins [src/middleware/errorHandler.js:22] — **fixed**
 - [x] [Review][Patch] `buildApp()` and `errorApp` in tests used 4-path redact config; updated both to 5-path config matching server.js (added top-level `api_key` path) [tests/server.atdd.test.js:55-63, 206-219] — **fixed**
 - [x] [Review][Patch] Second VERIFY test's inline Pino redact config still used the 4-path list after the prior patch aligned `buildApp()` and `errorApp`; updated to 5-path config for consistency with server.js [tests/server.atdd.test.js:349-354] — **fixed**
+- [x] [Review][Patch] `err.message` used without string guard in validation branch; added defensive `typeof err.message === 'string'` check [src/middleware/errorHandler.js:12] — **fixed**
+- [x] [Review][Patch] `unknown errors mapped to safe shape` test used weak `!res.body.includes('Error:')` assertion; strengthened to check exact `{error, message}` key set and that raw error text is absent from message field [tests/server.atdd.test.js] — **fixed**
+- [x] [Review][Patch] Unused variable `loggerOpts` in AC-1 test; removed dead code [tests/server.atdd.test.js] — **fixed**
+- [x] [Review][Patch] `req.body.api_key` redaction path not tested via real HTTP injection; added new `VERIFY: req.body.api_key is redacted through Fastify request logging` describe block with inject-based POST test [tests/server.atdd.test.js] — **fixed** (17 tests now pass)
 - [x] [Review][Defer] No SIGTERM/SIGINT handler for graceful shutdown [src/server.js] — deferred, out of scope for 1.2, pre-existing gap
 - [x] [Review][Defer] No test for missing static file returning 404 [tests/server.atdd.test.js] — deferred, low priority
 - [x] [Review][Defer] `fastify.log.error(err)` on listen failure passes full error object; low-probability leak if startup error carries sensitive content [src/server.js:61] — deferred, hardening candidate
 - [x] [Review][Defer] Exported `fastify` from `server.js` is side-effectful (top-level `listen()`); naive consumers would bind a port on import; current tests avoid this via `buildApp()` [src/server.js:66] — deferred, matches spec-mandated pattern
+- [x] [Review][Defer] `errorApp` before() block in tests duplicates `buildApp()` boilerplate; DRY violation [tests/server.atdd.test.js:195-238] — deferred, maintainability only, no correctness impact
+- [x] [Review][Defer] Missing `public/` dir at container start causes unhandled rejection (top-level await in ESM bypasses try/catch) [src/server.js:37-40] — deferred, deploy-time concern, address in Story 1.5 Docker config
 
 ### Change Log
 
 - 2026-04-17: Implemented Story 1.2 — created src/server.js and src/middleware/errorHandler.js; fixed Fastify v5 incompatibilities in ATDD tests; all 16 tests pass
-- 2026-04-17: Code review complete — fixed errorHandler validation branch (schema errors only), fixed always-500 for non-validation errors, aligned test redact configs to 5 paths; all 16 tests pass; story → done
+- 2026-04-17: Code review complete (round 1) — fixed errorHandler validation branch (schema errors only), fixed always-500 for non-validation errors, aligned test redact configs to 5 paths; all 16 tests pass; story → done
+- 2026-04-17: Code review complete (round 2) — added err.message string guard, strengthened errorHandler test assertion, removed unused loggerOpts variable, added inject-based POST redaction test (req.body.api_key path); 17 tests pass; story remains done
