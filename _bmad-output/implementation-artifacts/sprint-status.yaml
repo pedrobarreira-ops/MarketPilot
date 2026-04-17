@@ -38,7 +38,7 @@ generated: 2026-04-16
 last_updated: 2026-04-17
 # last story created: 1-2-fastify-server-with-log-redaction → atdd-done (2026-04-17)
 project: MarketPilot Free Report
-# last code review: 1-1-project-scaffold → done (2026-04-16)
+# last code review: 1-2-fastify-server-with-log-redaction → done (2026-04-17)
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
