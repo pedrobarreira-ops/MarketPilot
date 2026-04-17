@@ -4,26 +4,34 @@
 
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.2-alpine
     restart: unless-stopped
     # Named volume persists queued BullMQ jobs across Redis restarts (AC-2).
     # BullMQ job data survives restart, preventing loss of in-flight jobs on Coolify redeploys.
     volumes:
       - redis_data:/data
     # No port mapping — only accessible within Docker network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   app:
     build: .
     restart: unless-stopped
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       # Override .env values for Docker networking and production settings
       REDIS_URL: redis://redis:6379
       SQLITE_PATH: /data/marketpilot.db
-      NODE_ENV: production
+      # Use variable substitution so NODE_ENV can be overridden locally (e.g. NODE_ENV=development docker compose up)
+      NODE_ENV: ${NODE_ENV:-production}
     volumes:
       - sqlite_data:/data
     ports:
@@ -33,7 +41,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 30s
 
 volumes:
   redis_data:

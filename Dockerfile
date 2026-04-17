@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:22-alpine
+FROM node:22.14.0-alpine3.21
 
 # Install build tools needed by better-sqlite3 native bindings on Alpine (musl libc).
 # better-sqlite3 v11 ships prebuilt binaries for glibc (Debian/Ubuntu) but NOT musl (Alpine).
@@ -18,7 +18,7 @@ USER node
 # Install production deps only — copy package files first for layer caching
 # --chown ensures files are owned by node user, not root
 COPY --chown=node:node package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy application source and static files
 COPY --chown=node:node src/ ./src/

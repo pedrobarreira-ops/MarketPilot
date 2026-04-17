@@ -53,9 +53,10 @@ describe('Story 1.5 — Docker and Coolify Deployment Config', () => {
     test('Dockerfile uses node:22-alpine as base image', () => {
       const content = readFile('Dockerfile')
       assert.ok(content !== null, 'Dockerfile must exist')
+      // Accept both unpinned (node:22-alpine) and pinned patch versions (node:22.x.y-alpineX.YY)
       assert.ok(
-        content.includes('FROM node:22-alpine'),
-        'Dockerfile must contain "FROM node:22-alpine"'
+        /FROM node:22[.\d]*-alpine/.test(content),
+        'Dockerfile must use a node:22-alpine base image (pinned patch version accepted)'
       )
     })
 
@@ -119,9 +120,10 @@ describe('Story 1.5 — Docker and Coolify Deployment Config', () => {
     test('docker-compose.yml references redis:7-alpine image', () => {
       const content = readFile('docker-compose.yml')
       assert.ok(content !== null, 'docker-compose.yml must exist')
+      // Accept both unpinned (redis:7-alpine) and pinned patch versions (redis:7.x.y-alpine)
       assert.ok(
-        content.includes('redis:7-alpine'),
-        'docker-compose.yml must reference "redis:7-alpine"'
+        /redis:7[.\d]*-alpine/.test(content),
+        'docker-compose.yml must reference a redis:7-alpine image (pinned patch version accepted)'
       )
     })
 

@@ -93,6 +93,9 @@ const shutdown = async (signal) => {
   forceExitTimer.unref() // don't prevent Node from exiting naturally if close resolves
 
   try {
+    // TODO (future story): close BullMQ workers here before closing Fastify,
+    // so in-flight jobs drain gracefully before the server stops accepting requests.
+    // e.g.: await worker.close()
     await fastify.close()
     clearTimeout(forceExitTimer)
     fastify.log.info('Server closed cleanly')
