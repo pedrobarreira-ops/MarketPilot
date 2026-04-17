@@ -3,7 +3,7 @@
 **Epic:** 1 — Project Foundation & Infrastructure
 **Story:** 1.2
 **Story Key:** 1-2-fastify-server-with-log-redaction
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-16
 
 ---
@@ -319,6 +319,15 @@ claude-sonnet-4-6 (2026-04-17)
 - `src/middleware/errorHandler.js` — created: safe error mapping to { error, message }, no stack trace leakage
 - `tests/server.atdd.test.js` — updated: fixed 3 Fastify v5 API incompatibilities in pre-written ATDD tests
 
+### Review Findings
+
+- [x] [Review][Decision] `errorHandler` validation branch: only use `err.message` when `err.validation` is set (Fastify schema failure); removed `err.statusCode === 400` check to prevent manually-thrown 400s leaking raw messages [src/middleware/errorHandler.js:7] — **fixed**
+- [x] [Review][Decision] `errorHandler` always returns HTTP 500 for non-validation errors; removed `err.statusCode` passthrough to prevent status code leakage from misbehaving plugins [src/middleware/errorHandler.js:22] — **fixed**
+- [x] [Review][Patch] `buildApp()` and `errorApp` in tests used 4-path redact config; updated both to 5-path config matching server.js (added top-level `api_key` path) [tests/server.atdd.test.js:55-63, 206-219] — **fixed**
+- [x] [Review][Defer] No SIGTERM/SIGINT handler for graceful shutdown [src/server.js] — deferred, out of scope for 1.2, pre-existing gap
+- [x] [Review][Defer] No test for missing static file returning 404 [tests/server.atdd.test.js] — deferred, low priority
+
 ### Change Log
 
 - 2026-04-17: Implemented Story 1.2 — created src/server.js and src/middleware/errorHandler.js; fixed Fastify v5 incompatibilities in ATDD tests; all 16 tests pass
+- 2026-04-17: Code review complete — fixed errorHandler validation branch (schema errors only), fixed always-500 for non-validation errors, aligned test redact configs to 5 paths; all 16 tests pass; story → done

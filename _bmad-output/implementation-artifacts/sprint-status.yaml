@@ -47,7 +47,7 @@ development_status:
   # ── Epic 1: Project Foundation & Infrastructure ──────────────────────────
   epic-1: in-progress
   1-1-project-scaffold: done
-  1-2-fastify-server-with-log-redaction: review
+  1-2-fastify-server-with-log-redaction: done
   1-3-sqlite-schema-and-drizzle-setup: backlog
   1-4-bullmq-queue-and-redis-connection: backlog
   1-5-docker-and-coolify-deployment-config: backlog
