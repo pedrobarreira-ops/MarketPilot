@@ -88,13 +88,47 @@ async function buildApp() {
 
 describe('Story 1.2 — Fastify server with log redaction', async () => {
   let app
+  let redisConnection
+  let reportQueue
 
   before(async () => {
+    // Suppress the fail-fast Redis error listener so server.atdd tests don't call
+    // process.exit(1) if Redis is unavailable. We remove only the listeners already
+    // registered (the fail-fast handler from reportQueue.js) and replace with a no-op,
+    // rather than blindly clearing all listeners which could mask unrelated errors.
+    // Dynamic import is required because reportQueue.js runs at module evaluation time.
+    const queueModule = await import('../src/queue/reportQueue.js')
+    redisConnection = queueModule.redisConnection
+    reportQueue     = queueModule.reportQueue
+    // Capture count before removal so we only affect pre-existing 'error' listeners.
+    const existingListeners = redisConnection.listeners('error').slice()
+    existingListeners.forEach(fn => redisConnection.removeListener('error', fn))
+    redisConnection.on('error', () => {}) // no-op — connection errors are expected in unit tests
+
     app = await buildApp()
   })
 
   after(async () => {
     await app.close()
+    // Close the BullMQ queue and ioredis connection created by the imported
+    // reportQueue module — otherwise the open Redis socket keeps the test
+    // runner alive after all tests complete (node --test hangs indefinitely).
+    // Each step is wrapped with a short timeout to avoid hanging the runner
+    // when Redis is unreachable in CI.
+    try {
+      await Promise.race([
+        reportQueue.close(),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ])
+    } catch (_) { /* ignore */ }
+    try {
+      await Promise.race([
+        redisConnection.quit(),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ])
+    } catch (_) { /* ignore */ }
+    // Ensure the socket is destroyed even if quit() did not drain cleanly.
+    try { redisConnection.disconnect() } catch (_) { /* ignore */ }
   })
 
   // ── AC-1: Pino redact configuration ─────────────────────────────────────
