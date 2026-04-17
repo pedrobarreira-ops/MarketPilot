@@ -26,6 +26,10 @@ export function createJob(jobId, reportId, email, marketplaceUrl) {
 /**
  * Update job status and phase message.
  * Sets completed_at only when status transitions to 'complete'.
+ *
+ * If phaseMessage is undefined, Drizzle omits that column from the SET clause,
+ * preserving the previous phase_message value rather than clearing it to NULL.
+ * Pass null explicitly to clear the phase message.
  */
 export function updateJobStatus(jobId, status, phaseMessage) {
   const updates = { status, phaseMessage }
@@ -74,6 +78,11 @@ export function insertReport(
 /**
  * Return a report row only if it exists and has not expired.
  * Returns null — never throws — so callers can safely return 404 on null.
+ *
+ * @param {string} reportId
+ * @param {number} now - Current time as Unix epoch SECONDS (not milliseconds).
+ *   Use Math.floor(Date.now() / 1000). Passing milliseconds will make every
+ *   report appear expired because expires_at (~1.7 billion) < now (~1.7 trillion).
  */
 export function getReport(reportId, now) {
   const rows = db

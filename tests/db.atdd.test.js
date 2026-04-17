@@ -116,7 +116,13 @@ describe('DB integration — schema, queries, and null-safety', () => {
     }
   })
 
-  after(() => {
+  after(async () => {
+    // Close the Drizzle/better-sqlite3 connection before deleting the temp directory.
+    // On Windows, an open file handle prevents rmSync from removing the locked DB file.
+    try {
+      const { sqlite } = await import('../src/db/database.js')
+      sqlite.close()
+    } catch { /* ignore if module was never loaded */ }
     try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* ignore */ }
   })
 
