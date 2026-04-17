@@ -90,6 +90,14 @@ describe('Story 1.2 — Fastify server with log redaction', async () => {
   let app
 
   before(async () => {
+    // Suppress Redis error listener so server.atdd tests don't call process.exit(1)
+    // if Redis is unavailable. This MUST come after the REDIS_URL env var is set
+    // and BEFORE buildApp() which imports server.js (which imports reportQueue.js).
+    // Dynamic import is required because reportQueue.js runs at module evaluation time.
+    const { redisConnection } = await import('../src/queue/reportQueue.js')
+    redisConnection.removeAllListeners('error')
+    redisConnection.on('error', () => {}) // no-op — connection errors are expected in unit tests
+
     app = await buildApp()
   })
 
