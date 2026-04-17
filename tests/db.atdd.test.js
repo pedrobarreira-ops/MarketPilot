@@ -404,6 +404,25 @@ describe('DB integration — schema, queries, and null-safety', () => {
       }, 'getReport must not throw for a missing report')
       assert.equal(result, null, 'getReport must return null for a missing report')
     })
+
+    test('getReport returns null when now === expires_at (boundary: expires_at > now is strict)', () => {
+      // Spec AC-6: getReport must filter expires_at > now. At the exact boundary
+      // (now === expires_at) the report is considered expired and must return null.
+      // This guards against accidentally switching to a >= comparison that would
+      // serve a report in the single second it expires.
+      if (!insertReport || !getReport) {
+        assert.fail('insertReport or getReport not importable')
+      }
+      const reportId = 'rep-boundary-' + Date.now()
+      insertReport(reportId, 'u@example.com', '{"ok":true}', null, null, null, null, null)
+
+      const db = rawDb()
+      const row = db.prepare('SELECT expires_at FROM reports WHERE report_id = ?').get(reportId)
+      db.close()
+
+      const result = getReport(reportId, row.expires_at)
+      assert.equal(result, null, 'getReport must return null when now === expires_at')
+    })
   })
 
   // ── AC-4: getJobStatus ────────────────────────────────────────────────────
