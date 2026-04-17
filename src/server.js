@@ -9,6 +9,7 @@ import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
 import { config } from './config.js'
 import { errorHandler } from './middleware/errorHandler.js'
+import { runMigrations } from './db/migrate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // Absolute path required by @fastify/static — server.js lives in src/, public/ is one level up
@@ -52,6 +53,20 @@ fastify.get('/report/:report_id', async (_req, reply) => {
 
 // Global error handler — maps all unhandled errors to safe { error, message } (NFR-S4)
 fastify.setErrorHandler(errorHandler)
+
+// Initialise SQLite schema (idempotent — runs on every startup)
+try {
+  runMigrations()
+  fastify.log.info('Database migrations complete')
+} catch (err) {
+  fastify.log.error({ error_type: err.constructor.name }, 'Migration failed — aborting startup')
+  // Small delay lets Pino flush its write buffer before the process exits.
+  // Pino writes asynchronously; exiting synchronously can silently drop the
+  // error log line, making startup failures very hard to diagnose.
+  // return prevents fastify.listen() from being reached while the timer runs.
+  setTimeout(() => process.exit(1), 100)
+  return
+}
 
 // Start listening — v5 requires object syntax; positional args from v4 are not supported
 try {
