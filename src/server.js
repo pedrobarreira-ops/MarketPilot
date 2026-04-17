@@ -5,6 +5,7 @@
 
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'node:fs'
 import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
 import { config } from './config.js'
@@ -31,6 +32,15 @@ const fastify = Fastify({
   // Required so Traefik's X-Forwarded-Proto header is trusted for HTTPS detection (NFR-S1)
   trustProxy: true,
 })
+
+// Guard: fail fast if public/ directory is missing (misconfigured Docker build or local dev issue).
+// Deferred from Story 1.2 code review (per deferred-work.md).
+// Without this check, @fastify/static throws an unhandled rejection at module-eval time.
+// NOTE: fastify.log IS available here — the Fastify instance is constructed before register() is called.
+if (!fs.existsSync(PUBLIC_DIR)) {
+  fastify.log.error({ public_dir: PUBLIC_DIR }, 'public/ directory not found — cannot start server')
+  process.exit(1)
+}
 
 // Serve all static files from /public/** — handles index.html, progress.html, etc.
 // await is needed here so the plugin is fully registered before route declarations
@@ -61,6 +71,24 @@ try {
   fastify.log.error(err)
   process.exit(1)
 }
+
+// Graceful shutdown — Docker sends SIGTERM on container stop
+// Without this handler, in-flight requests are dropped abruptly.
+// Deferred from Story 1.2 code review (per deferred-work.md).
+async function shutdown(signal) {
+  fastify.log.info({ signal }, 'Received shutdown signal — closing server gracefully')
+  try {
+    await fastify.close()
+    fastify.log.info('Server closed successfully')
+    process.exit(0)
+  } catch (err) {
+    fastify.log.error({ error_type: err.constructor.name, error_code: err.code }, 'Error during shutdown')
+    process.exit(1)
+  }
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
 
 // Exported for future test stories that need to inject requests without binding a port
 export { fastify }
