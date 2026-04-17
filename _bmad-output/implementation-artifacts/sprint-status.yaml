@@ -35,9 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-17  (epic-1 retrospective complete; npm audit fixes applied)
+last_updated: 2026-04-17  (story 2.1 keyStore module test review passed)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
-# last code review: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
+# last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
 project: MarketPilot Free Report
 project_key: NOKEY
@@ -55,8 +55,8 @@ development_status:
   epic-1-retrospective: done
 
   # ── Epic 2: API Key Security Layer ───────────────────────────────────────
-  epic-2: backlog
-  2-1-keystore-module: backlog
+  epic-2: in-progress
+  2-1-keystore-module: done
   2-2-bullmq-worker-scaffold-with-key-lifecycle: backlog
   epic-2-retrospective: optional
 

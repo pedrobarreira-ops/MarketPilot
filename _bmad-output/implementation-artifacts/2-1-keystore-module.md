@@ -3,7 +3,7 @@
 **Epic:** 2 — API Key Security Layer
 **Story:** 2.1
 **Story Key:** 2-1-keystore-module
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-17
 
 ---
