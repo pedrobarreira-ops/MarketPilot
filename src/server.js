@@ -60,7 +60,10 @@ try {
   fastify.log.info('Database migrations complete')
 } catch (err) {
   fastify.log.error({ error_type: err.constructor.name }, 'Migration failed — aborting startup')
-  process.exit(1)
+  // Small delay lets Pino flush its write buffer before the process exits.
+  // Pino writes asynchronously; exiting synchronously can silently drop the
+  // error log line, making startup failures very hard to diagnose.
+  setTimeout(() => process.exit(1), 100)
 }
 
 // Start listening — v5 requires object syntax; positional args from v4 are not supported

@@ -9,6 +9,9 @@ import { generationJobs, reports } from './schema.js'
 // Returns current Unix epoch in seconds (integers, not milliseconds).
 const unixNow = () => Math.floor(Date.now() / 1000)
 
+// Report TTL: 48 hours in seconds.
+const TTL_SECONDS = 172800
+
 /**
  * Insert a new job into generation_jobs with status='queued'.
  */
@@ -32,7 +35,8 @@ export function createJob(jobId, reportId, email, marketplaceUrl) {
  * Pass null explicitly to clear the phase message.
  */
 export function updateJobStatus(jobId, status, phaseMessage) {
-  const updates = { status, phaseMessage }
+  const updates = { status }
+  if (phaseMessage !== undefined) updates.phaseMessage = phaseMessage
   if (status === 'complete') updates.completedAt = unixNow()
   db.update(generationJobs)
     .set(updates)
@@ -71,7 +75,7 @@ export function insertReport(
     quickwinsEsJson,
     csvData,
     generatedAt: now,
-    expiresAt: now + 172800,
+    expiresAt: now + TTL_SECONDS,
   }).run()
 }
 
@@ -85,12 +89,13 @@ export function insertReport(
  *   report appear expired because expires_at (~1.7 billion) < now (~1.7 trillion).
  */
 export function getReport(reportId, now) {
-  const rows = db
+  const row = db
     .select()
     .from(reports)
     .where(and(eq(reports.reportId, reportId), gt(reports.expiresAt, now)))
-    .all()
-  return rows[0] ?? null
+    .limit(1)
+    .get()
+  return row ?? null
 }
 
 /**
@@ -98,7 +103,7 @@ export function getReport(reportId, now) {
  * Snake-case keys are the HTTP API contract consumed by Epic 4 routes.
  */
 export function getJobStatus(jobId) {
-  const rows = db
+  const row = db
     .select({
       status:       generationJobs.status,
       phaseMessage: generationJobs.phaseMessage,
@@ -106,11 +111,12 @@ export function getJobStatus(jobId) {
     })
     .from(generationJobs)
     .where(eq(generationJobs.jobId, jobId))
-    .all()
-  if (!rows[0]) return null
+    .limit(1)
+    .get()
+  if (!row) return null
   return {
-    status:        rows[0].status,
-    phase_message: rows[0].phaseMessage,
-    report_id:     rows[0].reportId,
+    status:        row.status,
+    phase_message: row.phaseMessage,
+    report_id:     row.reportId,
   }
 }

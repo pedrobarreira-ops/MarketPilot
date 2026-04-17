@@ -20,7 +20,7 @@
 
 import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs'
+import { readFileSync, mkdtempSync, rmSync, readdirSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
@@ -34,6 +34,17 @@ const SRC_DB_DIR = path.join(__dirname, '..', 'src', 'db')
 // Must be set BEFORE any config.js or database.js import resolves.
 const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'mp-test-'))
 const TEST_DB_PATH = path.join(tmpDir, 'test.db')
+
+// Capture original env values so the after() hook can restore them.
+const _origEnv = {
+  SQLITE_PATH:     process.env.SQLITE_PATH,
+  REDIS_URL:       process.env.REDIS_URL,
+  APP_BASE_URL:    process.env.APP_BASE_URL,
+  WORTEN_BASE_URL: process.env.WORTEN_BASE_URL,
+  PORT:            process.env.PORT,
+  LOG_LEVEL:       process.env.LOG_LEVEL,
+}
+
 process.env.SQLITE_PATH     = TEST_DB_PATH
 process.env.REDIS_URL       = process.env.REDIS_URL       || 'redis://localhost:6379'
 process.env.APP_BASE_URL    = process.env.APP_BASE_URL    || 'http://localhost:3000'
@@ -92,6 +103,63 @@ describe('AC-7 — database.js uses config.SQLITE_PATH (not hardcoded)', () => {
   })
 })
 
+describe('AC-5 — queries.js is the ONLY file in src/ that executes DB reads/writes', () => {
+  // Drizzle DML builders: db.insert/select/update/delete
+  // Raw better-sqlite3 calls: db.prepare(), db.exec()
+  // We check every non-infrastructure source file under src/ to ensure none of
+  // these patterns appear — keeping the data-access boundary strict.
+  const DB_CALL_PATTERN = /\bdb\.(insert|select|update|delete|prepare|exec)\(/
+
+  // Collect all .js files under src/ except queries.js itself
+  function collectJsFiles(dir) {
+    const results = []
+    for (const entry of readdirSync(dir)) {
+      const full = path.join(dir, entry)
+      if (statSync(full).isDirectory()) {
+        results.push(...collectJsFiles(full))
+      } else if (entry.endsWith('.js')) {
+        results.push(full)
+      }
+    }
+    return results
+  }
+
+  const SRC_DIR = path.join(__dirname, '..', 'src')
+  // Sanctioned DB infrastructure files — excluded from the check.
+  // queries.js: the authorised DML layer.
+  // database.js: opens the connection and sets pragmas (not DML).
+  // migrate.js: DDL-only bootstrap (CREATE TABLE / CREATE INDEX — not DML reads/writes).
+  const EXCLUDED = new Set([
+    path.join(SRC_DB_DIR, 'queries.js'),
+    path.join(SRC_DB_DIR, 'database.js'),
+    path.join(SRC_DB_DIR, 'migrate.js'),
+  ])
+
+  let srcFiles
+  try {
+    srcFiles = collectJsFiles(SRC_DIR).filter(f => !EXCLUDED.has(f))
+  } catch {
+    srcFiles = []
+  }
+
+  for (const filePath of srcFiles) {
+    const relPath = path.relative(path.join(__dirname, '..'), filePath)
+    test(`${relPath} must not contain direct DB read/write calls`, () => {
+      let src
+      try {
+        src = readFileSync(filePath, 'utf8')
+      } catch {
+        return // file not yet created — skip
+      }
+      assert.ok(
+        !DB_CALL_PATTERN.test(src),
+        `ARCHITECTURE VIOLATION: "${relPath}" contains direct DB calls (.run/.all/.get/.execute/db.prepare/db.exec). ` +
+        'All DB access must go through src/db/queries.js.',
+      )
+    })
+  }
+})
+
 // ── Runtime integration tests ──────────────────────────────────────────────
 // These import the actual modules and exercise them end-to-end.
 
@@ -124,6 +192,15 @@ describe('DB integration — schema, queries, and null-safety', () => {
       sqlite.close()
     } catch { /* ignore if module was never loaded */ }
     try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* ignore */ }
+
+    // Restore original env values so this test file does not pollute other test files.
+    for (const [key, val] of Object.entries(_origEnv)) {
+      if (val === undefined) {
+        delete process.env[key]
+      } else {
+        process.env[key] = val
+      }
+    }
   })
 
   // ── AC-1: generation_jobs table columns ──────────────────────────────────
