@@ -1,5 +1,5 @@
 # generated: 2026-04-16
-# last_updated: 2026-04-17
+# last_updated: 2026-04-17  (epic-1 retrospective complete; npm audit fixes applied)
 # project: MarketPilot Free Report
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,23 +35,24 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-17
-# last story created: 1-2-fastify-server-with-log-redaction → atdd-done (2026-04-17)
+last_updated: 2026-04-17  (epic-1 retrospective complete; npm audit fixes applied)
+# last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
+# last code review: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
+# epic-1-retrospective → done (2026-04-17)
 project: MarketPilot Free Report
-# last code review: 1-2-fastify-server-with-log-redaction → done (2026-04-17)
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # ── Epic 1: Project Foundation & Infrastructure ──────────────────────────
-  epic-1: in-progress
+  epic-1: done
   1-1-project-scaffold: done
   1-2-fastify-server-with-log-redaction: done
-  1-3-sqlite-schema-and-drizzle-setup: backlog
-  1-4-bullmq-queue-and-redis-connection: backlog
-  1-5-docker-and-coolify-deployment-config: backlog
-  epic-1-retrospective: optional
+  1-3-sqlite-schema-and-drizzle-setup: done
+  1-4-bullmq-queue-and-redis-connection: done
+  1-5-docker-and-coolify-deployment-config: done
+  epic-1-retrospective: done
 
   # ── Epic 2: API Key Security Layer ───────────────────────────────────────
   epic-2: backlog
