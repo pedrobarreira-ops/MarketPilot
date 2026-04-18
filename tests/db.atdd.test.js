@@ -410,12 +410,18 @@ describe('DB integration — schema, queries, and null-safety', () => {
       }
       const reportId = 'rep-' + Date.now()
       const before = Math.floor(Date.now() / 1000)
-      insertReport(
-        reportId,
-        'user@example.com',
-        '{"summary":"test"}',
-        null, null, null, null, null,
-      )
+      insertReport({
+        report_id:             reportId,
+        generated_at:          before,
+        expires_at:            before + 172800,
+        email:                 'user@example.com',
+        summary_json:          '{"summary":"test"}',
+        opportunities_pt_json: null,
+        opportunities_es_json: null,
+        quickwins_pt_json:     null,
+        quickwins_es_json:     null,
+        csv_data:              null,
+      })
       const afterTs = Math.floor(Date.now() / 1000)
 
       const db = rawDb()
@@ -447,7 +453,8 @@ describe('DB integration — schema, queries, and null-safety', () => {
         assert.fail('insertReport or getReport not importable')
       }
       const reportId = 'rep-live-' + Date.now()
-      insertReport(reportId, 'u@example.com', '{"ok":true}', null, null, null, null, null)
+      const _nowLive = Math.floor(Date.now() / 1000)
+      insertReport({ report_id: reportId, generated_at: _nowLive, expires_at: _nowLive + 172800, email: 'u@example.com', summary_json: '{"ok":true}', opportunities_pt_json: null, opportunities_es_json: null, quickwins_pt_json: null, quickwins_es_json: null, csv_data: null })
 
       // now is slightly in the past relative to generated_at so expires_at is far ahead
       const now = Math.floor(Date.now() / 1000) - 10
@@ -460,7 +467,8 @@ describe('DB integration — schema, queries, and null-safety', () => {
         assert.fail('insertReport or getReport not importable')
       }
       const reportId = 'rep-expired-' + Date.now()
-      insertReport(reportId, 'u@example.com', '{"ok":true}', null, null, null, null, null)
+      const _nowExp = Math.floor(Date.now() / 1000)
+      insertReport({ report_id: reportId, generated_at: _nowExp, expires_at: _nowExp + 172800, email: 'u@example.com', summary_json: '{"ok":true}', opportunities_pt_json: null, opportunities_es_json: null, quickwins_pt_json: null, quickwins_es_json: null, csv_data: null })
 
       // Pass a "now" far in the future so expires_at <= now
       const futureNow = Math.floor(Date.now() / 1000) + 172800 + 9999
@@ -491,7 +499,8 @@ describe('DB integration — schema, queries, and null-safety', () => {
         assert.fail('insertReport or getReport not importable')
       }
       const reportId = 'rep-boundary-' + Date.now()
-      insertReport(reportId, 'u@example.com', '{"ok":true}', null, null, null, null, null)
+      const _nowBound = Math.floor(Date.now() / 1000)
+      insertReport({ report_id: reportId, generated_at: _nowBound, expires_at: _nowBound + 172800, email: 'u@example.com', summary_json: '{"ok":true}', opportunities_pt_json: null, opportunities_es_json: null, quickwins_pt_json: null, quickwins_es_json: null, csv_data: null })
 
       const db = rawDb()
       const row = db.prepare('SELECT expires_at FROM reports WHERE report_id = ?').get(reportId)
