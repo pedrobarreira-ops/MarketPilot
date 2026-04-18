@@ -67,7 +67,7 @@ development_status:
   3-3-p11-competitor-scan: done
   3-4-wow-score-and-quick-wins-scoring: done
   3-5-report-persistence-and-csv-generation: done
-  3-6-email-dispatch-via-resend: atdd-done
+  3-6-email-dispatch-via-resend: review
   3-7-full-worker-orchestration-and-phase-updates: backlog
   epic-3-retrospective: optional
 
