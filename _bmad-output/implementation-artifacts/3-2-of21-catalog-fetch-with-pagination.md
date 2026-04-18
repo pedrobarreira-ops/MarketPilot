@@ -5,7 +5,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.2
 **Story Key:** 3-2-of21-catalog-fetch-with-pagination
-**Status:** done
+**Status:** ready-for-dev
 **Date Created:** 2026-04-18
 
 ---
@@ -30,14 +30,16 @@ So that the report worker (Phase A) can reliably retrieve the full active catalo
 
 **AC-2: total_count assertion — no silent truncation (NFR-R2)**
 - Capture `total_count` from the first page response
-- After all pages are fetched, assert `activeOffers.length === total_count` (where `activeOffers` is the ACTIVE-filtered set)
+- After all pages are fetched, assert `allOffers.length === total_count` (raw page count, BEFORE active filter — total_count from OF21 reflects all offers, not just active ones; no server-side active filter param exists on OF21) — MCP-verified 2026-04-18
 - On mismatch: throw `CatalogTruncationError` with message `"Catálogo obtido parcialmente. Tenta novamente."`
 - Log safe fields on truncation: `{ job_id, fetched: N, declared: M, error_type: 'CatalogTruncationError' }` — NO `api_key`
 - Export `CatalogTruncationError` as a named export (class, extends Error)
 
-**AC-3: Filter for state:'ACTIVE' offers only**
-- After collecting all pages, filter: `offer.state === 'ACTIVE'`
-- Only ACTIVE offers are included in the return value and counted against `total_count`
+**AC-3: Filter for active offers only (`offers.active === true`)**
+- After collecting all pages and asserting truncation, filter: `offer.active === true`
+- `offers.active` is a boolean field (required) in the OF21 response — MCP-verified 2026-04-18
+- `offers.state` is NOT a documented OF21 response field — do NOT use `state === 'ACTIVE'`
+- Only active offers are included in the return value
 - Inactive offers are silently discarded
 
 **AC-4: onProgress callback every 1,000 offers**
@@ -68,33 +70,43 @@ So that the report worker (Phase A) can reliably retrieve the full active catalo
 
 ## Tasks / Subtasks
 
-- [x] Task 1: Create `src/workers/mirakl/fetchCatalog.js` (AC: 1–7)
-  - [x] Export `class EmptyCatalogError extends Error` with correct constructor name
-  - [x] Export `class CatalogTruncationError extends Error` with correct constructor name
-  - [x] Export `async function fetchCatalog(baseUrl, apiKey, onProgress, jobId)`
-  - [x] Import `mirAklGet` from `./apiClient.js` — no direct `fetch()`
-  - [x] Implement pagination loop: `while (true)` or `do/while`; params `{ max: 100, offset }`; break when `page.offers.length < 100`
-  - [x] Capture `total_count` from first page response
-  - [x] Push page offers to `allOffers` array; call `onProgress` at 1,000-offer boundaries
-  - [x] After loop: filter `allOffers` for `state === 'ACTIVE'`
-  - [x] Check empty catalog (filtered length === 0 or total_count === 0): throw `EmptyCatalogError`
-  - [x] Assert `activeOffers.length === total_count`: throw `CatalogTruncationError` on mismatch with safe log
-  - [x] Map `activeOffers` to `[{ean, shop_sku, price, product_title}]`, skip offers without EAN
-  - [x] EAN extraction: `offer.product_references.find(r => r.reference_type === 'EAN')?.reference`
-  - [x] Price: `offer.applicable_pricing.price`
+- [ ] Task 1: Create `src/workers/mirakl/fetchCatalog.js` (AC: 1–7)
+  - [ ] Export `class EmptyCatalogError extends Error` with correct constructor name
+  - [ ] Export `class CatalogTruncationError extends Error` with correct constructor name
+  - [ ] Export `async function fetchCatalog(baseUrl, apiKey, onProgress, jobId)`
+  - [ ] Import `mirAklGet` from `./apiClient.js` — no direct `fetch()`
+  - [ ] Implement pagination loop: `while (true)` or `do/while`; params `{ max: 100, offset }`; break when `page.offers.length < 100`
+  - [ ] Capture `total_count` from first page response
+  - [ ] Push page offers to `allOffers` array; call `onProgress` at 1,000-offer boundaries
+  - [ ] Assert `allOffers.length === total_count` (before active filter): throw `CatalogTruncationError` on mismatch with safe log
+  - [ ] After truncation check: filter `allOffers` for `offer.active === true` (MCP-verified boolean field)
+  - [ ] Check empty catalog (total_count === 0 or activeOffers.length === 0): throw `EmptyCatalogError`
+  - [ ] Map `activeOffers` to `[{ean, shop_sku, price, product_title}]`, skip offers without EAN
+  - [ ] EAN extraction: `offer.product_references.find(r => r.reference_type === 'EAN')?.reference`
+  - [ ] Price: `offer.applicable_pricing.price`
 
-- [x] Task 2: Wire Phase A in `src/workers/reportWorker.js`
-  - [x] Import `fetchCatalog` from `./mirakl/fetchCatalog.js`
-  - [x] Import `* as db` from `'../db/queries.js'` (add to existing imports at top of `reportWorker.js`; path is relative to `src/workers/`)
-  - [x] Replace `// Phase A — fetch catalog (Story 3.2)` stub with real call
-  - [x] Pass `onProgress` (sync, not async) that calls `db.updateJobStatus(job_id, 'fetching_catalog', progressMessage)` with Portuguese message — `updateJobStatus` is synchronous (better-sqlite3)
-  - [x] Progress message format: `"A obter catálogo… ({n} de {total} produtos)"`
-  - [x] First update before pagination starts: `"A obter catálogo…"` (no count yet)
-  - [x] Wrap Phase A with 401/403 error detection → `getSafeErrorMessage` (see Dev Notes)
+- [ ] Task 2: Wire Phase A in `src/workers/reportWorker.js`
+  - [ ] Import `fetchCatalog` from `./mirakl/fetchCatalog.js`
+  - [ ] Import `* as db` from `'../db/queries.js'` (add to existing imports at top of `reportWorker.js`; path is relative to `src/workers/`)
+  - [ ] Replace `// Phase A — fetch catalog (Story 3.2)` stub with real call
+  - [ ] Pass `onProgress` (sync, not async) that calls `db.updateJobStatus(job_id, 'fetching_catalog', progressMessage)` with Portuguese message — `updateJobStatus` is synchronous (better-sqlite3)
+  - [ ] Progress message format: `"A obter catálogo… ({n} de {total} produtos)"`
+  - [ ] First update before pagination starts: `"A obter catálogo…"` (no count yet)
+  - [ ] Wrap Phase A with 401/403 error detection → `getSafeErrorMessage` (see Dev Notes)
 
 - [x] Task 3: Verify ATDD tests pass
-  - [x] `node --test tests/epic3-3.2-fetch-catalog.atdd.test.js` — all tests must pass
+  - [x] `node --test tests/epic3-3.2-fetch-catalog.atdd.test.js` — all tests must pass (25/25)
   - [x] `npm test` — full suite must pass (no regressions in 3.1 tests; 3.3–3.7 failures are expected pre-existing stubs)
+
+### Review Findings (2026-04-18 — post-merge adversarial review)
+
+- [x] [Review][Decision] Spec AC-2 and AC-3 contradict MCP-verified OF21 behavior — resolved: spec updated to match MCP-verified implementation (`offer.active === true`, `allOffers.length === total_count`); confirmed by Pedro 2026-04-18
+- [ ] [Review][Patch] Wrong error type when first page returns 0 offers with non-zero total_count — current order: empty check fires EmptyCatalogError when allOffers.length===0, masking the real CatalogTruncationError; fix: check total_count===0 first (genuinely empty), then truncation check (allOffers.length!==total_count), then active-filter empty check [src/workers/mirakl/fetchCatalog.js:79-96]
+- [ ] [Review][Patch] null total_count triggers false CatalogTruncationError — if API never returns total_count, it stays null; then `allOffers.length !== null` is always true → spurious CatalogTruncationError; fix: guard with `total_count !== null &&` before the comparison [src/workers/mirakl/fetchCatalog.js:88]
+- [x] [Review][Defer] EAN strategy 3 false positive — resolveEanForProduct returns batchEans[0] for single-EAN batches even if the returned product has no matching reference; known trade-off from scale_test.js; acceptable for MVP [src/workers/mirakl/scanCompetitors.js:46] — deferred, pre-existing design trade-off
+- [x] [Review][Defer] Nullable applicable_pricing.price — offer.applicable_pricing?.price can be undefined; downstream scoring must handle; inherent API risk, not fixable here [src/workers/mirakl/fetchCatalog.js:117] — deferred, pre-existing
+- [x] [Review][Defer] Progress counter can overshoot PROGRESS_INTERVAL — when concurrent batches complete together, processed jumps by CONCURRENCY×BATCH_SIZE; cosmetic impact on job status updates only [src/workers/mirakl/scanCompetitors.js:147] — deferred, cosmetic
+- [x] [Review][Defer] Memory pressure for very large catalogs — allOffers held in memory unbounded; PAGE_SIZE=100 requires many calls for large catalogs; MVP scope [src/workers/mirakl/fetchCatalog.js:45] — deferred, out of MVP scope
 
 ---
 
@@ -117,13 +129,13 @@ From the MCP-Verified Endpoint Reference (epics-distillate.md, 2026-04-18):
 
 | What we need | OF21 response field |
 |---|---|
-| Active filter | `offer.state === 'ACTIVE'` (NOT `offer.active`) |
+| Active filter | `offer.active === true` (boolean, required — MCP-verified 2026-04-18) |
 | EAN | `offer.product_references[].reference` where `reference_type === 'EAN'` |
 | Price (seller's own) | `offer.applicable_pricing.price` |
-| Total count | `response.total_count` (root level) |
+| Total count | `response.total_count` (root level — counts ALL offers, not just active) |
 | Pagination | `offset` param, `max=100` per page |
 
-**CRITICAL:** The active filter is `state === 'ACTIVE'` — NOT `active === true`. `active === true` is the P11 filter (Story 3.3). Using the wrong field will silently include/exclude wrong offers.
+**CRITICAL:** The active filter is `offer.active === true` (boolean) — NOT `offer.state === 'ACTIVE'`. `offers.state` is not a documented OF21 response field. Both OF21 and P11 use `active === true` for their respective active filters. Using `state === 'ACTIVE'` would silently return zero active offers for every user.
 
 ### Reference Implementation Pattern (from scripts/scale_test.js)
 
@@ -154,8 +166,8 @@ while (true) {
 
 Key differences from scale_test.js:
 1. Use `mirAklGet()` (not the local `apiGet()` from scale_test)
-2. Filter `state === 'ACTIVE'` (scale_test doesn't filter)
-3. Assert `total_count` after all pages (scale_test does not assert)
+2. Filter `offer.active === true` (boolean — MCP-verified; scale_test doesn't filter)
+3. Assert `allOffers.length === total_count` before active filter (scale_test does not assert)
 4. Call `onProgress` callback instead of `console.log`
 5. Export error classes instead of `process.exit()`
 6. Return mapped array `[{ean, shop_sku, price, product_title}]` instead of raw offers
@@ -182,7 +194,7 @@ export class CatalogTruncationError extends Error {
 
 When throwing `CatalogTruncationError`, log BEFORE throwing:
 ```javascript
-log.error({ job_id, fetched: activeOffers.length, declared: totalCount, error_type: 'CatalogTruncationError' })
+log.error({ job_id, fetched: allOffers.length, declared: totalCount, error_type: 'CatalogTruncationError' })
 throw new CatalogTruncationError('Catálogo obtido parcialmente. Tenta novamente.')
 ```
 - Never log `api_key` in any log statement in this file
@@ -333,7 +345,7 @@ After completing all tasks, verify:
 - [ ] `fetchCatalog.js` imports `mirAklGet` from `./apiClient.js`
 - [ ] `fetchCatalog.js` does NOT call `fetch()` directly
 - [ ] Pagination uses `max=100` and `offset` params
-- [ ] Active filter: `state === 'ACTIVE'` (not `active === true`)
+- [ ] Active filter: `offer.active === true` (boolean — MCP-verified; NOT `offer.state === 'ACTIVE'`)
 - [ ] EAN extracted from `product_references` where `reference_type === 'EAN'`
 - [ ] Price from `applicable_pricing.price`
 - [ ] `total_count` asserted after all pages — `CatalogTruncationError` on mismatch
@@ -356,26 +368,12 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-- Implemented `src/workers/mirakl/fetchCatalog.js` with full OF21 pagination (max=100, offset-based), ACTIVE state filter, total_count assertion, onProgress callback every 1,000 offers, EAN extraction from product_references, and price from applicable_pricing.price.
-- Exported `EmptyCatalogError` and `CatalogTruncationError` as named exports with correct `.name` properties.
-- Wired Phase A in `src/workers/reportWorker.js`: imports `fetchCatalog` and `* as db`, calls `db.updateJobStatus` before and during pagination with Portuguese progress messages.
-- All 25 ATDD tests for Story 3.2 pass. Story 3.1 tests still 27/27 (no regressions). Stories 3.3–3.7 failures are pre-existing stubs as expected.
-- Created `.env` in worktree for test environment (not committed).
+_To be filled by dev agent after implementation._
 
 ### File List
 
-- `src/workers/mirakl/fetchCatalog.js` — CREATED
-- `src/workers/reportWorker.js` — MODIFIED (Phase A wired, imports added)
+_To be filled by dev agent after implementation._
 
 ### Change Log
 
 - 2026-04-18: Story 3.2 created — OF21 catalog fetch with pagination.
-- 2026-04-18: Story 3.2 implemented — fetchCatalog.js created, reportWorker.js Phase A wired. All 25 ATDD tests pass. Status → review.
-- 2026-04-18: Code review complete (step 5). One patch applied: swapped `--env-file=.env` for `--env-file-if-exists=.env` in npm scripts so `npm test` does not fail on clean checkouts without a local `.env`. All 25 ATDD tests still pass; 3.1 suite still 27/27. Two deferred items (no max-iteration guard on pagination loop; missing `applicable_pricing` yields undefined price) recorded in deferred-work.md. Status → done.
-
-### Review Findings
-
-- [x] [Review][Patch] `--env-file=.env` in npm test scripts fails on clean checkouts without `.env` [package.json:11-12] — fixed by switching to `--env-file-if-exists=.env` (Node 22+ flag). Verified: 25/25 Story 3.2 ATDD tests pass, 27/27 Story 3.1 ATDD tests pass.
-- [x] [Review][Defer] No max-iteration guard on pagination `while(true)` loop [src/workers/mirakl/fetchCatalog.js:50] — deferred, low-risk for MVP scale (offset overflow would require >21M offers; end-of-results signal on `< PAGE_SIZE` is reliable in practice).
-- [x] [Review][Defer] `offer.applicable_pricing?.price` can be undefined and silently pass the truncation assertion [src/workers/mirakl/fetchCatalog.js:114] — deferred, not in AC-5; a downstream concern for Story 3.3/3.4 consumers.
-- Dismissed as noise: (a) `pino` logger reads `process.env.LOG_LEVEL` instead of `config.LOG_LEVEL` — intentional trade-off from commit `ad9ffae` to let ATDD tests run without env vars; (b) EAN-less offers silently skipped after `total_count` assertion — explicitly matches AC-5 spec; (c) misleading `CatalogTruncationError` if first-page `total_count` is absent — OF21 spec guarantees the field.

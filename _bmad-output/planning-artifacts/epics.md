@@ -120,39 +120,68 @@ This document provides the complete epic and story breakdown for **MarketPilot F
 
 **Mirakl API Patterns (from existing scripts)**
 - All Mirakl calls go through `src/workers/mirakl/apiClient.js` — a `fetch()` wrapper with exponential backoff (1s, 2s, 4s… max 30s, up to 5 retries) for 429/5xx
-- OF21 pagination: 100 per page; assert `fetched.length === total_count` after all pages (NFR-R2)
-- P11: batch 100 EANs per call; 10 concurrent calls per window; filter `active: true`; extract `total_price` per channel; both `WRT_PT_ONLINE` and `WRT_ES_ONLINE` from a single call
 - Raw Mirakl error responses must NEVER be forwarded to the user or logged verbatim — all errors pass through `getSafeErrorMessage(err)`
+- **For endpoint specifics (paths, params, response field names, pagination): the authoritative source is the "MCP-Verified Endpoint Reference" section below, which has been verified against the live Worten Mirakl instance (2026-04-18). Do NOT duplicate endpoint details in stories, architecture, or other sections — always refer back to avoid drift.**
 
-**MCP-Verified Endpoint Reference** _(verified 2026-04-18 against Mirakl Marketplace APIs — treat as authoritative; do not assume beyond what is listed here)_
+**MCP-Verified Endpoint Reference** _(verified 2026-04-18 against Mirakl MCP AND live Worten instance via `scripts/mcp-probe.js` — treat as authoritative; do not assume beyond what is listed here)_
 
 **OF21 — Seller Catalog Fetch**
-- Endpoint: `GET /api/offers` ✅
-- Pagination: offset pagination ✅
-- Page size: 100 per page (param: `max=100`) ✅
-- Active filter: `offers.active === true` (boolean field in response) ✅
-- Key response fields (per offer): `offers.shop_sku`, `offers.applicable_pricing.price`, `offers.active`
-- EAN: extracted from `offers.product_references[].reference` where `reference_type = 'EAN'`
-- `total_count` returned in response — assert `fetched.length === total_count` after all pages
+- Endpoint: `GET /api/offers`
+- Auth header: `Authorization: <api_key>` (raw key, no `Bearer` prefix)
+- Pagination: offset pagination — `max=100` per page, `offset=0,100,200,…`
+- **Active filter: `offer.active === true`** (boolean field) — verified on live Worten instance
+- ⚠️ `offer.state` does NOT exist (verified MISSING on live response). The field `offer.state_code` exists but represents offer CONDITION (e.g., `"11"` for new), not active/inactive
+- EAN lookup: `offer.product_references[].reference` where `reference_type === 'EAN'`
+- Seller's own price: `offer.applicable_pricing.price` (number) — channel-agnostic default. Also: `offer.total_price = applicable_pricing.price + min_shipping_price`
+- Other verified offer fields: `shop_sku`, `product_sku` (UUID, not EAN), `product_title`, `product_references[]`, `channels[]` (populated for own offers), `all_prices[]`, `min_shipping_price`, `quantity`, `inactivity_reasons[]`
+- `total_count` at root of response — assert `allOffers.length === total_count` (BEFORE active filter, since `total_count` counts all offers, no server-side active filter exists on OF21)
+- On truncation (`allOffers.length !== total_count`): throw `CatalogTruncationError`
 
 **P11 — Competitor Price Scan**
-- Endpoint: `GET /api/products/offers` ✅
-- Batch: `product_ids` param — comma-separated, limited to **100 values per call** ✅
-- Channel filter: `channel_codes` param (comma-separated) ✅
-- ✅ **`products.offers.total_price`** = "price + minimum shipping rate" — **CORRECT field for competitor comparison**
-- ⚠️ **`products.offers.price`** = offer price WITHOUT shipping — **DO NOT USE for competitor comparison**
-- Active filter: `products.offers.active === true` (boolean, required) ✅
-- EAN lookup: `products.product_references[].reference` where `reference_type = 'EAN'`
-- `products.product_title` (string, required) ✅
-- `products.total_count` = number of offers per product (not total products — per-product count)
+- Endpoint: `GET /api/products/offers`
+- **Batch param: `product_references` (NOT `product_ids`)** — format: `product_references=EAN|xxx,EAN|yyy` (pipe-delimited type|value pairs, comma-separated list, max 100 values per call)
+- ⚠️ `product_ids` expects product SKUs (in Worten: UUIDs like `321b4d45-…`), NOT EANs. Using EANs with `product_ids` silently returns 0 products — verified on live Worten instance
+- **Channel eligibility filter: `channel_codes=WRT_PT_ONLINE,WRT_ES_ONLINE`** — comma-separated query param; restricts which offers are returned (offers sellable on specified channel(s))
+- **Channel-specific pricing: `pricing_channel_code=WRT_PT_ONLINE`** (singular, query param) — makes `offer.applicable_pricing` and `offer.total_price` reflect that channel's price. **Required to get per-channel `total_price`** — without it, `applicable_pricing.channel_code` is `null` (default/fallback pricing)
+- Active filter: `offer.active === true` (boolean, required)
+- ⚠️ `offer.channels` (array) on COMPETITOR offers is typically EMPTY (`[]`) — do NOT use it to bucket by channel. Channel pricing info is in `offer.all_prices[].channel_code` (string, e.g. `"WRT_PT_ONLINE"`, or `null` for default)
+- ⚠️ `offer.channel_code` (singular) does NOT exist — verified MISSING
+- ✅ **Competitor total_price: `offer.total_price`** (number) = "price + minimum shipping rate" — **CORRECT field for competitor comparison**
+- ⚠️ `offer.price` = offer price WITHOUT shipping — do NOT use for competitor comparison
+- EAN lookup on response: `product.product_references[].reference` where `reference_type === 'EAN'`
+- `product.product_title` (string, required), `product.product_sku` (UUID)
+- `product.total_count` = number of offers FOR THAT PRODUCT (per-product count, not batch total)
 
-**PRI01 — Price Write (Epic 4+)**
-- Endpoint: `POST /api/offers/pricing/imports` ✅
-- Content-Type: `multipart/form-data` with `file` field ✅
-- CSV format: `"offer-sku";"price";"discount-price";"discount-start-date";"discount-end-date"` ✅
-- Returns: `import_id` (string) — use PRI02 (`GET /api/offers/pricing/imports`) to poll status ✅
-- ⚠️ **Rate limit: once per minute maximum** (not every 5 min as recommended)
-- ⚠️ **Import mode: delete and replace** — any price NOT in submitted CSV will be DELETED; always include all prices for an offer in one call
+**P11 — correct usage pattern (from live probe):**
+To get per-channel competitor prices, make **two P11 calls per batch** — one per channel — each with `pricing_channel_code` set to that channel. This makes `offer.total_price` reflect that channel's price. Combine results into `{pt:{first,second}, es:{first,second}}` keyed by EAN.
+
+```
+GET /api/products/offers?product_references=EAN|x,EAN|y&channel_codes=WRT_PT_ONLINE&pricing_channel_code=WRT_PT_ONLINE
+GET /api/products/offers?product_references=EAN|x,EAN|y&channel_codes=WRT_ES_ONLINE&pricing_channel_code=WRT_ES_ONLINE
+```
+
+For each returned offer: filter `offer.active === true`, take `offer.total_price` at positions 0 (first) and 1 (second).
+
+**PRI01 — Import Price File (Epic 4+)**
+- Endpoint: `POST /api/offers/pricing/imports`
+- Content-Type: `multipart/form-data` with `file` field (form key is `file`)
+- CSV format (semicolon-delimited): `"offer-sku";"price";"discount-price";"discount-start-date";"discount-end-date"` — optional columns for volume/channel/scheduled/customer pricing
+- Max 50 prices per offer (if you need to represent 51+ channel/volume prices for a single offer)
+- Returns `201 { import_id: "<uuid>" }` (also `importId` deprecated)
+- Call frequency: recommended every 5 min, **max once per minute** (hard limit)
+- ⚠️ **Import mode is DELETE AND REPLACE** — any price for an offer NOT in the submitted CSV will be DELETED. Always submit the complete set of prices for each offer in one call
+
+**PRI02 — Import Status (Epic 4+)**
+- Endpoint: `GET /api/offers/pricing/imports?import_id=<id>` — poll after PRI01
+- Response: `data[].status` enum: `WAITING | RUNNING | COMPLETE | FAILED`
+- Other fields: `lines_in_success`, `lines_in_error`, `offers_in_error`, `offers_updated`, `reason_status`, `has_error_report`
+- Call frequency: recommended every 5 min, **max once per minute**
+
+**PRI03 — Error Report (Epic 4+)**
+- Endpoint: `GET /api/offers/pricing/imports/{import_id}/error_report`
+- Returns CSV of errored rows (first column = line number, second = error reason)
+- Use only when `PRI02` reports `has_error_report: true`
+- Call frequency: recommended every 5 min after each PRI02, **max once per minute**
 
 **Progress Phases (Portuguese)**
 - Queued: `"A preparar…"`
@@ -526,10 +555,10 @@ So that catalogs of any size (validated up to 31,179 SKUs) are fully fetched wit
 **Given** a Mirakl API key for a catalog with N active offers  
 **When** `fetchCatalog(apiKey, baseUrl, onProgress)` is called  
 **Then** it paginates OF21 with `max=100` per page until no more pages  
-**And** after all pages, it asserts: `fetchedOffers.length === page1.total_count` — if mismatch, throws `CatalogTruncationError` with message: `"Catálogo obtido parcialmente. Tenta novamente."`  
+**And** after all pages, it asserts: `allOffers.length === page1.total_count` (BEFORE active filter — OF21 has no server-side active filter so `total_count` counts all offers) — if mismatch, throws `CatalogTruncationError` with message: `"Catálogo obtido parcialmente. Tenta novamente."`  
 **And** every 1,000 offers fetched, it calls `onProgress(fetched, total)` so the worker can update `phase_message`  
 **And** it returns an array of: `[{ ean, shop_sku, price, product_title }]`  
-**And** it filters to `state: 'ACTIVE'` offers only (or equivalent OF21 active filter)  
+**And** it filters to `offer.active === true` (MCP+live-verified boolean field — NOT `state`, that field does NOT exist on OF21 response; see MCP-Verified Endpoint Reference above)  
 **And** it works correctly for Gabriel's catalog (31,179 products) within the NFR-P3 time budget
 
 ---
@@ -550,14 +579,17 @@ So that a 31,000-SKU catalog is fully scanned within the NFR-P3 time budget with
 
 **Given** an array of EANs from the catalog fetch  
 **When** `scanCompetitors(eans, apiKey, baseUrl, onProgress)` is called  
-**Then** EANs are split into batches of 100  
-**And** batches are processed 10 at a time using `Promise.allSettled()` — no unbounded concurrency  
-**And** each P11 response filters `active: true` offers only  
-**And** for each EAN, it extracts `total_price` (NOT `price`) per channel from the `all_prices` array  
-**And** it captures positions 1 and 2 for each channel: `{ pt: { first: total_price, second: total_price }, es: { ... } }`  
+**Then** EANs are split into batches of 100 (per P11 per-call limit)  
+**And** **each batch is queried TWICE — once per channel** — with `pricing_channel_code=WRT_PT_ONLINE` and `pricing_channel_code=WRT_ES_ONLINE` on separate calls (this is what makes `offer.total_price` channel-specific). Both calls pass `channel_codes=<that channel>` to restrict which offers come back  
+**And** the batch P11 request param is `product_references` with format `EAN|<ean>,EAN|<ean>` (NOT `product_ids` — `product_ids` expects product SKUs, not EANs; using EANs with `product_ids` silently returns 0 products — verified on live Worten instance)  
+**And** batches are processed concurrently in windows of 10 using `Promise.allSettled()` — no unbounded concurrency  
+**And** each P11 response filters `offer.active === true` offers only  
+**And** for each EAN's returned offers (active only, pre-sorted by price ascending), it takes positions 0 (first) and 1 (second) and captures `offer.total_price` (price + shipping — NOT `offer.price` alone)  
+**And** channel bucketing is determined by which P11 call returned the offer (PT call → pt bucket; ES call → es bucket) — NOT by reading `offer.channel_code` (that field does NOT exist) or `offer.channels` (empty on competitor offers — verified)  
 **And** every 500 EANs processed, it calls `onProgress(processed, total)` for phase_message updates  
 **And** it returns: `Map<ean, { pt: { first, second }, es: { first, second } }>`  
-**And** batches that fail after retry are logged (error type only) and excluded from the map — the job continues with available data
+**And** batches that fail after retry are logged (error type only) and excluded from the map — the job continues with available data  
+**And** see MCP-Verified Endpoint Reference section above for the full P11 field contract
 
 ---
 
