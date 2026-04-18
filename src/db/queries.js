@@ -15,8 +15,8 @@ runMigrations()
 // Returns current Unix epoch in seconds (integers, not milliseconds).
 const unixNow = () => Math.floor(Date.now() / 1000)
 
-// Report TTL: 48 hours in seconds.
-const TTL_SECONDS = 172800
+// Note: TTL (now + 172800) is owned by the caller of insertReport — see
+// src/workers/scoring/buildReport.js. queries.js does not compute expires_at.
 
 // CSV column header used in csv_data (FR17 — all products, both channels).
 // Full header: EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score

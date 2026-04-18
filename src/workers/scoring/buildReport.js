@@ -15,15 +15,28 @@ const TTL_SECONDS = 172800
 const CSV_HEADER = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
 
 /**
- * Escape a single CSV cell value.
- * - null/undefined/''/0 → empty string for null/undefined/''; numbers pass through
- * - Cells containing commas, quotes, or newlines are wrapped in double quotes
- * - Internal double quotes are doubled per RFC 4180
+ * Escape a single CSV cell value per RFC 4180.
+ * - null / undefined / '' → empty cell
+ * - Numbers & non-zero falsy values coerce to their String() form (0 → "0", false → "false")
+ * - Cells containing commas, double-quotes, CR, or LF are wrapped in double quotes
+ *   and any internal double quotes are doubled
+ *
+ * Note on formula / CSV injection: cells starting with =, +, -, @, \t, \r when
+ * opened in Excel / LibreOffice / Google Sheets can be interpreted as a formula
+ * (CWE-1236). This MVP does NOT prefix such cells with a leading ' — it would
+ * break the exact-byte contract asserted by ATDD tests (e.g. numeric prices like
+ * "19.99"). Deferred as a hardening task once the report contract is stable and
+ * we classify cells as "text" vs "numeric" — see deferred-work.md.
  */
 function escapeCell(val) {
   if (val === null || val === undefined || val === '') return ''
   const str = String(val)
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+  if (
+    str.includes(',') ||
+    str.includes('"') ||
+    str.includes('\n') ||
+    str.includes('\r')
+  ) {
     return `"${str.replace(/"/g, '""')}"`
   }
   return str
@@ -45,18 +58,27 @@ function escapeCell(val) {
  * }} computedReport — output of computeReport (Story 3.4)
  */
 export function buildAndPersistReport(reportId, email, catalog, computedReport) {
+  // Defensive destructuring: default all arrays to [] so a partial upstream
+  // shape (e.g. an integration test that only populates the keys it cares about)
+  // does not crash with "Cannot read properties of undefined (reading 'map')".
+  // Summary objects default to empty objects for symmetric reasons.
   const {
-    opportunities_pt,
-    opportunities_es,
-    quickwins_pt,
-    quickwins_es,
-    summary_pt,
-    summary_es,
-  } = computedReport
+    opportunities_pt = [],
+    opportunities_es = [],
+    quickwins_pt     = [],
+    quickwins_es     = [],
+    summary_pt       = {},
+    summary_es       = {},
+  } = computedReport ?? {}
 
   // Build EAN → opportunity entry lookup for O(1) access per catalog row.
   // Only losing products appear in opportunities_pt/es; winning and uncontested
   // will produce a Map miss (undefined), giving empty string cells (AC-3).
+  //
+  // Note: entry.price in the CSV cell `my_price` passes through as-is. When
+  // computeReport classifies a product as uncontested (because price parses to
+  // NaN) the CSV still shows the raw upstream string — this is an intentional
+  // trade-off so operators can see the actual upstream value when triaging.
   const ptMap = new Map(opportunities_pt.map(o => [o.ean, o]))
   const esMap = new Map(opportunities_es.map(o => [o.ean, o]))
 
