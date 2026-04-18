@@ -5,7 +5,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.3
 **Story Key:** 3-3-p11-competitor-scan-batch-concurrent
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-18
 
 ---
@@ -82,23 +82,23 @@ So that the scoring module (Story 3.4) and worker orchestration (Story 3.7) have
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `src/workers/mirakl/scanCompetitors.js` (AC: 1, 2, 3, 4, 5, 6, 7, 8)
-  - [ ] Define constants: `BATCH_SIZE = 100`, `CONCURRENCY = 10`, `PROGRESS_INTERVAL = 500`
-  - [ ] Define `resolveEanForProduct(product, batchEans)` — 3-strategy EAN resolver from `scale_test.js`
-  - [ ] Define and export `async function scanCompetitors(eans, baseUrl, apiKey, onProgress)`
-  - [ ] Split `eans` into batches of `BATCH_SIZE` using `slice()`
-  - [ ] Outer loop: `for (let i = 0; i < batches.length; i += CONCURRENCY)`
-  - [ ] Inner: `const window = batches.slice(i, i + CONCURRENCY)`
-  - [ ] `const results = await Promise.allSettled(window.map(async batchEans => { ... }))`
-  - [ ] Inside each batch: call `mirAklGet(baseUrl, '/api/products/offers', { product_ids: batchEans.join(','), channel_codes: 'WRT_PT_ONLINE,WRT_ES_ONLINE' }, apiKey)` — NOTE: see P11 params section below for exact param names per MCP
-  - [ ] For each resolved product: call `resolveEanForProduct`, filter `active: true`, extract `total_price` for positions 0 and 1 per channel
-  - [ ] Handle `status: 'rejected'`: log `{ error_type, batch_size }`, skip EANs (uncontested)
-  - [ ] Track processed count; call `onProgress(processed, total)` when crossing 500-EAN thresholds
-  - [ ] Return `Map` of EAN → `{ pt: { first, second }, es: { first, second } }`
+- [x] Task 1: Create `src/workers/mirakl/scanCompetitors.js` (AC: 1, 2, 3, 4, 5, 6, 7, 8)
+  - [x] Define constants: `BATCH_SIZE = 100`, `CONCURRENCY = 10`, `PROGRESS_INTERVAL = 500`
+  - [x] Define `resolveEanForProduct(product, batchEans)` — 3-strategy EAN resolver from `scale_test.js`
+  - [x] Define and export `async function scanCompetitors(eans, baseUrl, apiKey, onProgress)`
+  - [x] Split `eans` into batches of `BATCH_SIZE` using `slice()`
+  - [x] Outer loop: `for (let i = 0; i < batches.length; i += CONCURRENCY)`
+  - [x] Inner: `const window = batches.slice(i, i + CONCURRENCY)`
+  - [x] `const results = await Promise.allSettled(window.map(async batchEans => { ... }))`
+  - [x] Inside each batch: call `mirAklGet(baseUrl, '/api/products/offers', { product_ids: batchEans.join(','), channel_codes: 'WRT_PT_ONLINE,WRT_ES_ONLINE' }, apiKey)` — NOTE: see P11 params section below for exact param names per MCP
+  - [x] For each resolved product: call `resolveEanForProduct`, filter `active: true`, extract `total_price` for positions 0 and 1 per channel
+  - [x] Handle `status: 'rejected'`: log `{ error_type, batch_size }`, skip EANs (uncontested)
+  - [x] Track processed count; call `onProgress(processed, total)` when crossing 500-EAN thresholds
+  - [x] Return `Map` of EAN → `{ pt: { first, second }, es: { first, second } }`
 
-- [ ] Task 2: Verify ATDD tests pass
-  - [ ] `node --test tests/epic3-3.3-scan-competitors.atdd.test.js` — all tests must pass
-  - [ ] `npm test` — no regressions
+- [x] Task 2: Verify ATDD tests pass
+  - [x] `node --test tests/epic3-3.3-scan-competitors.atdd.test.js` — all tests must pass
+  - [x] `npm test` — no regressions (3.3 suite: 24/24 pass; failures in 3.2/3.4-3.7 are pre-existing unimplemented stubs)
 
 ---
 
@@ -436,15 +436,27 @@ After completing all tasks, verify:
 
 ### Agent Model Used
 
-_To be filled by dev agent_
+claude-sonnet-4-6
 
 ### Dev Notes / Implementation Summary
 
-_To be filled by dev agent_
+Implemented `src/workers/mirakl/scanCompetitors.js` exactly per story spec. The module:
+- Batches EANs into groups of 100 using `slice()` and processes windows of 10 concurrently via `Promise.allSettled()`
+- Calls P11 `GET /api/products/offers` with `product_ids` (comma-sep EANs) and `channel_codes: 'WRT_PT_ONLINE,WRT_ES_ONLINE'` in a single call per batch
+- Extracts `total_price` (not `price`) for positions 0 and 1 per channel after filtering `active === true`
+- Implements `resolveEanForProduct` with the 3-strategy EAN resolver (product_references, product_sku, single-EAN batch fallback)
+- Handles rejected batches: logs only `{ error_type, batch_size }` — never `err.message` or `api_key`
+- Fires `onProgress?.(processed, total)` every 500 EANs using a lastProgressAt threshold tracker
+- Returns `Map<ean, { pt: { first, second }, es: { first, second } }>`
+
+All 24 ATDD tests pass. Pre-existing failures in test suite (stories 3.2, 3.4-3.7) are unimplemented future stories — confirmed no new regressions introduced.
 
 ### Completion Notes List
 
-_To be filled by dev agent_
+- ✅ Task 1 complete: `src/workers/mirakl/scanCompetitors.js` created with all AC-1 through AC-8 satisfied
+- ✅ Task 2 complete: ATDD test suite passes 24/24; no new regressions
+- ✅ Security invariants upheld: apiKey only as function param, never logged, never at module scope
+- ✅ No new dependencies required (pino and apiClient.js already installed/present)
 
 ### File List
 
@@ -454,3 +466,4 @@ _To be filled by dev agent_
 ### Change Log
 
 - 2026-04-18: Story 3.3 created — P11 competitor scan batch concurrent.
+- 2026-04-18: Story 3.3 implemented — `scanCompetitors.js` created; all 24 ATDD tests pass; status → review.
