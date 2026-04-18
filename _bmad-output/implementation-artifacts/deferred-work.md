@@ -28,3 +28,9 @@ Items deferred during code review. Each entry includes the review date and sourc
 
 - **`set()` accepts `undefined`/`null` jobId silently** [src/queue/keyStore.js:16] — pre-existing design choice; spec reference implementation omits guards. Caller responsibility; guard belongs in Story 4.1 route handler before calling `keyStore.set()`.
 - **`set()` accepts falsy/null apiKey silently** [src/queue/keyStore.js:16] — pre-existing design choice; no AC requires validation. Guard belongs in Story 4.1 route handler (validate api_key is a non-empty string before `keyStore.set()`).
+
+## Deferred from: code review of 3-1-mirakl-api-client-with-retry (2026-04-18)
+
+- **No request timeout / AbortController on fetch** [src/workers/mirakl/apiClient.js:36] — a hung Mirakl response will block the worker indefinitely; story AC does not require it. Add a configurable timeout (e.g. 30s) via `AbortController` once report-worker SLOs are defined (Epic 3 follow-up).
+- **`apiKey = undefined/null` silently sent as header value** [src/workers/mirakl/apiClient.js:29] — no input validation. `keyStore` contract currently guarantees non-null via Story 2.1, so deferred. Worth a 1-line invariant check if apiClient is ever reused outside the report pipeline.
+- **`res.json()` SyntaxError on malformed body escapes unwrapped** [src/workers/mirakl/apiClient.js:52] — a 2xx response with invalid JSON currently throws a raw `SyntaxError` instead of `MiraklApiError`, and is not retried. Mirakl production always returns JSON, so low priority. Consider wrapping `res.json()` in try/catch and throwing `MiraklApiError(503)` to give callers a uniform error type.
