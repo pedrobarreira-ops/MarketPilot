@@ -105,6 +105,7 @@ So that the scoring module (Story 3.4) and worker orchestration (Story 3.7) have
 - [x] [Review][Patch] Remove unused `MiraklApiError` import [src/workers/mirakl/scanCompetitors.js:11] — fixed
 - [x] [Review][Patch] Rename `window` → `batchWindow` to avoid shadowing browser global [src/workers/mirakl/scanCompetitors.js:81,85,101] — fixed
 - [x] [Review][Patch] Honor documented "or at end if remainder < 500" onProgress contract with final flush [src/workers/mirakl/scanCompetitors.js:151-158] — fixed
+- [x] [Review][Patch] Sprint-status regression: story 3.2 status regressed from `atdd-done` to `backlog` due to branch divergence [_bmad-output/implementation-artifacts/sprint-status.yaml:66] — fixed, restored to `atdd-done`
 
 ---
 
