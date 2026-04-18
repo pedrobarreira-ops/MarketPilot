@@ -8,7 +8,7 @@
 //   - Failed batches: log { error_type, batch_size } only (no err.message)
 
 import pino from 'pino'
-import { mirAklGet, MiraklApiError } from './apiClient.js'
+import { mirAklGet } from './apiClient.js'
 
 // Use process.env.LOG_LEVEL directly — scanCompetitors is a pure utility module
 // that must be importable without full app config (env var) validation. This
@@ -78,11 +78,11 @@ export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
 
   // Outer loop: process batches in windows of CONCURRENCY
   for (let i = 0; i < batches.length; i += CONCURRENCY) {
-    const window = batches.slice(i, i + CONCURRENCY)
+    const batchWindow = batches.slice(i, i + CONCURRENCY)
 
     // Promise.allSettled ensures one failed batch does not abort others
     const results = await Promise.allSettled(
-      window.map(async (batchEans) => {
+      batchWindow.map(async (batchEans) => {
         const data = await mirAklGet(
           baseUrl,
           '/api/products/offers',
@@ -98,7 +98,7 @@ export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
 
     // Process each settled result
     for (let j = 0; j < results.length; j++) {
-      const batchEans = window[j]
+      const batchEans = batchWindow[j]
 
       if (results[j].status === 'rejected') {
         // Log only error type — never err.message (may contain API response details)
@@ -148,6 +148,13 @@ export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
       onProgress?.(processed, total)
       lastProgressAt = processed
     }
+  }
+
+  // Final progress emit: ensure caller observes completion when the trailing
+  // remainder (< 500 EANs) never crossed the interval threshold. Guarded so we
+  // don't double-fire if the last interval boundary already landed on `total`.
+  if (total > 0 && processed > lastProgressAt) {
+    onProgress?.(processed, total)
   }
 
   return resultMap

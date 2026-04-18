@@ -5,7 +5,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.3
 **Story Key:** 3-3-p11-competitor-scan-batch-concurrent
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-18
 
 ---
@@ -99,6 +99,12 @@ So that the scoring module (Story 3.4) and worker orchestration (Story 3.7) have
 - [x] Task 2: Verify ATDD tests pass
   - [x] `node --test tests/epic3-3.3-scan-competitors.atdd.test.js` — all tests must pass
   - [x] `npm test` — no regressions (3.3 suite: 24/24 pass; failures in 3.2/3.4-3.7 are pre-existing unimplemented stubs)
+
+### Review Findings
+
+- [x] [Review][Patch] Remove unused `MiraklApiError` import [src/workers/mirakl/scanCompetitors.js:11] — fixed
+- [x] [Review][Patch] Rename `window` → `batchWindow` to avoid shadowing browser global [src/workers/mirakl/scanCompetitors.js:81,85,101] — fixed
+- [x] [Review][Patch] Honor documented "or at end if remainder < 500" onProgress contract with final flush [src/workers/mirakl/scanCompetitors.js:151-158] — fixed
 
 ---
 
