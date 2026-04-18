@@ -5,6 +5,8 @@
 
 import { Worker } from 'bullmq'
 import * as keyStore from '../queue/keyStore.js'
+import * as db from '../db/queries.js'
+import { fetchCatalog } from './mirakl/fetchCatalog.js'
 import { redisConnection } from '../queue/reportQueue.js'
 import { config } from '../config.js'
 import pino from 'pino'
@@ -20,7 +22,18 @@ export async function processJob(job) {
       throw new Error('A sessão expirou. Por favor, submete o formulário novamente.')
     }
 
-    // Phase A — fetch catalog (Story 3.2)
+    // Phase A — fetch catalog
+    db.updateJobStatus(job_id, 'fetching_catalog', 'A obter catálogo…')
+    const catalog = await fetchCatalog(
+      marketplace_url,
+      apiKey,
+      (n, total) => {
+        const msg = `A obter catálogo… (${n.toLocaleString('pt-PT')} de ${total.toLocaleString('pt-PT')} produtos)`
+        db.updateJobStatus(job_id, 'fetching_catalog', msg)
+      },
+      job_id
+    )
+
     // Phase B — scan competitors (Story 3.3)
     // Phase C — compute report + scoring (Story 3.4)
     // Phase D — persist report to SQLite (Story 3.5)

@@ -5,7 +5,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.2
 **Story Key:** 3-2-of21-catalog-fetch-with-pagination
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-18
 
 ---
@@ -68,33 +68,33 @@ So that the report worker (Phase A) can reliably retrieve the full active catalo
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `src/workers/mirakl/fetchCatalog.js` (AC: 1–7)
-  - [ ] Export `class EmptyCatalogError extends Error` with correct constructor name
-  - [ ] Export `class CatalogTruncationError extends Error` with correct constructor name
-  - [ ] Export `async function fetchCatalog(baseUrl, apiKey, onProgress, jobId)`
-  - [ ] Import `mirAklGet` from `./apiClient.js` — no direct `fetch()`
-  - [ ] Implement pagination loop: `while (true)` or `do/while`; params `{ max: 100, offset }`; break when `page.offers.length < 100`
-  - [ ] Capture `total_count` from first page response
-  - [ ] Push page offers to `allOffers` array; call `onProgress` at 1,000-offer boundaries
-  - [ ] After loop: filter `allOffers` for `state === 'ACTIVE'`
-  - [ ] Check empty catalog (filtered length === 0 or total_count === 0): throw `EmptyCatalogError`
-  - [ ] Assert `activeOffers.length === total_count`: throw `CatalogTruncationError` on mismatch with safe log
-  - [ ] Map `activeOffers` to `[{ean, shop_sku, price, product_title}]`, skip offers without EAN
-  - [ ] EAN extraction: `offer.product_references.find(r => r.reference_type === 'EAN')?.reference`
-  - [ ] Price: `offer.applicable_pricing.price`
+- [x] Task 1: Create `src/workers/mirakl/fetchCatalog.js` (AC: 1–7)
+  - [x] Export `class EmptyCatalogError extends Error` with correct constructor name
+  - [x] Export `class CatalogTruncationError extends Error` with correct constructor name
+  - [x] Export `async function fetchCatalog(baseUrl, apiKey, onProgress, jobId)`
+  - [x] Import `mirAklGet` from `./apiClient.js` — no direct `fetch()`
+  - [x] Implement pagination loop: `while (true)` or `do/while`; params `{ max: 100, offset }`; break when `page.offers.length < 100`
+  - [x] Capture `total_count` from first page response
+  - [x] Push page offers to `allOffers` array; call `onProgress` at 1,000-offer boundaries
+  - [x] After loop: filter `allOffers` for `state === 'ACTIVE'`
+  - [x] Check empty catalog (filtered length === 0 or total_count === 0): throw `EmptyCatalogError`
+  - [x] Assert `activeOffers.length === total_count`: throw `CatalogTruncationError` on mismatch with safe log
+  - [x] Map `activeOffers` to `[{ean, shop_sku, price, product_title}]`, skip offers without EAN
+  - [x] EAN extraction: `offer.product_references.find(r => r.reference_type === 'EAN')?.reference`
+  - [x] Price: `offer.applicable_pricing.price`
 
-- [ ] Task 2: Wire Phase A in `src/workers/reportWorker.js`
-  - [ ] Import `fetchCatalog` from `./mirakl/fetchCatalog.js`
-  - [ ] Import `* as db` from `'../db/queries.js'` (add to existing imports at top of `reportWorker.js`; path is relative to `src/workers/`)
-  - [ ] Replace `// Phase A — fetch catalog (Story 3.2)` stub with real call
-  - [ ] Pass `onProgress` (sync, not async) that calls `db.updateJobStatus(job_id, 'fetching_catalog', progressMessage)` with Portuguese message — `updateJobStatus` is synchronous (better-sqlite3)
-  - [ ] Progress message format: `"A obter catálogo… ({n} de {total} produtos)"`
-  - [ ] First update before pagination starts: `"A obter catálogo…"` (no count yet)
-  - [ ] Wrap Phase A with 401/403 error detection → `getSafeErrorMessage` (see Dev Notes)
+- [x] Task 2: Wire Phase A in `src/workers/reportWorker.js`
+  - [x] Import `fetchCatalog` from `./mirakl/fetchCatalog.js`
+  - [x] Import `* as db` from `'../db/queries.js'` (add to existing imports at top of `reportWorker.js`; path is relative to `src/workers/`)
+  - [x] Replace `// Phase A — fetch catalog (Story 3.2)` stub with real call
+  - [x] Pass `onProgress` (sync, not async) that calls `db.updateJobStatus(job_id, 'fetching_catalog', progressMessage)` with Portuguese message — `updateJobStatus` is synchronous (better-sqlite3)
+  - [x] Progress message format: `"A obter catálogo… ({n} de {total} produtos)"`
+  - [x] First update before pagination starts: `"A obter catálogo…"` (no count yet)
+  - [x] Wrap Phase A with 401/403 error detection → `getSafeErrorMessage` (see Dev Notes)
 
-- [ ] Task 3: Verify ATDD tests pass
-  - [ ] `node --test tests/epic3-3.2-fetch-catalog.atdd.test.js` — all tests must pass
-  - [ ] `npm test` — full suite must pass (no regressions in 3.1 tests; 3.3–3.7 failures are expected pre-existing stubs)
+- [x] Task 3: Verify ATDD tests pass
+  - [x] `node --test tests/epic3-3.2-fetch-catalog.atdd.test.js` — all tests must pass
+  - [x] `npm test` — full suite must pass (no regressions in 3.1 tests; 3.3–3.7 failures are expected pre-existing stubs)
 
 ---
 
@@ -356,12 +356,18 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-_To be filled by dev agent after implementation._
+- Implemented `src/workers/mirakl/fetchCatalog.js` with full OF21 pagination (max=100, offset-based), ACTIVE state filter, total_count assertion, onProgress callback every 1,000 offers, EAN extraction from product_references, and price from applicable_pricing.price.
+- Exported `EmptyCatalogError` and `CatalogTruncationError` as named exports with correct `.name` properties.
+- Wired Phase A in `src/workers/reportWorker.js`: imports `fetchCatalog` and `* as db`, calls `db.updateJobStatus` before and during pagination with Portuguese progress messages.
+- All 25 ATDD tests for Story 3.2 pass. Story 3.1 tests still 27/27 (no regressions). Stories 3.3–3.7 failures are pre-existing stubs as expected.
+- Created `.env` in worktree for test environment (not committed).
 
 ### File List
 
-_To be filled by dev agent after implementation._
+- `src/workers/mirakl/fetchCatalog.js` — CREATED
+- `src/workers/reportWorker.js` — MODIFIED (Phase A wired, imports added)
 
 ### Change Log
 
 - 2026-04-18: Story 3.2 created — OF21 catalog fetch with pagination.
+- 2026-04-18: Story 3.2 implemented — fetchCatalog.js created, reportWorker.js Phase A wired. All 25 ATDD tests pass. Status → review.
