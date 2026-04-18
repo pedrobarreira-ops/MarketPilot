@@ -75,8 +75,8 @@ export async function fetchCatalog(baseUrl, apiKey, onProgress, jobId) {
     offset += PAGE_SIZE
   }
 
-  // AC-6: empty catalog check — total_count === 0 or no offers at all
-  if (total_count === 0 || allOffers.length === 0) {
+  // AC-6: genuinely empty catalog — API explicitly reports 0 offers
+  if (total_count === 0) {
     throw new EmptyCatalogError(
       'Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten.'
     )
@@ -85,7 +85,8 @@ export async function fetchCatalog(baseUrl, apiKey, onProgress, jobId) {
   // AC-2: assert no silent truncation (NFR-R2) — compare raw page count against
   // total_count BEFORE active filter, because total_count reflects all offers (no
   // server-side active filter exists on OF21). Verified against MCP 2026-04-18.
-  if (allOffers.length !== total_count) {
+  // Guard: skip if total_count is null (API omitted the field — cannot assert).
+  if (total_count !== null && allOffers.length !== total_count) {
     log.error({
       job_id: jobId,
       fetched: allOffers.length,
@@ -99,7 +100,8 @@ export async function fetchCatalog(baseUrl, apiKey, onProgress, jobId) {
   // NOT offers.state — 'state' is not a documented OF21 response field. Verified 2026-04-18.
   const activeOffers = allOffers.filter(offer => offer.active === true)
 
-  // AC-6: empty after active filter
+  // AC-6: empty after active filter (covers: all offers inactive, or allOffers was empty
+  // because total_count was null and pages returned nothing)
   if (activeOffers.length === 0) {
     throw new EmptyCatalogError(
       'Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten.'
