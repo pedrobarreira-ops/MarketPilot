@@ -10,6 +10,7 @@ import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
 import { config } from './config.js'
 import { reportQueue } from './queue/reportQueue.js'  // establishes Redis connection at startup (fail-fast)
+import './workers/reportWorker.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { runMigrations } from './db/migrate.js'
 
