@@ -6,7 +6,7 @@ export class MiraklApiError extends Error {
   constructor(message, status) {
     super(message)
     this.name = 'MiraklApiError'
-    this.status = status // HTTP status code (e.g. 429, 500)
+    this.status = status // HTTP status code (e.g. 429, 500); 0 for transport errors
   }
 }
 
@@ -20,6 +20,10 @@ function isRetryable(status) {
   return status === 429 || status >= 500
 }
 
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, Math.min(ms, 30000)))
+}
+
 export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
   const url = new URL(baseUrl + endpoint)
   for (const [k, v] of Object.entries(params ?? {})) {
@@ -28,7 +32,7 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
 
   const headers = { 'X-Mirakl-Front-Api-Key': apiKey }
 
-  let lastStatus
+  let lastStatus = 0 // 0 signals transport-level failure (no HTTP status)
   let lastMessage
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     let res
@@ -38,11 +42,10 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
       // Transport-level failure (DNS, connection reset, socket hang-up, etc.).
       // Treat as retryable so a transient network blip follows the same
       // backoff schedule as HTTP 5xx/429 rather than bubbling a raw TypeError.
-      lastStatus = undefined
+      lastStatus = 0
       lastMessage = err && err.message ? err.message : 'network error'
       if (attempt < MAX_RETRIES) {
-        const delay = Math.min(RETRY_DELAYS_MS[attempt], 30000)
-        await new Promise(r => setTimeout(r, delay))
+        await sleep(RETRY_DELAYS_MS[attempt])
         continue
       }
       break
@@ -61,8 +64,7 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
     }
 
     if (attempt < MAX_RETRIES) {
-      const delay = Math.min(RETRY_DELAYS_MS[attempt], 30000)
-      await new Promise(r => setTimeout(r, delay))
+      await sleep(RETRY_DELAYS_MS[attempt])
     }
   }
 

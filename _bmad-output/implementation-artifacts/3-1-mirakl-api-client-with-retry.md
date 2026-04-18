@@ -86,7 +86,7 @@ So that all downstream pipeline modules (OF21 catalog fetch, P11 competitor scan
 
 ### Review Findings
 
-Code review 2026-04-18 — 3 patches applied, 3 deferred, 2 dismissed.
+Code review 2026-04-18 (pass 1) — 3 patches applied, 3 deferred, 2 dismissed.
 
 - [x] [Review][Patch] Wrap fetch() in try/catch and treat transport errors as retryable [src/workers/mirakl/apiClient.js:33-49]
 - [x] [Review][Patch] Guard against `params = null/undefined` via `Object.entries(params ?? {})` [src/workers/mirakl/apiClient.js:25]
@@ -94,6 +94,11 @@ Code review 2026-04-18 — 3 patches applied, 3 deferred, 2 dismissed.
 - [x] [Review][Defer] No request timeout / AbortController — hung Mirakl request can block worker indefinitely [src/workers/mirakl/apiClient.js:36] — deferred, out of story AC scope
 - [x] [Review][Defer] `apiKey = undefined/null` sends header with empty value silently — no input validation [src/workers/mirakl/apiClient.js:29] — deferred, keyStore contract already guarantees non-null
 - [x] [Review][Defer] `res.json()` SyntaxError on malformed body escapes unwrapped (not retried, not MiraklApiError) [src/workers/mirakl/apiClient.js:52] — deferred, real Mirakl always returns JSON; ATDD doesn't cover
+
+Code review 2026-04-18 (pass 2 — PR review Step 7) — 2 patches applied, 0 deferred, 0 dismissed.
+
+- [x] [Review][Patch] Extract duplicate sleep logic into `sleep(ms)` helper to eliminate DRY violation [src/workers/mirakl/apiClient.js:43-46 and 63-66]
+- [x] [Review][Patch] Transport-error exhaustion threw `MiraklApiError` with `status = undefined`, breaking AC-3 error contract; fixed by initialising `lastStatus = 0` and keeping it at 0 for transport failures [src/workers/mirakl/apiClient.js:32]
 
 ---
 
