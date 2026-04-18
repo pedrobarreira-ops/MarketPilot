@@ -1,5 +1,5 @@
 // src/workers/reportWorker.js
-// BullMQ Worker: orchestrates the report generation pipeline (Phases A–F).
+// BullMQ Worker: orchestrates the report generation pipeline (Phases A–E).
 // Security boundary: retrieves api_key from keyStore; NEVER from job.data.
 // RULE: keyStore.delete(job_id) MUST run in finally — unconditionally.
 
@@ -36,6 +36,14 @@ export async function processJob(job) {
 // Instantiate the BullMQ Worker only when NOT running under the test runner.
 // In test env, the processJob function is called directly — no live Worker needed.
 // This prevents orphaned ioredis retry connections from outliving test hooks.
-export const worker = process.env.NODE_ENV === 'test'
+//
+// Fail-loud guard: if NODE_ENV=test is ever set in a non-test process the Worker
+// would silently never run and jobs would queue forever. Log a warning at module
+// load time so any misconfigured environment surfaces immediately in stderr.
+const isTestEnv = process.env.NODE_ENV === 'test'
+if (isTestEnv) {
+  log.warn({ NODE_ENV: process.env.NODE_ENV }, 'reportWorker: BullMQ Worker skipped (test env) — processJob is callable directly')
+}
+export const worker = isTestEnv
   ? null
   : new Worker('report', processJob, { connection: redisConnection })
