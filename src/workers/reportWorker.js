@@ -33,4 +33,9 @@ export async function processJob(job) {
   }
 }
 
-new Worker('report', processJob, { connection: redisConnection })
+// Instantiate the BullMQ Worker only when NOT running under the test runner.
+// In test env, the processJob function is called directly — no live Worker needed.
+// This prevents orphaned ioredis retry connections from outliving test hooks.
+export const worker = process.env.NODE_ENV === 'test'
+  ? null
+  : new Worker('report', processJob, { connection: redisConnection })

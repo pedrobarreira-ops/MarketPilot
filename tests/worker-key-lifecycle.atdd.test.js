@@ -29,6 +29,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const WORKER_PATH = join(__dirname, '../src/workers/reportWorker.js')
 
 // ── env setup ──────────────────────────────────────────────────────────────
+process.env.NODE_ENV        = 'test'  // prevents BullMQ Worker from connecting at import time
 process.env.REDIS_URL       = process.env.REDIS_URL       || 'redis://localhost:6379'
 process.env.SQLITE_PATH     = process.env.SQLITE_PATH     || '/tmp/test.db'
 process.env.APP_BASE_URL    = process.env.APP_BASE_URL    || 'http://localhost:3000'
@@ -89,7 +90,10 @@ describe('Story 2.2 — Worker scaffold + key lifecycle', async () => {
     del  = keyStoreModule.delete
     has  = keyStoreModule.has
 
-    // Suppress Redis fail-fast listener — reportWorker.js imports reportQueue
+    // Suppress Redis fail-fast listener — reportWorker.js imports reportQueue.
+    // Must silence BEFORE importing reportWorker.js to prevent process.exit(1).
+    // NODE_ENV=test (set above) prevents the BullMQ Worker from being instantiated,
+    // so only the Queue's ioredis connection needs silencing.
     const queueModule = await import('../src/queue/reportQueue.js')
     redisConnection = queueModule.redisConnection
     reportQueue     = queueModule.reportQueue
@@ -98,17 +102,12 @@ describe('Story 2.2 — Worker scaffold + key lifecycle', async () => {
   })
 
   after(async () => {
-    // Clean up Redis connection to prevent test runner from hanging
+    // Close the queue then disconnect immediately — skip quit() which hangs on
+    // pending commands when Redis is unavailable.
     try {
       await Promise.race([
         reportQueue.close(),
-        new Promise(resolve => setTimeout(resolve, 2000)),
-      ])
-    } catch (_) { /* ignore */ }
-    try {
-      await Promise.race([
-        redisConnection.quit(),
-        new Promise(resolve => setTimeout(resolve, 2000)),
+        new Promise(resolve => setTimeout(resolve, 1000)),
       ])
     } catch (_) { /* ignore */ }
     try { redisConnection.disconnect() } catch (_) { /* ignore */ }
