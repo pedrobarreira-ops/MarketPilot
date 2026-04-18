@@ -5,7 +5,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.1
 **Story Key:** 3-1-mirakl-api-client-with-retry
-**Status:** in-progress
+**Status:** done
 **Date Created:** 2026-04-18
 
 ---
@@ -67,22 +67,33 @@ So that all downstream pipeline modules (OF21 catalog fetch, P11 competitor scan
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `src/workers/mirakl/apiClient.js` (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] Define and export `class MiraklApiError extends Error` with `status` property
-  - [ ] Define and export `async function mirAklGet(baseUrl, endpoint, params, apiKey)` — exactly 4 params
-  - [ ] Build URL: `new URL(baseUrl + endpoint)`, set each entry in `params` via `url.searchParams.set(k, v)`
-  - [ ] Set request headers: `{ 'X-Mirakl-Front-Api-Key': apiKey }` — NO `Authorization` header (Mirakl MMP uses its own header)
-  - [ ] Implement retry loop with exponential backoff delays `[1000, 2000, 4000, 8000, 16000]` (ms), capped at 30000ms
-  - [ ] Retry on `res.status === 429` or `res.status >= 500`
-  - [ ] On non-retryable error (4xx other than 429, or retry exhaustion): throw `MiraklApiError`
-  - [ ] On success: return `await res.json()`
-  - [ ] Implement sleep via `await new Promise(r => setTimeout(r, delay))`
-  - [ ] Do NOT import `keyStore` anywhere in this file
-  - [ ] Do NOT store `apiKey` at module scope
+- [x] Task 1: Create `src/workers/mirakl/apiClient.js` (AC: 1, 2, 3, 4, 5, 6)
+  - [x] Define and export `class MiraklApiError extends Error` with `status` property
+  - [x] Define and export `async function mirAklGet(baseUrl, endpoint, params, apiKey)` — exactly 4 params
+  - [x] Build URL: `new URL(baseUrl + endpoint)`, set each entry in `params` via `url.searchParams.set(k, v)`
+  - [x] Set request headers: `{ 'X-Mirakl-Front-Api-Key': apiKey }` — NO `Authorization` header (Mirakl MMP uses its own header)
+  - [x] Implement retry loop with exponential backoff delays `[1000, 2000, 4000, 8000, 16000]` (ms), capped at 30000ms
+  - [x] Retry on `res.status === 429` or `res.status >= 500`
+  - [x] On non-retryable error (4xx other than 429, or retry exhaustion): throw `MiraklApiError`
+  - [x] On success: return `await res.json()`
+  - [x] Implement sleep via `await new Promise(r => setTimeout(r, delay))`
+  - [x] Do NOT import `keyStore` anywhere in this file
+  - [x] Do NOT store `apiKey` at module scope
 
-- [ ] Task 2: Verify ATDD tests pass
-  - [ ] `node --test tests/epic3-3.1-api-client.atdd.test.js` — all tests must pass
-  - [ ] `npm test` — full suite must pass (no regressions)
+- [x] Task 2: Verify ATDD tests pass
+  - [x] `node --test tests/epic3-3.1-api-client.atdd.test.js` — all tests must pass
+  - [x] `npm test` — full suite must pass (no regressions)
+
+### Review Findings
+
+Code review 2026-04-18 — 3 patches applied, 3 deferred, 2 dismissed.
+
+- [x] [Review][Patch] Wrap fetch() in try/catch and treat transport errors as retryable [src/workers/mirakl/apiClient.js:33-49]
+- [x] [Review][Patch] Guard against `params = null/undefined` via `Object.entries(params ?? {})` [src/workers/mirakl/apiClient.js:25]
+- [x] [Review][Patch] Clarify misleading "30s cap per-entry" comment on RETRY_DELAYS_MS [src/workers/mirakl/apiClient.js:13-16]
+- [x] [Review][Defer] No request timeout / AbortController — hung Mirakl request can block worker indefinitely [src/workers/mirakl/apiClient.js:36] — deferred, out of story AC scope
+- [x] [Review][Defer] `apiKey = undefined/null` sends header with empty value silently — no input validation [src/workers/mirakl/apiClient.js:29] — deferred, keyStore contract already guarantees non-null
+- [x] [Review][Defer] `res.json()` SyntaxError on malformed body escapes unwrapped (not retried, not MiraklApiError) [src/workers/mirakl/apiClient.js:52] — deferred, real Mirakl always returns JSON; ATDD doesn't cover
 
 ---
 
@@ -314,22 +325,22 @@ For context — `mirAklGet` is a generic wrapper, but these are the two endpoint
 
 After completing all tasks, verify:
 
-- [ ] `src/workers/mirakl/apiClient.js` exists
-- [ ] `MiraklApiError` is exported as a named export (class, extends Error, has `.status` property)
-- [ ] `mirAklGet` is exported as a named export (async function, exactly 4 params)
-- [ ] `mirAklGet` builds URL from `baseUrl + endpoint + params as query string`
-- [ ] `mirAklGet` sets `X-Mirakl-Front-Api-Key: apiKey` header
-- [ ] Retry logic covers HTTP 429 and all 5xx codes
-- [ ] No retry on 4xx (except 429)
-- [ ] Delays sequence: 1s, 2s, 4s, 8s, 16s (capped at 30s each)
-- [ ] Maximum 5 retries (6 total attempts)
-- [ ] After exhaustion: throws `MiraklApiError`
-- [ ] `apiKey` is NOT assigned to any module-level `const/let/var`
-- [ ] `apiKey` is NOT stored as `this.apiKey` or any property
-- [ ] `apiClient.js` does NOT import `keyStore`
-- [ ] No log calls referencing `apiKey` or `api_key`
-- [ ] `node --test tests/epic3-3.1-api-client.atdd.test.js` — all tests pass
-- [ ] `npm test` — full suite passes (no regressions)
+- [x] `src/workers/mirakl/apiClient.js` exists
+- [x] `MiraklApiError` is exported as a named export (class, extends Error, has `.status` property)
+- [x] `mirAklGet` is exported as a named export (async function, exactly 4 params)
+- [x] `mirAklGet` builds URL from `baseUrl + endpoint + params as query string`
+- [x] `mirAklGet` sets `X-Mirakl-Front-Api-Key: apiKey` header
+- [x] Retry logic covers HTTP 429 and all 5xx codes
+- [x] No retry on 4xx (except 429)
+- [x] Delays sequence: 1s, 2s, 4s, 8s, 16s (capped at 30s each)
+- [x] Maximum 5 retries (6 total attempts)
+- [x] After exhaustion: throws `MiraklApiError`
+- [x] `apiKey` is NOT assigned to any module-level `const/let/var`
+- [x] `apiKey` is NOT stored as `this.apiKey` or any property
+- [x] `apiClient.js` does NOT import `keyStore`
+- [x] No log calls referencing `apiKey` or `api_key`
+- [x] `node --test tests/epic3-3.1-api-client.atdd.test.js` — all tests pass
+- [x] `npm test` — full suite passes (no regressions)
 
 ---
 
