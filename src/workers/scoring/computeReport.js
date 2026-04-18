@@ -89,6 +89,13 @@ export function computeReport(catalog, competitors) {
     summary_pt.total++
     summary_es.total++
 
+    // Guard: if price is null/undefined/non-numeric, treat as uncontested for both channels
+    if (isNaN(my_price)) {
+      summary_pt.uncontested++
+      summary_es.uncontested++
+      continue
+    }
+
     const competitorData = competitors.get(ean)
 
     // PT channel
