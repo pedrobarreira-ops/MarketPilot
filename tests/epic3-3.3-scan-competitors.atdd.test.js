@@ -67,10 +67,24 @@ describe('Story 3.3 — P11 competitor scan', async () => {
       assert.ok(hasBatching, 'scanCompetitors.js must split EANs into batches')
     })
 
-    test('source passes product_ids as comma-separated EANs to P11', () => {
+    test('source passes product_references with EAN|xxx format to P11 (MCP-verified — NOT product_ids)', () => {
       assert.ok(
-        src.includes('product_ids') || src.includes('join'),
-        'scanCompetitors.js must pass product_ids as comma-separated string to P11'
+        src.includes('product_references') && src.includes('EAN|'),
+        'scanCompetitors.js must pass product_references=EAN|xxx,EAN|yyy to P11. product_ids expects product SKUs (UUIDs in Worten), not EANs — using EANs with product_ids silently returns 0 products (verified against live Worten instance 2026-04-18)'
+      )
+    })
+
+    test('source does NOT use product_ids as the EAN-lookup param', () => {
+      // Allow the string to appear in comments/docstrings, but reject it as a
+      // query-param key. Look for the common query-key shape.
+      const badPatterns = [
+        /\bproduct_ids\s*:/,       // { product_ids: ... }
+        /['"]product_ids['"]\s*:/, // { 'product_ids': ... }
+      ]
+      const hits = badPatterns.some(p => p.test(src))
+      assert.ok(
+        !hits,
+        'scanCompetitors.js must NOT use product_ids as the P11 EAN-lookup param. Use product_references instead (MCP-verified).'
       )
     })
   })
@@ -171,6 +185,27 @@ describe('Story 3.3 — P11 competitor scan', async () => {
       assert.ok(
         src.includes('channel_codes') || src.includes('WRT_PT_ONLINE'),
         'scanCompetitors.js must pass channel_codes to P11 to filter by channel'
+      )
+    })
+
+    test('source uses pricing_channel_code param to make total_price channel-specific (MCP-verified)', () => {
+      assert.ok(
+        src.includes('pricing_channel_code'),
+        'scanCompetitors.js must pass pricing_channel_code=<CHANNEL> on each per-channel P11 call so offer.total_price reflects that channel. Without it, applicable_pricing falls back to the default channel and total_price is not channel-specific.'
+      )
+    })
+
+    test('source does NOT filter offers by offer.channel_code (field does not exist)', () => {
+      // Allow per-pricing channel_code (inside all_prices or applicable_pricing),
+      // but reject o.channel_code / offer.channel_code direct access.
+      const badPatterns = [
+        /\boffer\.channel_code\b/,
+        /\bo\.channel_code\b/,
+      ]
+      const hits = badPatterns.some(p => p.test(src))
+      assert.ok(
+        !hits,
+        'scanCompetitors.js must NOT read offer.channel_code or o.channel_code. That field does NOT exist on P11 offers (verified against live Worten 2026-04-18). Channel bucketing must be determined by which P11 call (PT or ES) returned the offer.'
       )
     })
   })

@@ -1,6 +1,15 @@
 // src/workers/mirakl/scanCompetitors.js
-// P11 competitor scan: batch 100 EANs, 10 concurrent calls, both channels.
+// P11 competitor scan: batch 100 EANs, 10 concurrent batch-pairs, both channels.
 // Returns Map<ean, { pt: { first, second }, es: { first, second } }>
+//
+// Per-channel pricing pattern (verified against live Worten instance 2026-04-18):
+//   - Each batch makes TWO P11 calls in parallel — one per channel — each with
+//     pricing_channel_code=<CHANNEL> so offer.total_price reflects that channel.
+//   - Batch lookup uses product_references=EAN|xxx (NOT product_ids; product_ids
+//     expects product SKUs/UUIDs, silently returns 0 products when given EANs).
+//   - Channel bucketing is determined by WHICH call returned the offer — never by
+//     reading offer.channel_code (does not exist) or offer.channels (empty on
+//     competitor offers).
 //
 // Security invariants:
 //   - apiKey is a function parameter only — never stored at module scope
@@ -11,13 +20,13 @@ import pino from 'pino'
 import { mirAklGet } from './apiClient.js'
 
 // Use process.env.LOG_LEVEL directly — scanCompetitors is a pure utility module
-// that must be importable without full app config (env var) validation. This
-// keeps the module testable in isolation and avoids coupling to server startup.
+// that must be importable without full app config (env var) validation.
 const log = pino({ level: process.env.LOG_LEVEL || 'info' })
 
 const BATCH_SIZE = 100
 const CONCURRENCY = 10
 const PROGRESS_INTERVAL = 500
+const CHANNELS = ['WRT_PT_ONLINE', 'WRT_ES_ONLINE']
 
 /**
  * Resolve EAN for a product using 3-strategy approach (from scale_test.js).
@@ -26,34 +35,50 @@ const PROGRESS_INTERVAL = 500
  * Strategy 2: product.product_sku if it appears in batchEans
  * Strategy 3: If batchEans.length === 1, return batchEans[0] (unambiguous)
  * Otherwise: return null (cannot resolve EAN — skip product)
- *
- * @param {object} product - P11 product object
- * @param {string[]} batchEans - EANs in the current batch
- * @returns {string|null}
  */
 function resolveEanForProduct(product, batchEans) {
-  // Strategy 1: product_references with reference_type === 'EAN'
   const productRefs = product.product_references ?? []
   const eanRef = productRefs.find(r => r.reference_type === 'EAN')
   if (eanRef && batchEans.includes(eanRef.reference)) return eanRef.reference
 
-  // Strategy 2: product_sku matches an EAN in the batch
   if (product.product_sku && batchEans.includes(product.product_sku)) {
     return product.product_sku
   }
 
-  // Strategy 3: single-EAN batch — unambiguous resolution
   if (batchEans.length === 1) return batchEans[0]
 
   return null
 }
 
 /**
+ * Extract Map<ean, {first, second}> from a single-channel P11 response.
+ * Filters offer.active === true and takes positions 0 and 1 of offer.total_price.
+ * (Since the request passed pricing_channel_code=<CHANNEL>, total_price already
+ * reflects that channel's price + min shipping.)
+ */
+function extractPricesForChannel(products, batchEans) {
+  const m = new Map()
+  for (const product of products) {
+    const ean = resolveEanForProduct(product, batchEans)
+    if (!ean) continue
+
+    const activeOffers = (product.offers ?? []).filter(o => o.active === true)
+    m.set(ean, {
+      first: activeOffers[0]?.total_price ?? null,
+      second: activeOffers[1]?.total_price ?? null,
+    })
+  }
+  return m
+}
+
+/**
  * Scan competitors for a list of EANs using P11 (GET /api/products/offers).
  *
  * - Batches EANs in groups of BATCH_SIZE (100)
+ * - Each batch makes TWO P11 calls in parallel (one per channel in CHANNELS)
+ *   with pricing_channel_code set, so offer.total_price reflects that channel
  * - Runs CONCURRENCY (10) batches concurrently via Promise.allSettled()
- * - Extracts total_price for first and second active competitor per channel
+ *   (so up to CONCURRENCY × CHANNELS.length = 20 in-flight HTTP requests)
  * - Handles failed batches gracefully: EANs absent from result → uncontested
  * - Calls onProgress every PROGRESS_INTERVAL (500) EANs processed
  *
@@ -66,7 +91,6 @@ function resolveEanForProduct(product, batchEans) {
 export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
   const total = eans.length
 
-  // Split EANs into batches of BATCH_SIZE using slice
   const batches = []
   for (let i = 0; i < eans.length; i += BATCH_SIZE) {
     batches.push(eans.slice(i, i + BATCH_SIZE))
@@ -76,33 +100,47 @@ export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
   let processed = 0
   let lastProgressAt = 0
 
-  // Outer loop: process batches in windows of CONCURRENCY
-  for (let i = 0; i < batches.length; i += CONCURRENCY) {
-    const batchWindow = batches.slice(i, i + CONCURRENCY)
+  // Per-batch: make one P11 call per channel in parallel, return both products lists
+  async function scanBatch(batchEans) {
+    // EAN|xxx,EAN|yyy — product_references is the EAN-lookup param (product_ids
+    // expects product SKUs, not EANs, and silently returns 0 products)
+    const productRefs = batchEans.map(e => `EAN|${e}`).join(',')
 
-    // Promise.allSettled ensures one failed batch does not abort others
-    const results = await Promise.allSettled(
-      batchWindow.map(async (batchEans) => {
-        const data = await mirAklGet(
+    const callsByChannel = await Promise.all(
+      CHANNELS.map(channel =>
+        mirAklGet(
           baseUrl,
           '/api/products/offers',
           {
-            product_ids: batchEans.join(','),
-            channel_codes: 'WRT_PT_ONLINE,WRT_ES_ONLINE',
+            product_references: productRefs,
+            channel_codes: channel,           // filter offers sellable on this channel
+            pricing_channel_code: channel,    // make total_price reflect this channel
           },
           apiKey
         )
-        return { products: data.products ?? [], batchEans }
-      })
+      )
     )
 
-    // Process each settled result
+    const productsByChannel = {}
+    for (let i = 0; i < CHANNELS.length; i++) {
+      productsByChannel[CHANNELS[i]] = callsByChannel[i].products ?? []
+    }
+    return productsByChannel
+  }
+
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const batchWindow = batches.slice(i, i + CONCURRENCY)
+
+    // Promise.allSettled: one failed batch does not abort others
+    const results = await Promise.allSettled(
+      batchWindow.map(batchEans => scanBatch(batchEans))
+    )
+
     for (let j = 0; j < results.length; j++) {
       const batchEans = batchWindow[j]
 
       if (results[j].status === 'rejected') {
         // Log only error type — never err.message (may contain API response details)
-        // Never log api_key
         const err = results[j].reason
         log.warn({ error_type: err?.constructor?.name ?? 'UnknownError', batch_size: batchEans.length })
         processed += batchEans.length
@@ -110,40 +148,23 @@ export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
         continue
       }
 
-      const { products } = results[j].value
+      const productsByChannel = results[j].value
+      const ptMap = extractPricesForChannel(productsByChannel.WRT_PT_ONLINE, batchEans)
+      const esMap = extractPricesForChannel(productsByChannel.WRT_ES_ONLINE, batchEans)
 
-      for (const product of products) {
-        const ean = resolveEanForProduct(product, batchEans)
-        if (!ean) continue
+      for (const ean of batchEans) {
+        const pt = ptMap.get(ean) ?? { first: null, second: null }
+        const es = esMap.get(ean) ?? { first: null, second: null }
 
-        const allOffers = product.offers ?? []
-
-        // Filter by active === true AND channel_code for each channel
-        const ptOffers = allOffers.filter(
-          o => o.active === true && o.channel_code === 'WRT_PT_ONLINE'
-        )
-        const esOffers = allOffers.filter(
-          o => o.active === true && o.channel_code === 'WRT_ES_ONLINE'
-        )
-
-        // Capture first and second competitor total_price per channel
-        // total_price = price + shipping (NOT plain price)
-        resultMap.set(ean, {
-          pt: {
-            first: ptOffers[0]?.total_price ?? null,
-            second: ptOffers[1]?.total_price ?? null,
-          },
-          es: {
-            first: esOffers[0]?.total_price ?? null,
-            second: esOffers[1]?.total_price ?? null,
-          },
-        })
+        // Record only if at least one channel returned data
+        if (pt.first !== null || pt.second !== null || es.first !== null || es.second !== null) {
+          resultMap.set(ean, { pt, es })
+        }
       }
 
       processed += batchEans.length
     }
 
-    // Call onProgress every PROGRESS_INTERVAL (500) EANs processed
     if (processed - lastProgressAt >= PROGRESS_INTERVAL) {
       onProgress?.(processed, total)
       lastProgressAt = processed
@@ -151,8 +172,7 @@ export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
   }
 
   // Final progress emit: ensure caller observes completion when the trailing
-  // remainder (< 500 EANs) never crossed the interval threshold. Guarded so we
-  // don't double-fire if the last interval boundary already landed on `total`.
+  // remainder (< PROGRESS_INTERVAL EANs) never crossed the interval threshold.
   if (total > 0 && processed > lastProgressAt) {
     onProgress?.(processed, total)
   }

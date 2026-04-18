@@ -107,6 +107,16 @@ So that the scoring module (Story 3.4) and worker orchestration (Story 3.7) have
 - [x] [Review][Patch] Honor documented "or at end if remainder < 500" onProgress contract with final flush [src/workers/mirakl/scanCompetitors.js:151-158] — fixed
 - [x] [Review][Patch] Sprint-status regression: story 3.2 status regressed from `atdd-done` to `backlog` due to branch divergence [_bmad-output/implementation-artifacts/sprint-status.yaml:66] — fixed, restored to `atdd-done`
 
+### Post-Merge MCP Alignment Findings (2026-04-18 — live Worten probe via `scripts/mcp-probe.js`)
+
+A live-API probe revealed three bugs not caught by the static ATDD tests or any code review. Each would cause silent production failure (empty competitor data for every EAN). All three fixed in this PR.
+
+- [x] [Review][Patch] **Wrong P11 EAN-lookup param** [src/workers/mirakl/scanCompetitors.js] — code used `product_ids: batchEans.join(',')`. Per MCP, `product_ids` expects product SKUs (UUIDs in Worten), not EANs. Live probe confirmed: P11 with `product_ids=<plain EANs>` returns `products: []` (zero results). Fix: pass `product_references: batchEans.map(e => 'EAN|'+e).join(',')`. Live probe confirmed this returns data correctly.
+- [x] [Review][Patch] **Nonexistent `offer.channel_code` field** [src/workers/mirakl/scanCompetitors.js:121-127] — code filtered offers with `o.channel_code === 'WRT_PT_ONLINE'`. That field does not exist on P11 offers (verified MISSING on live response). `offer.channels` (plural, array) exists but is typically empty on competitor offers (verified empty `[]`). Fix: channel bucketing is now determined by which P11 call (PT or ES) returned the offer — NOT by reading any field on the offer.
+- [x] [Review][Patch] **Non-channel-specific `total_price`** [src/workers/mirakl/scanCompetitors.js] — `offer.total_price` without `pricing_channel_code` reflects the default pricing context, not a specific channel. Fix: each batch now makes TWO P11 calls in parallel — one per channel — each with `pricing_channel_code=<CHANNEL>` so `offer.total_price` reflects that channel's price + shipping.
+- [x] [Review][Patch] **ATDD test hardcoded the wrong param** [tests/epic3-3.3-scan-competitors.atdd.test.js:70-75] — test asserted `src.includes('product_ids')`. Updated to require `product_references` + `EAN|` and explicitly reject `product_ids` as EAN-lookup param. Added tests for `pricing_channel_code` presence and absence of `offer.channel_code` reads.
+- [x] [Review][Patch] **Architecture change: 2x P11 calls per batch (one per channel)** — previously one call with `channel_codes: 'WRT_PT_ONLINE,WRT_ES_ONLINE'`. New shape: `Promise.all([<PT call>, <ES call>])` inside each batch, extraction then buckets by call origin. 10 concurrent batches × 2 channels = up to 20 concurrent HTTP requests.
+
 ---
 
 ## Dev Notes
