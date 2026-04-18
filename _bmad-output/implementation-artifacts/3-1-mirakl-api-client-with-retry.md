@@ -344,8 +344,8 @@ After completing all tasks, verify:
 - [x] `apiKey` is NOT stored as `this.apiKey` or any property
 - [x] `apiClient.js` does NOT import `keyStore`
 - [x] No log calls referencing `apiKey` or `api_key`
-- [x] `node --test tests/epic3-3.1-api-client.atdd.test.js` — all tests pass
-- [x] `npm test` — full suite passes (no regressions)
+- [x] `node --test tests/epic3-3.1-api-client.atdd.test.js` — 27/27 tests pass
+- [x] `npm test` — no regressions (failures are future-story stubs 3.2–3.7, pre-existing)
 
 ---
 
@@ -353,11 +353,35 @@ After completing all tasks, verify:
 
 ### Agent Model Used
 
-_to be filled by dev agent_
+claude-sonnet-4-6
+
+### Dev Notes / Implementation Summary
+
+**File created:** `src/workers/mirakl/apiClient.js`
+
+**Exports:**
+- `MiraklApiError` — class extending Error, with `.status` property (HTTP status code; `0` for transport errors)
+- `mirAklGet(baseUrl, endpoint, params, apiKey)` — async function, exactly 4 named parameters
+
+**Key implementation details:**
+- `params ?? {}` null-guard on `Object.entries` — safe when called with `null`/`undefined` params
+- `lastStatus = 0` sentinel for transport-level failures (DNS, TCP reset, socket hang-up)
+- Transport errors (network-level) are caught and retried with the same backoff schedule as HTTP 429/5xx
+- Exponential backoff: 1s/2s/4s/8s/16s per attempt, capped at 30s via `Math.min(ms, 30000)` in `sleep()`
+- Up to 5 retries (6 total attempts: 1 initial + 5 retries)
+- Non-retryable 4xx (400, 401, 403, 404, …) throw `MiraklApiError` immediately without sleeping
+- `X-Mirakl-Front-Api-Key` header set dynamically from the `apiKey` parameter — never hardcoded
+- `apiKey` is a function parameter only — never assigned to any module-scope `const/let/var`
+- No `pino` import, no logging — pure HTTP wrapper
+- No `keyStore` import — caller is responsible for key retrieval
+
+**Test results:** 27/27 ATDD tests pass (`tests/epic3-3.1-api-client.atdd.test.js`)
+
+**npm test:** No regressions introduced. Failures in the full suite (13 fails, 91 cancelled) are all future-story ATDD tests (3.2–3.7) that require modules not yet built — pre-existing and expected.
 
 ### Completion Notes List
 
-_to be filled by dev agent_
+- 2026-04-18: Implementation complete. `apiClient.js` created. All 27 ATDD tests pass. 2 code-review passes completed: pass 1 applied 3 patches (transport-error retry, params null-guard, comment clarification); pass 2 applied 2 patches (sleep helper DRY fix, lastStatus=0 sentinel for transport exhaustion). No deferred items blocking future stories.
 
 ### File List
 
@@ -367,3 +391,4 @@ _to be filled by dev agent_
 ### Change Log
 
 - 2026-04-18: Story 3.1 created — Mirakl API client with retry.
+- 2026-04-18: Story 3.1 implementation complete — 27/27 ATDD tests pass; status set to done.
