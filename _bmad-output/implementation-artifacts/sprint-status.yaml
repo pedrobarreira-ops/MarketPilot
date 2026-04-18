@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-18  (story 3.2 PR code review complete — clean pass, 0 patches, 0 deferred; 3-2 → done)
+last_updated: 2026-04-18  (phase0 reconcile — 3.2+3.3 reverted to review; PRs #38 and #39 still open; epic-2 corrected to done)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -55,7 +55,7 @@ development_status:
   epic-1-retrospective: done
 
   # ── Epic 2: API Key Security Layer ───────────────────────────────────────
-  epic-2: in-progress
+  epic-2: done
   2-1-keystore-module: done
   2-2-bullmq-worker-scaffold-with-key-lifecycle: done
   epic-2-retrospective: done
