@@ -17,6 +17,15 @@
  *   additional test also scans buildReport.js directly so the CI run surfaces the
  *   gap early, independent of the production-code fix.
  *
+ * Additional gaps covered by this file (Step 4 test review additions):
+ *   - CSV_COLUMNS export in queries.js vs CSV_HEADER in buildReport.js — no drift
+ *   - CSV escaping edge cases: commas, double-quotes, newlines in product_title
+ *   - CSV null/undefined field handling (null catalog values → empty cell)
+ *   - CSV numeric decimal precision is preserved as-is (not truncated)
+ *   - Empty catalog produces header-only CSV (no data rows)
+ *   - buildAndPersistReport propagates insertReport exceptions (no silent swallow)
+ *   - runMigrations() is idempotent — safe to call multiple times
+ *
  * Run: node --test tests/epic3-3.5-report-persistence.additional.test.js
  */
 
@@ -305,5 +314,295 @@ describe('AC-3 functional: buildAndPersistReport stores all products in CSV', ()
       expiresAt >= beforeCall + 172800 && expiresAt <= afterCall + 172800,
       `expires_at (${expiresAt}) must be now + 172800 seconds (48h TTL)`
     )
+  })
+})
+
+// ── CSV_COLUMNS / CSV_HEADER drift check ───────────────────────────────────────
+
+describe('CSV_COLUMNS export vs buildReport.js CSV_HEADER — no drift', () => {
+  test('CSV_COLUMNS exported from queries.js matches the 12-column header string', async () => {
+    const queries = await import('../src/db/queries.js')
+    assert.equal(
+      typeof queries.CSV_COLUMNS,
+      'string',
+      'queries.js must export CSV_COLUMNS as a string'
+    )
+    const expected = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
+    assert.equal(
+      queries.CSV_COLUMNS,
+      expected,
+      'CSV_COLUMNS must exactly match the 12-column FR17 spec'
+    )
+  })
+
+  test('buildReport.js CSV_HEADER matches queries.js CSV_COLUMNS (no drift)', async () => {
+    // Read the CSV_HEADER string directly from buildReport.js source
+    const src = readFileSync(BUILD_REPORT_PATH, 'utf8')
+    // Extract the CSV_HEADER value: look for the line that assigns CSV_HEADER
+    const match = src.match(/const CSV_HEADER\s*=\s*'([^']+)'/)
+    assert.ok(match, 'buildReport.js must declare CSV_HEADER as a string constant')
+    const csvHeader = match[1]
+
+    const queries = await import('../src/db/queries.js')
+    assert.equal(
+      csvHeader,
+      queries.CSV_COLUMNS,
+      'buildReport.js CSV_HEADER and queries.js CSV_COLUMNS must be identical strings — they define the same contract'
+    )
+  })
+})
+
+// ── CSV escaping edge cases ────────────────────────────────────────────────────
+
+describe('CSV escaping edge cases', () => {
+  let buildAndPersistReport
+  let getReport
+  let available = false
+
+  before(async () => {
+    const queries = await import('../src/db/queries.js')
+    getReport = queries.getReport
+    try {
+      const buildMod = await import('../src/workers/scoring/buildReport.js')
+      buildAndPersistReport = buildMod.buildAndPersistReport
+      available = true
+    } catch (_) {}
+  })
+
+  test('product_title with a comma is wrapped in double quotes (RFC 4180)', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const catalog = [
+      { ean: 'EAN-COMMA', shop_sku: 'SKU-COMMA', product_title: 'TV, 55 inch', price: '399.99' },
+    ]
+    const computedReport = {
+      opportunities_pt: [], opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 1, losing: 0, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+    buildAndPersistReport(reportId, 'esc@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const csv = row.csv_data ?? row.csvData
+    // The title cell must be wrapped: "TV, 55 inch"
+    assert.ok(
+      csv.includes('"TV, 55 inch"'),
+      `CSV must wrap product_title containing a comma in double quotes. Got:\n${csv}`
+    )
+  })
+
+  test('product_title with a double-quote has internal quotes doubled (RFC 4180)', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const catalog = [
+      { ean: 'EAN-QUOTE', shop_sku: 'SKU-QUOTE', product_title: 'TV 55" Screen', price: '299.99' },
+    ]
+    const computedReport = {
+      opportunities_pt: [], opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 1, losing: 0, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+    buildAndPersistReport(reportId, 'esc@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const csv = row.csv_data ?? row.csvData
+    // RFC 4180: " → "" inside a quoted field → "TV 55"" Screen"
+    assert.ok(
+      csv.includes('"TV 55"" Screen"'),
+      `CSV must double-escape double-quotes per RFC 4180. Got:\n${csv}`
+    )
+  })
+
+  test('product_title with a newline is wrapped in double quotes', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const catalog = [
+      { ean: 'EAN-NL', shop_sku: 'SKU-NL', product_title: 'Line1\nLine2', price: '49.99' },
+    ]
+    const computedReport = {
+      opportunities_pt: [], opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 1, losing: 0, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+    buildAndPersistReport(reportId, 'esc@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const csv = row.csv_data ?? row.csvData
+    assert.ok(
+      csv.includes('"Line1\nLine2"'),
+      `CSV must wrap product_title containing a newline in double quotes. Got:\n${csv}`
+    )
+  })
+
+  test('null catalog field (e.g. product_title = null) produces an empty cell', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const catalog = [
+      { ean: 'EAN-NULL', shop_sku: 'SKU-NULL', product_title: null, price: '9.99' },
+    ]
+    const computedReport = {
+      opportunities_pt: [], opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 1, losing: 0, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+    buildAndPersistReport(reportId, 'esc@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const csv = row.csv_data ?? row.csvData
+    const dataLine = csv.split('\n')[1]
+    const cells = dataLine.split(',')
+    // product_title is column index 1
+    assert.equal(cells[1], '', 'null product_title must produce an empty CSV cell')
+  })
+
+  test('numeric price with decimal places is preserved as-is (not truncated)', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const catalog = [
+      { ean: 'EAN-DEC', shop_sku: 'SKU-DEC', product_title: 'Decimal Test', price: 19.99 },
+    ]
+    const computedReport = {
+      opportunities_pt: [], opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 1, losing: 0, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+    buildAndPersistReport(reportId, 'esc@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const csv = row.csv_data ?? row.csvData
+    const dataLine = csv.split('\n')[1]
+    const cells = dataLine.split(',')
+    // my_price is column index 3
+    assert.equal(cells[3], '19.99', 'numeric price must be preserved with original decimal precision')
+  })
+})
+
+// ── Empty catalog edge case ────────────────────────────────────────────────────
+
+describe('CSV edge case: empty catalog produces header-only CSV', () => {
+  let buildAndPersistReport
+  let getReport
+  let available = false
+
+  before(async () => {
+    const queries = await import('../src/db/queries.js')
+    getReport = queries.getReport
+    try {
+      const buildMod = await import('../src/workers/scoring/buildReport.js')
+      buildAndPersistReport = buildMod.buildAndPersistReport
+      available = true
+    } catch (_) {}
+  })
+
+  test('empty catalog array produces a CSV with only the header row', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const computedReport = {
+      opportunities_pt: [], opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 0, winning: 0, losing: 0, uncontested: 0 },
+      summary_es: { total: 0, winning: 0, losing: 0, uncontested: 0 },
+    }
+    buildAndPersistReport(reportId, 'empty@example.com', [], computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    assert.ok(row, 'Report must be persisted even with empty catalog')
+    const csv = row.csv_data ?? row.csvData
+    const lines = csv.split('\n')
+    assert.equal(lines.length, 1, 'Empty catalog must produce a CSV with exactly 1 line (header only)')
+    assert.equal(
+      lines[0],
+      'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score',
+      'The single line must be the header row'
+    )
+  })
+})
+
+// ── Error propagation from insertReport ───────────────────────────────────────
+
+describe('Error propagation: buildAndPersistReport does not swallow insertReport exceptions', () => {
+  test('buildAndPersistReport propagates an exception thrown by insertReport', async () => {
+    // Dynamically import buildReport to access the module — we need to verify
+    // that if the underlying insertReport call throws, buildAndPersistReport
+    // propagates the error rather than swallowing it silently.
+    //
+    // Strategy: call buildAndPersistReport with a reportId that is not a string
+    // or use a duplicate reportId (UNIQUE constraint violation) to trigger a
+    // real DB error and verify it surfaces to the caller.
+    let buildAndPersistReport
+    let insertReport
+    let available = false
+    try {
+      const buildMod = await import('../src/workers/scoring/buildReport.js')
+      buildAndPersistReport = buildMod.buildAndPersistReport
+      const queries = await import('../src/db/queries.js')
+      insertReport = queries.insertReport
+      available = true
+    } catch (_) {}
+
+    if (!available) return
+
+    const reportId = randomId()
+    const catalog = [{ ean: 'EAN-ERR', shop_sku: 'SKU-ERR', product_title: 'Error Test', price: '5.00' }]
+    const computedReport = {
+      opportunities_pt: [], opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 1, losing: 0, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+
+    // First call: must succeed
+    buildAndPersistReport(reportId, 'err@example.com', catalog, computedReport)
+
+    // Second call with same reportId: UNIQUE constraint violation — must throw
+    assert.throws(
+      () => buildAndPersistReport(reportId, 'err@example.com', catalog, computedReport),
+      (err) => {
+        // Must be an Error, not silently swallowed
+        return err instanceof Error
+      },
+      'buildAndPersistReport must propagate the DB error (UNIQUE constraint) instead of silently swallowing it'
+    )
+  })
+})
+
+// ── runMigrations idempotency ──────────────────────────────────────────────────
+
+describe('runMigrations() is idempotent — safe to call multiple times', () => {
+  test('calling runMigrations() twice does not throw', async () => {
+    const { runMigrations } = await import('../src/db/migrate.js')
+    assert.doesNotThrow(
+      () => { runMigrations(); runMigrations() },
+      'runMigrations() must be idempotent — calling it twice must not throw'
+    )
+  })
+
+  test('calling runMigrations() at queries.js import time does not corrupt existing data', async () => {
+    // Insert a report, then re-run migrations, verify the report is still retrievable
+    const { insertReport, getReport } = await import('../src/db/queries.js')
+    const { runMigrations } = await import('../src/db/migrate.js')
+    const reportId = randomId()
+    const now = Math.floor(Date.now() / 1000)
+    insertReport({
+      report_id: reportId,
+      generated_at: now,
+      expires_at: now + 172800,
+      email: 'idem@example.com',
+      summary_json: '{"ok":true}',
+      opportunities_pt_json: '[]',
+      opportunities_es_json: '[]',
+      quickwins_pt_json: '[]',
+      quickwins_es_json: '[]',
+      csv_data: 'EAN\ntest',
+    })
+    // Run migrations again — must not throw or destroy data
+    assert.doesNotThrow(() => runMigrations(), 'runMigrations() must not throw when tables already exist')
+    const row = getReport(reportId, now)
+    assert.ok(row, 'Pre-existing report must still be retrievable after a second runMigrations() call')
   })
 })
