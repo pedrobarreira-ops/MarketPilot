@@ -48,19 +48,49 @@ parts: 1
 - `src/db/queries.js` named exports: `createJob()`, `updateJobStatus()`, `updateJobError()`, `insertReport()`, `getReport()`, `getJobStatus()`
 - `getReport(reportId, now)` returns report only if `expires_at > now`; non-existent/expired returns `null` (not throws)
 
-## Mirakl API Patterns
+## Mirakl API Patterns (high-level — see MCP-Verified Endpoint Reference for field specifics)
 - All calls via `src/workers/mirakl/apiClient.js` — `mirAklGet(baseUrl, endpoint, params, apiKey)`; no direct `fetch()` to Mirakl elsewhere
 - Exponential backoff: 1s, 2s, 4s, 8s, 16s (capped 30s), up to 5 retries for 429/5xx; throws `MiraklApiError` after exhaustion
-- OF21: 100 per page; assert `fetched.length === total_count` (NFR-R2); filter `state: 'ACTIVE'`; returns `[{ ean, shop_sku, price, product_title }]`; validated at 31,179 products
-- P11: batch 100 EANs; 10 concurrent calls via `Promise.allSettled()`; filter `active: true`; extract `total_price` (NOT `price`) per channel; both `WRT_PT_ONLINE` and `WRT_ES_ONLINE`; returns `Map<ean, { pt: { first, second }, es: { first, second } }>`
 - Failed P11 batches after retry: logged (error type only), EANs marked uncontested, job continues
 - Raw Mirakl errors NEVER forwarded to user or logged verbatim; all pass through `getSafeErrorMessage(err)`
 - Reuse `scripts/scale_test.js` for OF21 pagination logic; reuse `scripts/opportunity_report.js` for P11 batch+concurrent pattern
+- **For endpoint specifics (paths, params, field names, pagination, error behavior): the MCP-Verified Endpoint Reference section below is the single authoritative source. No endpoint details should be duplicated elsewhere in this file.**
 
-## MCP-Verified Endpoint Reference _(verified 2026-04-18 — authoritative; never assume beyond what is listed)_
-- **OF21** `GET /api/offers`: offset pagination; `max=100` per page; active filter = `offers.active === true`; EAN from `offers.product_references[].reference` where `reference_type='EAN'`; price from `offers.applicable_pricing.price`; `total_count` in response — assert after all pages
-- **P11** `GET /api/products/offers`: batch via `product_ids` (comma-sep, max 100); channel filter via `channel_codes` param; `products.offers.total_price` = price+shipping ✅ USE THIS; `products.offers.price` = price only ❌ DO NOT USE for competitor comparison; active filter = `products.offers.active === true`; EAN from `products.product_references[].reference` where `reference_type='EAN'`
-- **PRI01** `POST /api/offers/pricing/imports`: multipart/form-data; CSV `"offer-sku";"price";...`; returns `import_id`; poll status via PRI02; ⚠️ rate limit = once/minute max; ⚠️ delete-and-replace mode — prices not in submitted CSV are DELETED
+## MCP-Verified Endpoint Reference _(verified 2026-04-18 against Mirakl MCP AND live Worten instance via `scripts/mcp-probe.js` — authoritative; never assume beyond what is listed)_
+
+**OF21 — Seller catalog fetch** `GET /api/offers`
+- Auth: `Authorization: <api_key>` header (raw key, no Bearer prefix)
+- Pagination: offset — `max=100` per page, `offset=0,100,…`
+- Active filter: `offer.active === true` (boolean, required). ⚠️ `offer.state` does NOT exist on OF21 response (verified MISSING on live Worten). `offer.state_code` exists but is offer CONDITION (e.g. `"11"`), not active/inactive
+- EAN: `offer.product_references[].reference` where `reference_type === 'EAN'`
+- Seller's own price: `offer.applicable_pricing.price` (number, channel-agnostic default)
+- Other fields: `shop_sku`, `product_sku` (UUID — NOT the EAN), `product_title`, `channels[]`, `all_prices[]`, `min_shipping_price`, `total_price`, `quantity`, `inactivity_reasons[]`
+- `total_count` at root — assert `allOffers.length === total_count` BEFORE active filter (no server-side active filter exists); on mismatch throw `CatalogTruncationError`
+
+**P11 — Competitor price scan** `GET /api/products/offers`
+- **Batch param: `product_references` (NOT `product_ids`).** Format: `EAN|<ean1>,EAN|<ean2>,…` (pipe-delimited type|value, comma-separated, max 100 values/call). ⚠️ `product_ids` expects product SKUs (UUIDs in Worten), not EANs — using EANs with `product_ids` silently returns 0 products (verified live)
+- **Two calls per batch to get per-channel total_price** — one call per channel, each passing `pricing_channel_code=WRT_PT_ONLINE` (or `WRT_ES_ONLINE`) so `offer.total_price` reflects that channel's price. Also pass `channel_codes=<that channel>` to filter returned offers to those sellable on that channel
+- Active filter: `offer.active === true` (boolean, required)
+- ⚠️ Channel bucketing on competitor offers: `offer.channels` is typically EMPTY array on competitor offers (verified). `offer.channel_code` singular does NOT exist. **Bucket by which P11 call (PT or ES) returned the offer — do NOT read channel from the offer object**
+- ✅ `offer.total_price` (number) = price + min_shipping_price for the active pricing context — USE THIS for competitor comparison
+- ⚠️ `offer.price` = price only (no shipping) — DO NOT USE for competitor comparison
+- EAN from: `product.product_references[].reference` where `reference_type === 'EAN'`
+- `product.total_count` = number of offers FOR THAT PRODUCT (per-product count, not batch total)
+
+**PRI01 — Price import** `POST /api/offers/pricing/imports` (Epic 4+)
+- `multipart/form-data` with `file` field; CSV semicolon-delimited: `"offer-sku";"price";"discount-price";"discount-start-date";"discount-end-date"` (plus optional volume/channel/scheduled/customer columns; max 50 prices per offer)
+- Returns `201 { import_id: "<uuid>" }` (poll via PRI02)
+- ⚠️ Rate limit: max once/minute (recommended every 5 min)
+- ⚠️ **Delete-and-replace** — any price for an offer NOT in submitted CSV is DELETED. Always submit the complete set for each offer
+
+**PRI02 — Import status** `GET /api/offers/pricing/imports?import_id=<id>` (Epic 4+)
+- `data[].status` enum: `WAITING | RUNNING | COMPLETE | FAILED`
+- `lines_in_success`, `lines_in_error`, `offers_in_error`, `offers_updated`, `reason_status`, `has_error_report`
+- Rate limit: max once/minute (recommended every 5 min)
+
+**PRI03 — Import error report** `GET /api/offers/pricing/imports/{import_id}/error_report` (Epic 4+)
+- Returns CSV of errored rows (col 1 = line number, col 2 = reason)
+- Call only when PRI02 reports `has_error_report: true`; max once/minute
 
 ## Scoring Formulas
 - WOW score: `gap = my_price - competitor_total_price_first`; `gap_pct = gap / competitor_total_price_first`; `wow_score = my_price / gap_pct`; applies only where `my_price > competitor_total_price_first`
@@ -217,8 +247,8 @@ parts: 1
 ### Epic 3 — Pipeline
 
 - 3.1 Retry 429/5xx: delays 1s,2s,4s,8s,16s (max 30s), 5 retries; throws MiraklApiError after exhaustion; mirAklGet(baseUrl, endpoint, params, apiKey) — apiKey as param, not module-level; no direct fetch() to Mirakl elsewhere
-- 3.2 OF21: max=100/page; assert fetched.length === total_count → CatalogTruncationError on mismatch; filter state:'ACTIVE'; onProgress(n,total) every 1,000 offers; returns [{ean, shop_sku, price, product_title}]; reuse pagination from scale_test.js
-- 3.3 P11: batches of 100 EANs; 10 concurrent via Promise.allSettled(); filter active:true; extract total_price (NOT price) per channel; capture positions 1+2: {pt:{first,second},es:{first,second}}; onProgress every 500 EANs; failed batches after 5 retries → logged (type only), EANs → uncontested, job continues; reuse batch+concurrent from opportunity_report.js
+- 3.2 OF21: max=100/page (offset pagination); assert allOffers.length === total_count BEFORE active filter → CatalogTruncationError on mismatch (no server-side active filter exists; total_count counts all offers); filter offer.active === true (NOT offer.state — that field does not exist); onProgress(n,total) every 1,000 offers; returns [{ean, shop_sku, price, product_title}]; reuse pagination from scale_test.js. See MCP-Verified Endpoint Reference for field specifics
+- 3.3 P11: batches of 100 EANs via product_references=EAN|x,EAN|y (NOT product_ids — that expects SKUs not EANs, silently returns 0); TWO calls per batch (one per channel) with pricing_channel_code=WRT_PT_ONLINE (resp. WRT_ES_ONLINE) so offer.total_price reflects that channel; 10 concurrent via Promise.allSettled(); filter offer.active===true; take positions 0+1 of offer.total_price per channel → {pt:{first,second},es:{first,second}}; channel bucketing by which call returned the offer (NOT offer.channel_code — does not exist; NOT offer.channels — empty on competitors); onProgress every 500 EANs; failed batches after 5 retries → logged (type only), EANs → uncontested, job continues; reuse batch+concurrent from opportunity_report.js. See MCP-Verified Endpoint Reference for field specifics
 - 3.4 For my_price > competitor_first: gap=my_price-first; gap_pct=gap/first; wow_score=my_price/gap_pct; is_quick_win=gap_pct<=0.02; winning=my_price<=first (no WOW); uncontested=no competitor data; opportunities_pt/es sorted wow_score DESC; summary per channel: {total,winning,losing,uncontested}
 - 3.5 INSERT reports: expires_at=now+172800; CSV columns: EAN, product_title, shop_sku, my_price, pt_first_price, pt_gap_eur, pt_gap_pct, pt_wow_score, es_first_price, es_gap_eur, es_gap_pct, es_wow_score (ALL products, both channels); getReport: WHERE expires_at>now; null (not throws) if expired/not found
 - 3.6 Resend; subject: `"O teu relatório MarketPilot está pronto"`; body: APP_BASE_URL/report/reportId + summary; try/catch — exceptions caught+logged (type only), not re-thrown; worker marks complete BEFORE email; email failure → status remains complete; RESEND_API_KEY unset → log warning, return (graceful degradation)

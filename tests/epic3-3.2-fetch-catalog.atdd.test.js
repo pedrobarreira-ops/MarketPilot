@@ -155,17 +155,17 @@ describe('Story 3.2 — OF21 catalog fetch with pagination', async () => {
   })
 
   // ── AC-3: Active filter ───────────────────────────────────────────────────
-  describe('AC-3: filters state:ACTIVE offers only', () => {
+  describe('AC-3: filters active offers only (offers.active === true)', () => {
     let src
 
     before(() => {
       src = codeLines(readFileSync(FETCH_CATALOG_PATH, 'utf8'))
     })
 
-    test('source filters for ACTIVE state', () => {
+    test('source filters by offers.active boolean field (MCP-verified — not offers.state string)', () => {
       assert.ok(
-        src.includes('ACTIVE') || src.includes("state === 'ACTIVE'") || src.includes('state:'),
-        "fetchCatalog.js must filter offers to state:'ACTIVE' only"
+        src.includes('active === true') || src.includes('.active'),
+        'fetchCatalog.js must filter offers using offers.active === true (boolean field — verified against OF21 MCP spec 2026-04-18)'
       )
     })
   })
