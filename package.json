@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --env-file-if-exists=.env --test tests/db.atdd.test.js tests/docker.atdd.test.js tests/epic3-3.1-api-client.atdd.test.js tests/epic3-3.2-fetch-catalog.atdd.test.js tests/epic3-3.3-scan-competitors.atdd.test.js tests/epic3-3.4-wow-scoring.atdd.test.js tests/epic3-3.4-wow-scoring.unit.test.js tests/keystore.atdd.test.js tests/queue.atdd.test.js tests/server.atdd.test.js",
+    "test": "node --env-file-if-exists=.env --test tests/db.atdd.test.js tests/docker.atdd.test.js tests/epic3-3.1-api-client.atdd.test.js tests/epic3-3.2-fetch-catalog.atdd.test.js tests/epic3-3.3-scan-competitors.atdd.test.js tests/epic3-3.4-wow-scoring.atdd.test.js tests/epic3-3.4-wow-scoring.unit.test.js tests/epic3-3.5-report-persistence.atdd.test.js tests/epic3-3.5-report-persistence.additional.test.js tests/keystore.atdd.test.js tests/queue.atdd.test.js tests/server.atdd.test.js",
     "test:all": "node --env-file-if-exists=.env --test tests/**/*.test.js",
     "test:atdd": "node --env-file-if-exists=.env --test tests/server.atdd.test.js"
   },
