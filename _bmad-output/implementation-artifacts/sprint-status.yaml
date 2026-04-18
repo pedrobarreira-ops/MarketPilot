@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-18  (story 3.1 implementation complete → review)
+last_updated: 2026-04-18  (story 3.1 PR review done — done; 2 patches applied, 0 deferred)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -62,7 +62,7 @@ development_status:
 
   # ── Epic 3: Report Generation Pipeline ───────────────────────────────────
   epic-3: in-progress
-  3-1-mirakl-api-client-with-retry: review
+  3-1-mirakl-api-client-with-retry: done
   3-2-of21-catalog-fetch-with-pagination: backlog
   3-3-p11-competitor-scan: backlog
   3-4-wow-score-and-quick-wins-scoring: backlog
