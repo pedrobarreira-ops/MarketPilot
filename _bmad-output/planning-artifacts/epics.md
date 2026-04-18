@@ -299,6 +299,8 @@ UX document: `_bmad-output/planning-artifacts/ux-design.md` — visual design lo
 
 ### Story 1.1: Project Scaffold
 
+**GH Issue:** #2
+
 As a developer (Pedro),
 I want a fully configured Node.js 22 ESM project with the correct directory structure and dependencies installed,
 So that I have a solid foundation to build on without configuration drift later.
@@ -326,6 +328,8 @@ src/db/, src/email/, src/cleanup/, src/middleware/, public/css/, public/js/
 ---
 
 ### Story 1.2: Fastify Server with Log Redaction
+
+**GH Issue:** #3
 
 As a developer,
 I want a Fastify v5 server instance with Pino log redaction configured,
@@ -355,6 +359,8 @@ redact: {
 
 ### Story 1.3: SQLite Schema & Drizzle Setup
 
+**GH Issue:** #4
+
 As a developer,
 I want the SQLite database initialized with the `generation_jobs` and `reports` tables using Drizzle ORM,
 So that all data persistence is type-safe and the schema enforces the security constraint (no `api_key` column) at the database level.
@@ -376,6 +382,8 @@ So that all data persistence is type-safe and the schema enforces the security c
 
 ### Story 1.4: BullMQ Queue & Redis Connection
 
+**GH Issue:** #5
+
 As a developer,
 I want BullMQ v5 and Redis connected and the `reportQueue` defined,
 So that the job queue is operational before the worker and routes are wired up.
@@ -394,6 +402,8 @@ So that the job queue is operational before the worker and routes are wired up.
 ---
 
 ### Story 1.5: Docker & Coolify Deployment Config
+
+**GH Issue:** #6
 
 As a developer,
 I want a Dockerfile and docker-compose.yml that deploy the app correctly on Coolify with Traefik HTTPS,
@@ -425,6 +435,8 @@ So that the production environment is reproducible and HTTPS is enforced from th
 
 ### Story 2.1: keyStore Module
 
+**GH Issue:** #7
+
 As a developer,
 I want the `src/queue/keyStore.js` in-memory key store implemented,
 So that the API key has exactly one storage location in the entire system — process memory keyed to job_id — and cannot accidentally leak into any serialisable context.
@@ -444,6 +456,8 @@ So that the API key has exactly one storage location in the entire system — pr
 ---
 
 ### Story 2.2: BullMQ Worker Scaffold with Key Lifecycle
+
+**GH Issue:** #8
 
 As a developer,
 I want the `src/workers/reportWorker.js` worker registered with BullMQ,
@@ -474,6 +488,8 @@ So that the key retrieval → use → deletion lifecycle is correctly implemente
 
 ### Story 3.1: Mirakl API Client with Retry
 
+**GH Issue:** #9
+
 As a developer,
 I want `src/workers/mirakl/apiClient.js` with exponential backoff and safe error handling,
 So that all Mirakl API calls retry on 429/5xx without ever exposing raw error messages to the user.
@@ -494,6 +510,8 @@ So that all Mirakl API calls retry on 429/5xx without ever exposing raw error me
 ---
 
 ### Story 3.2: OF21 Catalog Fetch with Pagination
+
+**GH Issue:** #10
 
 As a developer,
 I want `src/workers/mirakl/fetchCatalog.js` that paginates through all active offers using the OF21 endpoint,
@@ -517,6 +535,8 @@ So that catalogs of any size (validated up to 31,179 SKUs) are fully fetched wit
 ---
 
 ### Story 3.3: P11 Competitor Scan (Batch + Concurrent)
+
+**GH Issue:** #11
 
 As a developer,
 I want `src/workers/mirakl/scanCompetitors.js` that batches EANs into groups of 100 and runs 10 concurrent P11 calls,
@@ -542,6 +562,8 @@ So that a 31,000-SKU catalog is fully scanned within the NFR-P3 time budget with
 ---
 
 ### Story 3.4: WOW Score + Quick Wins Scoring
+
+**GH Issue:** #12
 
 As a developer,
 I want `src/workers/scoring/computeReport.js` that computes WOW scores, Quick Wins, and Your Position counts per channel,
@@ -570,6 +592,8 @@ So that the report data is ranked correctly before being persisted.
 
 ### Story 3.5: Report Persistence & CSV Generation
 
+**GH Issue:** #13
+
 As a developer,
 I want the computed report data inserted into SQLite and the full CSV generated and stored,
 So that the report is accessible via UUID for 48 hours and the CSV download is available immediately.
@@ -595,6 +619,8 @@ So that the report is accessible via UUID for 48 hours and the CSV download is a
 
 ### Story 3.6: Email Dispatch via Resend
 
+**GH Issue:** #14
+
 As a developer,
 I want `src/email/sendReportEmail.js` that sends the confirmation email non-blockingly after report generation,
 So that email delivery failure never affects the job success status or the seller's ability to access their report.
@@ -618,6 +644,8 @@ So that email delivery failure never affects the job success status or the selle
 ---
 
 ### Story 3.7: Full Worker Orchestration & Phase Updates
+
+**GH Issue:** #15
 
 As a developer,
 I want the `reportWorker.js` to orchestrate all phases A–F with correct phase_message updates at each transition,
@@ -653,6 +681,8 @@ So that the frontend polling endpoint always shows accurate progress and key cle
 
 ### Story 4.1: POST /api/generate Route
 
+**GH Issue:** #16
+
 As a seller,
 I want to submit my API key and email via a POST request and receive a job_id and report_id back in under 2 seconds,
 So that report generation begins immediately without blocking the browser.
@@ -674,6 +704,8 @@ So that report generation begins immediately without blocking the browser.
 ---
 
 ### Story 4.2: GET /api/jobs/:job_id Polling Endpoint
+
+**GH Issue:** #17
 
 As a seller,
 I want to poll job status every 2 seconds and receive the current phase message,
@@ -703,6 +735,8 @@ So that the progress screen can show me what the system is doing in real time.
 
 ### Story 4.3: GET /api/reports/:report_id & CSV Routes
 
+**GH Issue:** #18
+
 As a seller,
 I want to retrieve my report as JSON and download it as CSV via UUID-based routes,
 So that I can view the report page and download the full analysis at any time within 48 hours.
@@ -731,6 +765,8 @@ So that I can view the report page and download the full analysis at any time wi
 **Goal:** Implement `public/js/form.js` and `public/js/progress.js` to wire up the existing Stitch-built HTML pages. Do NOT modify HTML structure — only add/edit JS. Covers all state transitions: validation, loading, submission, progress bar animation, copy button, auto-redirect, and error display.
 
 ### Story 5.1: form.js — Validation, Loading State & Submission
+
+**GH Issue:** #19
 
 As a seller,
 I want the form to validate my inputs client-side, show a loading state while submitting, and navigate me to the progress screen on success,
@@ -763,6 +799,8 @@ So that I get immediate feedback and a smooth transition without page reloads.
 ---
 
 ### Story 5.2: progress.js — Progress Bar, Copy Button, Auto-Redirect & Error State
+
+**GH Issue:** #20
 
 As a seller,
 I want the progress screen to show my report URL immediately, animate a progress bar through the generation phases, auto-redirect when done, and show a clear error if something goes wrong,
@@ -807,6 +845,8 @@ So that I stay engaged during the wait and never lose access to my report URL.
 
 ### Story 6.1: report.js — Data Fetch, Skeleton State & Your Position Section
 
+**GH Issue:** #21
+
 As a seller,
 I want the report page to show skeleton placeholders while loading and then render my Your Position stats with the PT/ES toggle working,
 So that the page feels fast and I can instantly switch between channels.
@@ -834,6 +874,8 @@ So that the page feels fast and I can instantly switch between channels.
 
 ### Story 6.2: Biggest Opportunities & Quick Wins Tables
 
+**GH Issue:** #22
+
 As a seller,
 I want to see ranked tables with the correct formatting so I can scan my top opportunity in seconds,
 So that the #1 WOW score product is immediately obvious and the data is readable at a glance.
@@ -859,6 +901,8 @@ So that the #1 WOW score product is immediately obvious and the data is readable
 
 ### Story 6.3: CSV Download & CTA
 
+**GH Issue:** #23
+
 As a seller,
 I want a one-click CSV download with the correct filename and a CTA that Pedro can update without touching HTML,
 So that I can take the full data away and Pedro can change the contact link without a code change.
@@ -882,6 +926,8 @@ So that I can take the full data away and Pedro can change the contact link with
 ---
 
 ### Story 6.4: Mobile & Screen-Share Layout Verification
+
+**GH Issue:** #24
 
 As a seller (or Pedro demoing on a call),
 I want the report to be readable on a phone and clean on a shared screen,
@@ -911,6 +957,8 @@ So that Rui can open it on his phone and Pedro can demo live without layout issu
 
 ### Story 6.5: Expired Report & Fetch Error States
 
+**GH Issue:** #25
+
 As a seller who opens a stale or broken report link,
 I want to see a clear, actionable message rather than a blank page or raw error,
 So that I know exactly what happened and how to get a fresh report.
@@ -933,6 +981,8 @@ So that I know exactly what happened and how to get a fresh report.
 ---
 
 ### Story 6.6: Accessibility Baseline
+
+**GH Issue:** #26
 
 As a seller using a screen reader or keyboard navigation,
 I want the form, progress screen, and report page to meet basic accessibility requirements,
@@ -964,6 +1014,8 @@ So that the tool is usable beyond mouse-only interaction.
 
 ### Story 7.1: Empty Catalog & Auth Failure Path
 
+**GH Issue:** #27
+
 As a seller with an invalid or suspended API key,
 I want to see a clear, non-technical error message that tells me what to check,
 So that I know how to resolve the issue without contacting support.
@@ -985,6 +1037,8 @@ So that I know how to resolve the issue without contacting support.
 
 ### Story 7.2: total_count Mismatch Handling
 
+**GH Issue:** #28
+
 As a developer,
 I want the system to fail loudly if OF21 returns fewer records than declared in total_count,
 So that we never generate a report based on a silently truncated catalog.
@@ -1003,6 +1057,8 @@ So that we never generate a report based on a silently truncated catalog.
 ---
 
 ### Story 7.3: P11 Rate Limit & Partial Data Recovery
+
+**GH Issue:** #29
 
 As a seller with a large catalog,
 I want the system to handle P11 rate limits gracefully without failing my report,
@@ -1028,6 +1084,8 @@ So that I still receive a useful report even if some competitor batches hit rate
 
 ### Story 8.1: Hourly TTL Deletion Cron
 
+**GH Issue:** #30
+
 As the system,
 I want to automatically delete expired reports every hour,
 So that report data is not retained beyond the 48-hour TTL commitment made to sellers.
@@ -1047,6 +1105,8 @@ So that report data is not retained beyond the 48-hour TTL commitment made to se
 ---
 
 ### Story 8.2: No Listing Endpoint & Cross-Seller Isolation Verification
+
+**GH Issue:** #31
 
 As a developer,
 I want to confirm that no report listing or enumeration endpoint exists and that all report queries are isolated by report_id,
