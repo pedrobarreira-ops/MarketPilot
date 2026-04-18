@@ -5,9 +5,8 @@
 
 import { mirAklGet } from './apiClient.js'
 import pino from 'pino'
-import { config } from '../../config.js'
 
-const log = pino({ level: config.LOG_LEVEL })
+const log = pino({ level: process.env.LOG_LEVEL || 'info' })
 
 // ── Error classes ────────────────────────────────────────────────────────────
 

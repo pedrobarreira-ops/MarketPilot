@@ -8,8 +8,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test tests/**/*.test.js",
-    "test:atdd": "node --test tests/server.atdd.test.js"
+    "test": "node --env-file=.env --test tests/**/*.test.js",
+    "test:atdd": "node --env-file=.env --test tests/server.atdd.test.js"
   },
   "dependencies": {
     "@fastify/static": "^9.1.1",
