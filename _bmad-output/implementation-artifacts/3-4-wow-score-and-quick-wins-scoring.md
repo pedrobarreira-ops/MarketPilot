@@ -3,7 +3,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.4
 **Story Key:** 3-4-wow-score-and-quick-wins-scoring
-**Status:** ready-for-dev
+**Status:** done
 **Date Created:** 2026-04-18
 
 ---
@@ -331,16 +331,22 @@ After completing all tasks, verify:
 
 ### Agent Model Used
 
-_To be filled by dev agent after implementation._
+claude-sonnet-4-6
 
 ### Completion Notes List
 
-_To be filled by dev agent after implementation._
+- `computeReport` implemented as pure function with no imports, no I/O
+- `scoreChannel` helper extracted for per-channel classification (uncontested/winning/losing)
+- NaN guard added for null/undefined/non-numeric catalog prices (AC-1 dev note)
+- Negative competitor price guard added to prevent false quick-win classification
+- All 37 tests pass (24 ATDD + 13 unit)
 
 ### File List
 
-_To be filled by dev agent after implementation._
+- `src/workers/scoring/computeReport.js` — new file (pure scoring function)
+- `tests/epic3-3.4-wow-scoring.unit.test.js` — new file (13 unit tests for edge cases)
 
 ### Change Log
 
 - 2026-04-18: Story 3.4 created — WOW score and Quick Wins scoring.
+- 2026-04-18: Story 3.4 implemented — 37/37 tests passing. Status set to done.
