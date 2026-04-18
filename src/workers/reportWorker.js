@@ -37,7 +37,11 @@ export async function processJob(job) {
     // Phase B — scan competitors (Story 3.3)
     // Phase C — compute report + scoring (Story 3.4)
     // Phase D — persist report to SQLite (Story 3.5)
+    db.updateJobStatus(job_id, 'complete', 'Relatório pronto!')
+
     // Phase E — send email via Resend (Story 3.6)
+    const { sendReportEmail } = await import('../email/sendReportEmail.js')
+    await sendReportEmail({ email, reportId: report_id, summary: undefined })
   } catch (err) {
     log.error({ job_id, error_code: err.code, error_type: err.constructor.name })
     throw err
