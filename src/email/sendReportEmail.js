@@ -126,8 +126,10 @@ export async function sendReportEmail({ email, reportId, summary }) {
     // forbids dotted-exception-message access patterns in this file.
     const apiError = result && result['error']
     if (apiError) {
+      // Log only the error type (name), not the message — Resend error messages may
+      // contain HTTP status text or internal details that should not appear in logs.
       log.warn(
-        { ...logCtx, error_type: apiError['name'], error_detail: apiError['message'] },
+        { ...logCtx, error_type: apiError['name'] },
         'sendReportEmail: Resend API returned error — email not delivered'
       )
       return
