@@ -9,9 +9,11 @@
 
 import pino from 'pino'
 import { mirAklGet, MiraklApiError } from './apiClient.js'
-import { config } from '../../config.js'
 
-const log = pino({ level: config.LOG_LEVEL })
+// Use process.env.LOG_LEVEL directly — scanCompetitors is a pure utility module
+// that must be importable without full app config (env var) validation. This
+// keeps the module testable in isolation and avoids coupling to server startup.
+const log = pino({ level: process.env.LOG_LEVEL || 'info' })
 
 const BATCH_SIZE = 100
 const CONCURRENCY = 10
