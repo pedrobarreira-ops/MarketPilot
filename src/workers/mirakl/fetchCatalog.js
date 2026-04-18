@@ -30,7 +30,7 @@ export class CatalogTruncationError extends Error {
  * Fetch the full active offer catalog from Mirakl using OF21 (GET /api/offers).
  *
  * Paginates with max=100 per page using offset-based pagination.
- * Filters for state:'ACTIVE' offers only.
+ * Filters for active offers only (offers.active === true — MCP-verified field).
  * Asserts fetched.length === total_count (NFR-R2 — no silent truncation).
  * Calls onProgress(n, total) every 1,000 offers.
  *
@@ -82,25 +82,28 @@ export async function fetchCatalog(baseUrl, apiKey, onProgress, jobId) {
     )
   }
 
-  // AC-3: filter for ACTIVE offers only
-  const activeOffers = allOffers.filter(offer => offer.state === 'ACTIVE')
-
-  // AC-6: empty after ACTIVE filter
-  if (activeOffers.length === 0) {
-    throw new EmptyCatalogError(
-      'Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten.'
-    )
-  }
-
-  // AC-2: assert no silent truncation (NFR-R2)
-  if (activeOffers.length !== total_count) {
+  // AC-2: assert no silent truncation (NFR-R2) — compare raw page count against
+  // total_count BEFORE active filter, because total_count reflects all offers (no
+  // server-side active filter exists on OF21). Verified against MCP 2026-04-18.
+  if (allOffers.length !== total_count) {
     log.error({
       job_id: jobId,
-      fetched: activeOffers.length,
+      fetched: allOffers.length,
       declared: total_count,
       error_type: 'CatalogTruncationError',
     })
     throw new CatalogTruncationError('Catálogo obtido parcialmente. Tenta novamente.')
+  }
+
+  // AC-3: filter for active offers only — MCP-verified field: offers.active (boolean)
+  // NOT offers.state — 'state' is not a documented OF21 response field. Verified 2026-04-18.
+  const activeOffers = allOffers.filter(offer => offer.active === true)
+
+  // AC-6: empty after active filter
+  if (activeOffers.length === 0) {
+    throw new EmptyCatalogError(
+      'Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten.'
+    )
   }
 
   // AC-5: map to [{ean, shop_sku, price, product_title}], skip offers without EAN
