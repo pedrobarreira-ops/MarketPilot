@@ -10,6 +10,7 @@ import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
 import { config } from './config.js'
 import { reportQueue } from './queue/reportQueue.js'  // establishes Redis connection at startup (fail-fast)
+import { worker as reportWorker } from './workers/reportWorker.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { runMigrations } from './db/migrate.js'
 
@@ -79,7 +80,7 @@ try {
   await fastify.listen({ port: config.PORT, host: '0.0.0.0' })
   fastify.log.info(`Server listening on port ${config.PORT}`)
 } catch (err) {
-  fastify.log.error(err)
+  fastify.log.error({ error_type: err.constructor.name, error_code: err.code }, 'Server failed to start')
   process.exit(1)
 }
 
@@ -104,9 +105,13 @@ const shutdown = async (signal) => {
   forceExitTimer.unref() // don't prevent Node from exiting naturally if close resolves
 
   try {
-    // TODO (future story): close BullMQ workers here before closing Fastify,
-    // so in-flight jobs drain gracefully before the server stops accepting requests.
-    // e.g.: await worker.close()
+    // Close the BullMQ worker before Fastify so in-flight jobs can drain.
+    // reportWorker is null in test env — guard to avoid a runtime error.
+    if (reportWorker) {
+      try { await reportWorker.close() } catch (workerErr) {
+        fastify.log.error({ error_type: workerErr.constructor.name }, 'Error closing BullMQ worker')
+      }
+    }
     await fastify.close()
     clearTimeout(forceExitTimer)
     fastify.log.info('Server closed cleanly')
