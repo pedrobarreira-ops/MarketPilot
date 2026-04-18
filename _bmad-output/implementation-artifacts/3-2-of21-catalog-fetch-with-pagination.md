@@ -5,7 +5,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.2
 **Story Key:** 3-2-of21-catalog-fetch-with-pagination
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-18
 
 ---
@@ -371,3 +371,11 @@ claude-sonnet-4-6
 
 - 2026-04-18: Story 3.2 created — OF21 catalog fetch with pagination.
 - 2026-04-18: Story 3.2 implemented — fetchCatalog.js created, reportWorker.js Phase A wired. All 25 ATDD tests pass. Status → review.
+- 2026-04-18: Code review complete (step 5). One patch applied: swapped `--env-file=.env` for `--env-file-if-exists=.env` in npm scripts so `npm test` does not fail on clean checkouts without a local `.env`. All 25 ATDD tests still pass; 3.1 suite still 27/27. Two deferred items (no max-iteration guard on pagination loop; missing `applicable_pricing` yields undefined price) recorded in deferred-work.md. Status → done.
+
+### Review Findings
+
+- [x] [Review][Patch] `--env-file=.env` in npm test scripts fails on clean checkouts without `.env` [package.json:11-12] — fixed by switching to `--env-file-if-exists=.env` (Node 22+ flag). Verified: 25/25 Story 3.2 ATDD tests pass, 27/27 Story 3.1 ATDD tests pass.
+- [x] [Review][Defer] No max-iteration guard on pagination `while(true)` loop [src/workers/mirakl/fetchCatalog.js:50] — deferred, low-risk for MVP scale (offset overflow would require >21M offers; end-of-results signal on `< PAGE_SIZE` is reliable in practice).
+- [x] [Review][Defer] `offer.applicable_pricing?.price` can be undefined and silently pass the truncation assertion [src/workers/mirakl/fetchCatalog.js:114] — deferred, not in AC-5; a downstream concern for Story 3.3/3.4 consumers.
+- Dismissed as noise: (a) `pino` logger reads `process.env.LOG_LEVEL` instead of `config.LOG_LEVEL` — intentional trade-off from commit `ad9ffae` to let ATDD tests run without env vars; (b) EAN-less offers silently skipped after `total_count` assertion — explicitly matches AC-5 spec; (c) misleading `CatalogTruncationError` if first-page `total_count` is absent — OF21 spec guarantees the field.
