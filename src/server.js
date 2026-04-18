@@ -80,7 +80,7 @@ try {
   await fastify.listen({ port: config.PORT, host: '0.0.0.0' })
   fastify.log.info(`Server listening on port ${config.PORT}`)
 } catch (err) {
-  fastify.log.error(err)
+  fastify.log.error({ error_type: err.constructor.name, error_code: err.code }, 'Server failed to start')
   process.exit(1)
 }
 
