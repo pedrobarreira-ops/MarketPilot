@@ -5,7 +5,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.1
 **Story Key:** 3-1-mirakl-api-client-with-retry
-**Status:** ready-for-dev
+**Status:** in-progress
 **Date Created:** 2026-04-18
 
 ---
