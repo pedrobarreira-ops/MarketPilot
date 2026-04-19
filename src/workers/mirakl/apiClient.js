@@ -83,7 +83,7 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
  */
 export function getSafeErrorMessage(err) {
   const status = err?.status
-  const name = err?.constructor?.name ?? err?.name
+  const name = err?.name ?? err?.constructor?.name
 
   if (status === 401 || status === 403) {
     return 'Chave API inválida ou sem permissão. Verifica se a chave está correcta e se a tua conta está activa no Worten.'
