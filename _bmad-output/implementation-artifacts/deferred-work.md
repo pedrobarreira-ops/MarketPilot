@@ -65,3 +65,25 @@ Items deferred during code review. Each entry includes the review date and sourc
 **Gap**: ATDD test covers empty-string api_key. Whitespace-only and null `api_key` values are not test-enforced.
 **Why deferred**: Low-risk (existing validation likely handles these via Fastify schema), but defensive handling should be added even where not test-enforced.
 **Action**: Story 4.1 dev should `.trim()` before length-checking and reject `null`/`undefined` explicitly.
+
+## Deferred from: PR #44 review (2026-04-19)
+
+### Email trimming not implemented on POST /api/generate (Story 4.1)
+**Gap**: PR #44 body claims "leading/trailing whitespace on email/api_key" is trimmed, but only `api_key` is trimmed in [src/routes/generate.js]. Email is passed through untouched to `db.createJob` and the queue payload.
+**Why deferred**: No AC mandates email trimming; Fastify's `format: 'email'` schema will reject most whitespace-wrapped emails anyway. Low-risk cosmetic fix.
+**Action**: Add `.trim()` on `email` alongside the existing `api_key` trim before calling `keyStore.set` / `db.createJob`.
+
+### No behavioral test for `reportQueue.add()` rejection (Story 4.1)
+**Gap**: PR body advertises "enqueue failure → key cleared (orphan/rollback tested)" but no test in `tests/epic4-4.1-post-api-generate.additional.test.js` simulates `queue.add` throwing and asserts that `keyStore.delete(job_id)` ran and `db.updateJobError` was called. Rollback logic at [src/routes/generate.js:70-88] is live code without a failing-path test.
+**Why deferred**: Happy-path coverage is strong (96% behavioral); error-path coverage is the known weak spot. Not a correctness regression — the rollback code is present — but a silent-failure risk if someone refactors it later.
+**Action**: Add an `additional.test.js` case that mocks `reportQueue.add` to reject, calls the route, asserts `keyStore` entry is gone and job row status is `error`.
+
+### No behavioral test for `db.createJob()` failure path (Story 4.1)
+**Gap**: PR body claims "DB insert failure (orphan job cleaned up)" is tested. Route ordering (DB insert before keyStore.set / enqueue) makes orphans impossible by construction — but no test covers what happens when `db.createJob` throws (constraint violation, disk full, locked DB). A future refactor that reorders these calls would silently introduce an orphan without this test catching it.
+**Why deferred**: Current ordering is safe; the absent test is insurance against regression, not a present bug.
+**Action**: Add an `additional.test.js` case that mocks `db.createJob` to throw and asserts the route returns 5xx without calling `keyStore.set` or `reportQueue.add`.
+
+### No assertion that error paths never leak `api_key` or `err.message` into logs (Story 4.1)
+**Gap**: Log redaction tests cover `req.body.api_key`, top-level `api_key`, nested `*.api_key`, and `Authorization` header. They do not assert that error-path log lines (e.g. the rollback catch at [src/routes/generate.js:70-88], or any `fastify.log.error(err)` call) never include `err.message` content that might echo the api_key value back (e.g. from a Mirakl-side validation error surfaced through the queue layer).
+**Why deferred**: Relies on pino redact config + caller discipline (logging structured fields, not err.message). No current code path is known to leak, so this is a defense-in-depth test.
+**Action**: Add an `additional.test.js` case that triggers an error path with a mock that throws an `Error(<api_key value>)` and asserts no log line contains the api_key.
