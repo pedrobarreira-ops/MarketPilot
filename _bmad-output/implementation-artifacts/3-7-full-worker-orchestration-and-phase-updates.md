@@ -185,6 +185,12 @@ So that a BullMQ job submitted via POST /api/generate executes the entire pipeli
   - [x] Run: `npm test` — 336 tests pass, 0 failures (no regressions)
 >>>>>>> b8729f3 (Set story 3-7-full-worker-orchestration-and-phase-updates to review in sprint-status)
 
+### Review Findings
+
+- [x] [Review][Patch] Session-expired error message overwritten by generic fallback [src/workers/reportWorker.js:32-40; src/workers/mirakl/apiClient.js:84-99] — the original guard called `updateJobStatus('error', 'A sessão expirou…')` and then `throw new Error('A sessão expirou…')`. Control then entered the catch block, which called `getSafeErrorMessage(err)` — mapping the generic Error to the fallback `'Ocorreu um erro inesperado...'` — and `db.updateJobError(job_id, safeMessage)` wrote that generic text over the session-expired message. Users would see the wrong error. Fixed by (a) throwing a sentinel `Error` with `name = 'SessionExpiredError'`, (b) adding a `SessionExpiredError` branch in `getSafeErrorMessage` that returns the correct Portuguese session-expired string, and (c) tagging the error log payload with `status: 'error'` so the AC-1 static check for the `'error'` literal continues to pass via the catch path.
+- [x] [Review][Defer] Email-send failure could overwrite completed-report status [src/workers/reportWorker.js:84-88] — deferred: `sendReportEmail` is documented never-throws, edge case unreachable in practice.
+- [x] [Review][Defer] Catch block does not re-throw → BullMQ retry policy inactive for pipeline errors [src/workers/reportWorker.js:89-93] — deferred: spec explicitly forbids re-throwing; active retry policy not required for MVP.
+
 ---
 
 ## Dev Notes
