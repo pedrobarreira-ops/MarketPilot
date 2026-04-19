@@ -313,14 +313,23 @@ Wait for user reply. Do NOT auto-append.
 
 ### Step 2 — If user replied [Y]
 
-1. **Read** the tail of `_bmad-output/implementation-artifacts/deferred-work.md` to confirm the existing section-header format. Current pattern:
+1. **Read the full `deferred-work.md`** to (a) confirm the existing section-header format, and (b) check for overlap with items already captured by BAD's Step 5/7 code reviews. BAD's own reviews sometimes populate a `## Deferred from: code review of <story-slug>` section for the same PR, so genuine duplicates can exist.
+
+   Current header pattern:
    ```
    ## Deferred from: <source> (YYYY-MM-DD)
 
    - **<title>** [file:line] — <explanation>.
    ```
 
-2. **Append** a new section at the end of the file:
+2. **Deduplicate against existing entries.** For each finding in Phase 3's Deferred findings block:
+   - If another entry in the file describes the **same root cause at the same file:line** (even if worded differently), drop this finding.
+   - If a finding partially overlaps (same file but different concern, or related but independent root cause), keep it — over-appending is safer than silent omission.
+   - When in doubt, **keep it and note the partial overlap in the commit message** rather than dropping.
+
+   Track the dropped findings separately — they go in the commit message, not the yaml.
+
+3. **Append** a new section at the end of the file. Include ONLY the non-duplicate findings:
    ```
    ## Deferred from: PR #{PR_NUMBER} review ({ISO-date})
 
@@ -328,16 +337,23 @@ Wait for user reply. Do NOT auto-append.
    - **<finding 2 title>** [<location>] — <explanation>.
    ...
    ```
-   Use the exact bullets emitted in Phase 3's Deferred findings block.
+   If dedup removed all findings, skip the append entirely — report to the user that all items were duplicates of existing entries.
 
-3. **Commit and push**:
+4. **Commit and push** with a message that states both what was appended AND what was dropped:
    ```bash
    git add _bmad-output/implementation-artifacts/deferred-work.md
-   git commit -m "Record deferred findings from PR #{PR_NUMBER} review"
+   git commit -m "Record deferred findings from PR #{PR_NUMBER} review
+
+   {short list of appended items, one per line}
+
+   {If any dropped as duplicates:}
+   N finding(s) dropped as duplicates of existing entries:
+   - {dropped finding} duplicates {existing section / line reference}.
+   "
    git push origin main
    ```
 
-4. **Confirm** to the user: `Appended {N} findings to deferred-work.md ({commit-sha}).`
+5. **Confirm** to the user: `Appended {N} findings to deferred-work.md ({commit-sha}). Dropped {M} as duplicates.`  (Omit the "Dropped" clause if M=0.)
 
 ### Step 3 — If user replied [N]
 
