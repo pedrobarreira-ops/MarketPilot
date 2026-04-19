@@ -73,3 +73,29 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
     lastStatus
   )
 }
+
+/**
+ * Map any error to a safe Portuguese user-facing message.
+ * Never exposes raw error text or API response content.
+ *
+ * @param {Error} err
+ * @returns {string} Portuguese user-facing message
+ */
+export function getSafeErrorMessage(err) {
+  const status = err?.status
+  const name = err?.name ?? err?.constructor?.name
+
+  if (status === 401 || status === 403) {
+    return 'Chave API inválida ou sem permissão. Verifica se a chave está correcta e se a tua conta está activa no Worten.'
+  }
+  if (name === 'SessionExpiredError') {
+    return 'A sessão expirou. Por favor, submete o formulário novamente.'
+  }
+  if (name === 'EmptyCatalogError') {
+    return 'Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten.'
+  }
+  if (name === 'CatalogTruncationError') {
+    return 'Catálogo obtido parcialmente. Tenta novamente.'
+  }
+  return 'Ocorreu um erro inesperado. Tenta novamente ou contacta o suporte.'
+}
