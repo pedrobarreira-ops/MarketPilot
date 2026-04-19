@@ -150,3 +150,30 @@ Items deferred during code review. Each entry includes the review date and sourc
 **Gap**: The ATDD file verifies `api_key` is absent from the response body but does not assert that request/response log lines never contain api_key or Authorization header values. The jobs route doesn't receive api_key in this flow (it's a polling-only GET), so the risk is theoretical — but relies entirely on the global pino redact config in `src/server.js` staying correct. A future redact-path regression would silently re-enable leaks.
 **Why deferred**: Defense-in-depth. No current code path in `src/routes/jobs.js` handles api_key, so there's nothing concrete to leak today. Distinct from the existing "control-character scrubbing" entry, which is about log-line injection, not api_key redaction.
 **Action**: Once story 1.2's global redact test is generalised into a shared helper, reuse it on the jobs route: send a request with an `Authorization: Bearer <value>` header and an `api_key` query string, capture pino log output, and assert neither value appears unredacted in any log line.
+
+## Deferred from: PR #46 review (2026-04-19)
+
+*Note: BAD's Phase 1 already recorded "CSV formula injection", "No Cache-Control header", and "No rate limiting" under "code review of 4-3-get-api-reports-and-csv". The items below are net-new and orthogonal.*
+
+### No explicit assertion that `email`/`api_key` is absent from `/api/reports/:id` JSON response (Story 4.3)
+**Gap**: Current ATDD file asserts presence of `data.summary`, `data.opportunities`, `data.quickwins` but does not assert that the JSON body does NOT contain `email` or `api_key` strings. Absence is enforced today by `getReport()`'s explicit column selection in `src/db/queries.js`, so the risk is regression-only: a future refactor that spreads row fields (`...row`) or extends `getReport()` to return `email` for a templating feature would silently leak without tripping any test.
+**Why deferred**: Implicit coverage via narrow column selection; no live leak. Defense-in-depth.
+**Action**: Add an `.additional.test.js` case asserting `!JSON.stringify(body).includes(email)` and `!JSON.stringify(body).includes('api_key')` against a seeded report whose generation included a known api_key.
+
+### No test for `csv_data = null` or empty-string (Story 4.3)
+**Gap**: `/api/reports/:id/csv` streams `row.csv_data` verbatim via `reply.send(row.csv_data)`. If `csv_data` is null or empty (e.g. worker crashed between the report-row insert and the csv_data column write; DB corruption), today's route returns a 200 with empty body and `Content-Type: text/csv; charset=utf-8` — the browser downloads an empty file with no error. Spec's AC-3 only covers "expired" reports (where `getReport` returns null), not populated rows with missing csv_data.
+**Why deferred**: Today's worker pipeline (Story 3.7) inserts csv_data atomically with the report row, so the null-csv_data scenario is not observed. Hardening the route makes it robust to future worker-side regressions.
+**Action**: Add a route-level guard (`if (!row.csv_data) return 404 or 500 with clear message`) and a behavioral test that seeds a non-expired report with `csv_data = null` and asserts the route does not return a 200 with empty body.
+
+### CSV Byte-Order Mark not asserted (Story 4.3 / Story 3.5)
+**Gap**: `buildReport()` emits CSV without a UTF-8 BOM (`EF BB BF`). No test locks this down. If a future change adds a BOM for Excel compatibility, the exact-byte ATDD assertion against `csv_data` may still pass while Excel now interprets the header correctly but every parser that naïvely reads the first 3 bytes (e.g. Python `csv.DictReader` without encoding='utf-8-sig') sees a mangled first column name. Conversely, if a future locale adds non-ASCII to `product_title` and a BOM is needed for Excel, its absence will surface as mojibake in sellers' downloads.
+**Why deferred**: Current catalogs are ASCII-safe; no observed Excel issue. The design choice (no BOM) is implicit, not documented or tested.
+**Action**: Add a byte-level assertion in the `.additional.test.js` that explicitly checks `csv_data.slice(0, 3) !== '\uFEFF'` (or `!csv_data.startsWith('\uFEFF')`). If a future locale requires a BOM, make the change deliberate by updating this test.
+
+### PR body claims `Content-Type: text/csv` (PR #46)
+**Gap**: PR body cites `Content-Type: text/csv`; actual implementation sets `text/csv; charset=utf-8` in `src/routes/reports.js`. Cosmetic body overstatement per the known BAD Step 6 hallucination pattern. Implementation is correct (charset declaration is a minor improvement over the spec's bare `text/csv`).
+**Why deferred**: Not actionable — noting for future audit context.
+
+### PR body overstates "12-column header contract enforcement" (PR #46)
+**Gap**: PR body describes the CSV route as "enforcing" the 12-column header contract. The route streams `row.csv_data` verbatim from SQLite; header enforcement lives upstream in Story 3.5's `buildReport()`. The route itself has a documentation comment listing the columns but no code that validates them. Consistent with the "(d) CSV formula injection deferred to Story 3.5" caveat in the same PR body.
+**Why deferred**: Not actionable — noting for future audit context and as a reminder that header-contract regressions would need to be caught at the build-time test (Story 3.5), not at the route test.
