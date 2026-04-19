@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-19  (epic-3 retrospective complete; epic-3 flipped to done)
+last_updated: 2026-04-19  (Phase 0 reconciliation: story 4.1 PR #44 open → set to review)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -74,8 +74,8 @@ development_status:
   epic-3-retrospective: done
 
   # ── Epic 4: HTTP API Layer ────────────────────────────────────────────────
-  epic-4: backlog
-  4-1-post-api-generate-route: backlog
+  epic-4: in-progress
+  4-1-post-api-generate-route: review
   4-2-get-api-jobs-polling-endpoint: backlog
   4-3-get-api-reports-and-csv-routes: backlog
   epic-4-retrospective: optional
