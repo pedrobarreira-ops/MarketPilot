@@ -131,3 +131,22 @@ Items deferred during code review. Each entry includes the review date and sourc
 **Gap**: A token-holder could repeatedly hit `/api/reports/:id/csv` to force large TEXT-column reads from SQLite. Fastify app has no `@fastify/rate-limit` plugin configured. For Worten-scale catalogs (~6 MB CSV), this is bounded; for future scale, it's a DoS vector.
 **Why deferred**: Report IDs are unguessable; legitimate users poll infrequently (HTML page fetches JSON once, downloads CSV once). Traefik can enforce rate limits externally in the MVP deploy. Not a correctness issue.
 **Action**: Covered by the broader rate-limiting action already deferred for Story 4.2 (install `@fastify/rate-limit` globally). When that work happens, apply the global default to `/api/reports/:id` and a lighter budget to `/csv` (legitimate use is one-shot download).
+
+## Deferred from: PR #45 review (2026-04-19)
+
+*Note: One finding from the audit ("No behavioral test for `db.getJobStatus()` throwing") duplicates an existing entry under "code review of 4-2-get-api-jobs-polling-endpoint" and is omitted here. The items below are net-new.*
+
+### Malformed / oversized `job_id` not tested at route boundary (Story 4.2)
+**Gap**: ATDD tests in [tests/epic4-4.2-get-api-jobs-polling.atdd.test.js] cover the happy 404 path for an unknown UUID but do not assert route behaviour for pathological inputs — very long strings (e.g. 10 KB), special characters (`../`, `%00`, `?`, `&`), or malformed UUIDs. The route passes `job_id` straight to `db.getJobStatus()` with no format check; SQLite's prepared statement parameter binding is safe against injection, but a client sending a 10-MB path segment would currently traverse the full stack to the DB before returning 404.
+**Why deferred**: Distinct from the adjacent Phase-1 entry on "control-character scrubbing in access logs" — that one is about log-line injection; this one is about route-level input-length / malformed-input handling. Low risk (Fastify default body/URL limits already bound the damage; SQLite is injection-safe), but a small upfront length/format guard would let the route return 404 without a DB round-trip.
+**Action**: Add a boundary test (oversized string, special characters, non-UUID) and either a lightweight `typeof`+length guard or a Fastify route-param schema (`{ params: { type: 'object', properties: { job_id: { type: 'string', maxLength: 128 } } } }`) to short-circuit obvious junk at routing time.
+
+### AC-6 status-value coverage incomplete in ATDD (Story 4.2)
+**Gap**: AC-6 asserts "all six valid status values (`queued`, `fetching_catalog`, `scanning_competitors`, `building_report`, `complete`, `error`) are representable in the response." The ATDD file only seeds a job with `queued` and polls once; the other five statuses are not exercised end-to-end. Today the route is a passthrough (`status` returned verbatim), so coverage is trivially satisfied — but a future refactor that narrows, transforms, or filters statuses would not be caught by the test suite.
+**Why deferred**: Low-risk (route has no transformation logic). Parameterising the test over all six status values would harden the AC without adding production code.
+**Action**: Extend ATDD with a parameterised `for (const status of ALL_STATUSES)` loop that seeds a job at each status and asserts the response echoes it unchanged.
+
+### Log redaction assertion missing on jobs route (Story 4.2)
+**Gap**: The ATDD file verifies `api_key` is absent from the response body but does not assert that request/response log lines never contain api_key or Authorization header values. The jobs route doesn't receive api_key in this flow (it's a polling-only GET), so the risk is theoretical — but relies entirely on the global pino redact config in `src/server.js` staying correct. A future redact-path regression would silently re-enable leaks.
+**Why deferred**: Defense-in-depth. No current code path in `src/routes/jobs.js` handles api_key, so there's nothing concrete to leak today. Distinct from the existing "control-character scrubbing" entry, which is about log-line injection, not api_key redaction.
+**Action**: Once story 1.2's global redact test is generalised into a shared helper, reuse it on the jobs route: send a request with an `Authorization: Bearer <value>` header and an `api_key` query string, capture pino log output, and assert neither value appears unredacted in any log line.
