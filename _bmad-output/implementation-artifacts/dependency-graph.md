@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-18T20:00:00Z_
+_Last updated: 2026-04-19T00:00:00Z_
 
 ## Stories
 
@@ -17,8 +17,8 @@ _Last updated: 2026-04-18T20:00:00Z_
 | 3.3   | 3    | P11 Competitor Scan (Batch + Concurrent) | done | #11 | #39 | merged | 3.1 | ✅ Yes (done) |
 | 3.4   | 3    | WOW Score + Quick Wins Scoring | done | #12 | #40 | merged | 3.2, 3.3 | ✅ Yes (done) |
 | 3.5   | 3    | Report Persistence & CSV Generation | done | #13 | #41 | merged | 3.4 | ✅ Yes (done) |
-| 3.6   | 3    | Email Dispatch via Resend | backlog | #14 | — | — | 3.5 | ✅ Yes |
-| 3.7   | 3    | Full Worker Orchestration & Phase Updates | backlog | #15 | — | — | 3.2, 3.3, 3.4, 3.5, 3.6 | ❌ No (3.6 not merged) |
+| 3.6   | 3    | Email Dispatch via Resend | done | #14 | #42 | merged | 3.5 | ✅ Yes (done) |
+| 3.7   | 3    | Full Worker Orchestration & Phase Updates | backlog | #15 | — | — | 3.2, 3.3, 3.4, 3.5, 3.6 | ✅ Yes |
 | 4.1   | 4    | POST /api/generate Route | backlog | #16 | — | — | 1.2, 3.7 | ❌ No (epic 3 not complete) |
 | 4.2   | 4    | GET /api/jobs/:job_id Polling Endpoint | backlog | #17 | — | — | 4.1 | ❌ No (epic 3 not complete) |
 | 4.3   | 4    | GET /api/reports & CSV Routes | backlog | #18 | — | — | 4.1 | ❌ No (epic 3 not complete) |
@@ -69,11 +69,11 @@ _Last updated: 2026-04-18T20:00:00Z_
 
 - Epic 1 is fully complete — all 5 stories have merged PRs.
 - Epic 2 is fully complete — both 2.1 (#35) and 2.2 (#36) merged; retrospective done.
-- Epic 3 is the active epic. Stories 3.1–3.5 are all merged (PRs #37–#41).
-- **Story 3.5 PR #41 merged on 2026-04-18** — worktree `.worktrees/story-3.5-report-persistence-and-csv-generation` and remote branch cleaned up.
-- **Story 3.6 is now Ready to Work** — its only dependency (3.5) is merged.
+- Epic 3 is the active epic. Stories 3.1–3.6 are all merged (PRs #37–#42).
+- **Story 3.6 PR #42 merged on 2026-04-19** — worktree `.worktrees/story-3.6-email-dispatch-via-resend` and remote branch cleaned up.
+- **Story 3.7 is now Ready to Work** — all its dependencies (3.2, 3.3, 3.4, 3.5, 3.6) are merged.
 - Epic ordering constraint: epics 4–8 may not start until epic 3 is fully merged into main.
 - Stories 7.1, 7.2, 7.3 have their direct dependencies met (3.2/3.3 merged) but are blocked by the epic ordering rule (epic 3 not yet complete).
-- Parallelization: 3.6 is next; 3.6 → 3.7 are linear. Once 3.7 merges, epic 3 is complete and epic 4 unlocks.
+- Parallelization: 3.7 is the final story in epic 3; once 3.7 merges, epic 3 is complete and epic 4 unlocks.
 - Once epic 3 completes: 4.1 unblocks; once 4.1 merges: 4.2, 4.3, 5.1 can run in parallel.
 - No pending open PRs at this time — all open PRs have been merged.
