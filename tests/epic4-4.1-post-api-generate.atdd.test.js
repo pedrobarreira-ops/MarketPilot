@@ -83,38 +83,21 @@ async function buildTestApp() {
 
   // ── Spy: intercept reportQueue.add without calling real Redis ─────────────
   const addedJobs = []
-  const originalAdd = reportQueue.add.bind(reportQueue)
   reportQueue.add = async (name, data, opts) => {
     addedJobs.push({ name, data })
     return { id: 'stub-job-id' }
   }
 
-  // ── Spy: wrap keyStore.set to capture calls while keeping real Map intact ─
-  const keyStoreCalls = []
+  // ── Import keyStore so AC-4 tests can inspect the real Map after each POST ─
+  // ES named exports are live bindings — they cannot be monkey-patched from outside.
+  // We verify keyStore.set calls behaviorally: after a successful POST, the real
+  // keyStore Map must contain the job_id → api_key entry set by the route handler.
   const keyStore = await import('../src/queue/keyStore.js')
-  const originalSet = keyStore.set
-  // ES module named exports are live bindings — we cannot reassign them directly.
-  // Instead we track calls via a wrapper invoked around the route registration.
-  // The route imports keyStore at module load time, so we intercept at the
-  // module namespace level using Object.defineProperty on the namespace object.
-  let keyStoreSetSpy = (...args) => {
-    keyStoreCalls.push({ jobId: args[0], apiKey: args[1] })
-    return originalSet(...args)
-  }
 
   // ── Register the REAL generate route plugin ───────────────────────────────
-  // generateRoute imports keyStore, reportQueue, and db at its own module scope.
-  // We need those imports to resolve to the same module instances we've already
-  // patched above. Because Node caches ES modules by URL, the dynamic imports
-  // above and the ones inside generate.js will share the same module instance.
-  //
-  // For keyStore: ES named exports cannot be monkey-patched from outside.
-  // We use a different approach — we patch the module namespace object.
-  // In Node.js ESM, the module namespace is sealed, so we must use a Proxy trick
-  // OR — simpler — we verify keyStore.set calls by checking the keyStore Map
-  // state after each request (job_id → api_key mapping persists in the real Map).
-  // This cross-checks AC-4 behaviorally rather than via a call-count spy.
-
+  // Because Node caches ES modules by URL, the dynamic imports above and the ones
+  // inside generate.js share the same module instance — patches applied here are
+  // visible to the route handler at request time.
   const { default: generateRoute } = await import('../src/routes/generate.js')
 
   const fastify = Fastify({ logger: { level: 'silent' }, trustProxy: true })
@@ -126,7 +109,7 @@ async function buildTestApp() {
   await fastify.ready()
 
   // Return the real keyStore so AC-4 tests can inspect .has(job_id) / .get(job_id)
-  return { app: fastify, addedJobs, keyStore, keyStoreCalls: null /* see AC-4 notes */ }
+  return { app: fastify, addedJobs, keyStore }
 }
 
 // ── test suite ─────────────────────────────────────────────────────────────

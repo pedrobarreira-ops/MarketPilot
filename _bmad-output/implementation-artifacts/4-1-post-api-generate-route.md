@@ -3,7 +3,7 @@
 **Epic:** 4 — HTTP API Layer
 **Story:** 4.1
 **Story Key:** 4-1-post-api-generate-route
-**Status:** ready-for-dev
+**Status:** done
 **Date Created:** 2026-04-19
 
 Endpoints verified against MCP-Verified Endpoint Reference (epics-distillate.md, 2026-04-18). This story does NOT call any Mirakl endpoints directly — it hands off to the existing worker via BullMQ.
