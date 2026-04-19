@@ -368,6 +368,17 @@ describe('Story 4.3 — GET /api/reports/:id + CSV routes', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/reports/no-such-report/csv' })
       assert.equal(res.statusCode, 404, 'unknown report CSV must return 404')
     })
+
+    test('CSV first line is the exact spec header', async () => {
+      const EXPECTED_CSV_HEADER = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
+      const report = makeReport()
+      insertReport(report)
+
+      const res = await app.inject({ method: 'GET', url: `/api/reports/${report.report_id}/csv` })
+      const firstLine = res.body.split('\n')[0]
+      // CSV column order is part of the spec contract — refactoring to alphabetize or set-based structure must not regress this. See test-plan-epic-4-http-api-layer.md.
+      assert.strictEqual(firstLine, EXPECTED_CSV_HEADER, 'CSV first line must be exactly the 12-column header in spec order')
+    })
   })
 
   // ── AC-5: CSV Content-Type ────────────────────────────────────────────────

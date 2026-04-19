@@ -79,6 +79,10 @@ This test plan covers all acceptance criteria for Epic 4. Tests are written for 
 | AC-9 | `GET /report/:id` → `public/report.html` (static shell) | T9.1, T9.2, T9.3 |
 | AC-10 | 404 body: `{ error: "report_not_found", message: "Este relatório..." }` exact shape | T10.1, T10.2, T10.3 |
 
+### Spec contract notes
+
+> **CSV header contract**: First line of every CSV response MUST be the exact 12-column header `EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score` in this exact order. Test: `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js → "CSV first line is the exact spec header"`. Refactoring to alphabetize or use a set-based structure is forbidden.
+
 ---
 
 ## Security Invariants (Cross-Cutting)

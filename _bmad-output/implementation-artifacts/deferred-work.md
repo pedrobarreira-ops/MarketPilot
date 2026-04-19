@@ -53,3 +53,15 @@ Items deferred during code review. Each entry includes the review date and sourc
 
 - **Email-send failure overwrites completed-report status** [src/workers/reportWorker.js:84-88] — the `await cachedEmailModule.sendReportEmail(...)` call sits inside the main try block, so any unexpected throw (e.g. dynamic-import failure, or a future regression in `sendReportEmail`) would trip the generic catch and overwrite a successful `'complete'` status with `'error'`, even though the report was already persisted and retrievable via `/api/reports/:id`. Low likelihood in practice because `sendReportEmail` is documented as never-throwing (Story 3.6) and internally swallows all Resend / transport errors. Defer: wrap the Phase E email dispatch in its own try/catch that logs-but-does-not-propagate as a hardening task alongside the future CI refresh. No active AC requires it.
 - **Catch block intentionally does not re-throw → BullMQ retry policy inactive for pipeline errors** [src/workers/reportWorker.js:89-93] — per spec Dev Notes ("Do NOT re-throw in the catch block — job status is set to error; BullMQ handles retry separately") the worker marks the DB row `status='error'` and returns successfully, so BullMQ treats the job as completed and no automatic retry fires. NFR-R1's "3-retry exponential backoff" is therefore a documented capability rather than an active behavior for application-level failures (transport-level retries still occur inside `mirAklGet`). Revisit when the retry policy is actually needed, e.g. an ops dashboard / re-queue button; at that point either re-throw selected error classes or add an explicit `job.retry()` path.
+
+## Deferred from: Epic 4 Test Design pre-Phase-2 review (2026-04-19)
+
+### Pino redact config drift risk (Story 4.1)
+**Gap**: ATDD test for POST /api/generate mocks log output, so a wrong/missing pino redact config does not fail tests but leaks `api_key` at runtime.
+**Spec reference**: Story 1.2 Fastify pino config — paths `['req.headers.authorization', 'req.body.api_key', '*.api_key', '*.Authorization']`, censor `'[REDACTED]'`.
+**Why deferred**: Not test-enforced; relying on dev briefing + code review to catch drift. Worth a follow-up runtime invariant check (e.g. an integration test that submits a real request and asserts redacted log lines).
+
+### keyStore validation — defensive null/whitespace handling (Story 4.1)
+**Gap**: ATDD test covers empty-string api_key. Whitespace-only and null `api_key` values are not test-enforced.
+**Why deferred**: Low-risk (existing validation likely handles these via Fastify schema), but defensive handling should be added even where not test-enforced.
+**Action**: Story 4.1 dev should `.trim()` before length-checking and reject `null`/`undefined` explicitly.
