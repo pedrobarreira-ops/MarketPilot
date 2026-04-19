@@ -106,6 +106,18 @@ So that my browser can poll for progress and the worker can begin the report gen
   - [ ] All tests pass (22 tests across AC-1 through AC-10)
   - [ ] Run: `npm test` — all existing tests remain green (no regressions)
 
+### Review Findings
+
+Code review performed 2026-04-19 (Step 5). Runtime-invariant focus per pipeline instructions.
+
+- [x] [Review][Patch] queue.add failure leaves orphan keyStore entry + stuck-queued DB row [src/routes/generate.js] — HIGH. Reordered side effects to `db.createJob → keyStore.set → queue.add` and wrapped the enqueue in try/catch that rolls back `keyStore.delete(job_id)` and `db.updateJobError(job_id, ...)` so a Redis outage cannot leave an api_key in memory or a phantom 'queued' row with no worker.
+- [x] [Review][Patch] db.createJob after queue.add created an orphan-worker scenario [src/routes/generate.js] — HIGH. With the old order, a DB insert failure AFTER enqueue succeeded meant the worker would start the Mirakl pipeline, burn quota, and email the user while the client saw 500 and the job row never existed. Reorder above fixes this (DB first — if it fails, nothing is enqueued).
+- [x] [Review][Patch] api_key stored un-trimmed [src/routes/generate.js:47] — LOW. A padded key (`"   abc  "`) would reach Mirakl's Authorization header unchanged and fail as an opaque 401. Now `.trim()` before `keyStore.set()`.
+- [x] [Review][Patch] ATDD mocks log output so pino redact drift is not test-enforced [tests/] — the pre-Phase-2 deferred gap. Added `tests/epic4-4.1-post-api-generate.additional.test.js` with: (a) three pino-redact assertions using the EXACT paths from `src/server.js`, (b) a source-text invariant that fails if someone drops a redact path from `src/server.js`, (c) the queue.add failure rollback test, (d) the trim-before-store test. 6 new tests, all green.
+- [x] [Review][Dismiss] Race between keyStore.set and queue.add — N/A. keyStore.set is synchronous and the worker runs in the same Node.js process (server.js imports reportWorker). There is no event-loop window where the worker can observe a missing key.
+
+Test counts after fixes: story ATDD 27/27 pass (unchanged), additional invariant suite 6/6 pass (new), full suite 439/439 pass (was 433, +6 new, 0 regressions).
+
 ---
 
 ## Dev Notes
