@@ -30,7 +30,12 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
     url.searchParams.set(k, String(v))
   }
 
-  const headers = { 'X-Mirakl-Front-Api-Key': apiKey }
+  // Auth header — Worten's Mirakl deployment uses `Authorization: <key>` (raw key,
+  // no Bearer prefix). Verified against MCP security schema (name: "Authorization")
+  // and the live probe (scripts/mcp-probe.js + scripts/scale_test.js both use this).
+  // ⚠️ Some other Mirakl operators use `X-Mirakl-Front-Api-Key` — if this code is
+  // ever reused against a different instance, verify with a live probe first.
+  const headers = { Authorization: apiKey }
 
   let lastStatus = 0 // 0 signals transport-level failure (no HTTP status)
   let lastMessage

@@ -113,8 +113,9 @@ export async function sendReportEmail({ email, reportId, summary }) {
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
+    const senderFrom = process.env.RESEND_FROM || 'MarketPilot <no-reply@marketpilot.pt>'
     const result = await resend.emails.send({
-      from: 'MarketPilot <no-reply@marketpilot.pt>',
+      from: senderFrom,
       to: email,
       subject: 'O teu relatório MarketPilot está pronto',
       html: htmlBody,

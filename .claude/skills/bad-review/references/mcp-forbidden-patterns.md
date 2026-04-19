@@ -81,6 +81,25 @@ This is context-dependent — the existence of `offer.price` is fine (it's a val
 
 ---
 
+## Pattern 6 — Wrong Mirakl auth header name
+
+**Symptom:** API client sets the wrong auth header — most commonly `X-Mirakl-Front-Api-Key` when the instance expects `Authorization`.
+
+**Why it's broken:** Mirakl operators configure auth differently per deployment. Worten's instance uses `Authorization: <key>` (raw key, no `Bearer` prefix). Verified via MCP security schema (`securitySchemes.shop_api_key.name === "Authorization"`). Some other Mirakl operators use `X-Mirakl-Front-Api-Key` — but NOT Worten. Using the wrong header name → every request 401s in production while tests pass (because tests mock the fetch call and don't verify the actual header value against reality).
+
+**Correct pattern for Worten:** `const headers = { Authorization: apiKey }` — raw key, no prefix.
+
+**Grep:**
+```bash
+grep -nE "'X-Mirakl-Front-Api-Key'|\"X-Mirakl-Front-Api-Key\"" src/workers/mirakl/
+```
+
+Live probe evidence: `scripts/mcp-probe.js` and `scripts/scale_test.js` both use `Authorization: <key>` and succeed. When `apiClient.js` used `X-Mirakl-Front-Api-Key` instead (fixed 2026-04-19), the end-to-end integration test hit 401 in 5 seconds at Phase A. This is the textbook "ATDD keyword-grep passes + live integration fails" pattern — the ATDD test happened to assert the wrong header literal, so it locked the bug in place.
+
+**Generalization:** when writing API-client code for any third-party service where the auth scheme is deployment-specific, **require a live probe before committing** — ATDD tests that assert a specific header value only verify you didn't have a typo, not that you picked the right scheme.
+
+---
+
 ## Pattern 5 — Compare `activeOffers.length` to `total_count`
 
 **Symptom:** Truncation check compares POST-active-filter count to the API's `total_count`:

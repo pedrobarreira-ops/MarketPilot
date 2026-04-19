@@ -369,7 +369,12 @@ describe('Story 3.1 — Mirakl API client with retry', async () => {
       )
     })
 
-    test('passes apiKey in X-Mirakl-Front-Api-Key header', async () => {
+    test('passes apiKey in Authorization header (MCP-verified; NOT X-Mirakl-Front-Api-Key)', async () => {
+      // Worten's Mirakl deployment uses `Authorization: <key>` (raw key, no Bearer
+      // prefix). Verified against MCP security schema (securitySchemes.shop_api_key.
+      // name = "Authorization") and the live probe. Earlier version of this test
+      // asserted `X-Mirakl-Front-Api-Key` — that's the wrong header for Worten and
+      // caused 401 errors in the end-to-end integration test (2026-04-19).
       let capturedHeaders
       globalThis.fetch = async (url, opts) => {
         capturedHeaders = opts && opts.headers ? opts.headers : {}
@@ -378,14 +383,20 @@ describe('Story 3.1 — Mirakl API client with retry', async () => {
       await mirAklGet('https://example.com', '/api/offers', {}, 'test-api-key-value')
 
       const headerKey = Object.keys(capturedHeaders).find(
-        k => k.toLowerCase() === 'x-mirakl-front-api-key'
+        k => k.toLowerCase() === 'authorization'
       )
-      assert.ok(headerKey, 'Request must include X-Mirakl-Front-Api-Key header')
+      assert.ok(headerKey, 'Request must include Authorization header (MCP-verified)')
       assert.equal(
         capturedHeaders[headerKey],
         'test-api-key-value',
-        'X-Mirakl-Front-Api-Key header must contain the apiKey parameter value'
+        'Authorization header must contain the raw apiKey (no Bearer prefix)'
       )
+
+      // Defensive: ensure the wrong header is NOT also being set
+      const wrongKey = Object.keys(capturedHeaders).find(
+        k => k.toLowerCase() === 'x-mirakl-front-api-key'
+      )
+      assert.ok(!wrongKey, 'Must not set X-Mirakl-Front-Api-Key — Worten uses Authorization')
     })
   })
 })
