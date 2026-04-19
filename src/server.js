@@ -14,6 +14,7 @@ import { worker as reportWorker } from './workers/reportWorker.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { runMigrations } from './db/migrate.js'
 import generateRoute from './routes/generate.js'
+import jobsRoute from './routes/jobs.js'
 import reportsRoute from './routes/reports.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -79,6 +80,7 @@ try {
 
 // Register routes — AFTER setErrorHandler and runMigrations (Story 4.1)
 await fastify.register(generateRoute)
+await fastify.register(jobsRoute)   // Story 4.2: GET /api/jobs/:job_id polling
 // Report retrieval routes — GET /api/reports/:id and GET /api/reports/:id/csv (Story 4.3)
 await fastify.register(reportsRoute)
 

