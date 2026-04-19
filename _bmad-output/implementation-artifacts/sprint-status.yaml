@@ -35,10 +35,12 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-19  (story 3.7 PR code review complete — marked done)
+last_updated: 2026-04-19  (epic-3 retrospective complete; epic-3 flipped to done)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
+# epic-2-retrospective → done (2026-04-18)
+# epic-3-retrospective → done (2026-04-19)
 project: MarketPilot Free Report
 project_key: NOKEY
 tracking_system: file-system
@@ -61,7 +63,7 @@ development_status:
   epic-2-retrospective: done
 
   # ── Epic 3: Report Generation Pipeline ───────────────────────────────────
-  epic-3: in-progress
+  epic-3: done
   3-1-mirakl-api-client-with-retry: done
   3-2-of21-catalog-fetch-with-pagination: done
   3-3-p11-competitor-scan: done
@@ -69,7 +71,7 @@ development_status:
   3-5-report-persistence-and-csv-generation: done
   3-6-email-dispatch-via-resend: done
   3-7-full-worker-orchestration-and-phase-updates: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   # ── Epic 4: HTTP API Layer ────────────────────────────────────────────────
   epic-4: backlog
