@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-19T15:30:00Z_
+_Last updated: 2026-04-19T20:00:00Z_
 
 ## Stories
 
@@ -19,10 +19,10 @@ _Last updated: 2026-04-19T15:30:00Z_
 | 3.5   | 3    | Report Persistence & CSV Generation | done | #13 | #41 | merged | 3.4 | ✅ Yes (done) |
 | 3.6   | 3    | Email Dispatch via Resend | done | #14 | #42 | merged | 3.5 | ✅ Yes (done) |
 | 3.7   | 3    | Full Worker Orchestration & Phase Updates | done | #15 | #43 | merged | 3.2, 3.3, 3.4, 3.5, 3.6 | ✅ Yes (done) |
-| 4.1   | 4    | POST /api/generate Route | review | #16 | #44 | open | 1.2, 3.7 | ❌ No (PR #44 not yet merged) |
-| 4.2   | 4    | GET /api/jobs/:job_id Polling Endpoint | backlog | #17 | — | — | 4.1 | ❌ No (4.1 not merged) |
-| 4.3   | 4    | GET /api/reports & CSV Routes | backlog | #18 | — | — | 4.1 | ❌ No (4.1 not merged) |
-| 5.1   | 5    | form.js — Validation, Loading & Submission | backlog | #19 | — | — | 4.1 | ❌ No (4.1 not merged) |
+| 4.1   | 4    | POST /api/generate Route | done | #16 | #44 | merged | 1.2, 3.7 | ✅ Yes (done) |
+| 4.2   | 4    | GET /api/jobs/:job_id Polling Endpoint | backlog | #17 | — | — | 4.1 | ✅ Yes |
+| 4.3   | 4    | GET /api/reports & CSV Routes | backlog | #18 | — | — | 4.1 | ✅ Yes |
+| 5.1   | 5    | form.js — Validation, Loading & Submission | backlog | #19 | — | — | 4.1 | ✅ Yes |
 | 5.2   | 5    | progress.js — Progress Bar, Copy & Redirect | backlog | #20 | — | — | 5.1 | ❌ No (5.1 not merged) |
 | 6.1   | 6    | report.js — Data Fetch, Skeleton & Your Position | backlog | #21 | — | — | 4.3 | ❌ No (4.3 not merged) |
 | 6.2   | 6    | Biggest Opportunities & Quick Wins Tables | backlog | #22 | — | — | 6.1 | ❌ No (6.1 not merged) |
@@ -68,11 +68,8 @@ _Last updated: 2026-04-19T15:30:00Z_
 ## Notes
 
 - Epics 1, 2, and 3 are fully complete — all stories have merged PRs.
-- **Story 3.7 PR #43 merged** — worktree `.worktrees/story-3.7-full-worker-orchestration-and-phase-updates` cleaned up.
-- **Epic 3 complete** — epic ordering constraint lifted; epic 4 stories can now begin.
-- **Story 4.1 PR #44 is open** — in review, not yet merged. Worktree `.worktrees/story-4.1-post-api-generate-route` still exists.
-- Push-race reconciliation applied 2026-04-19: stranded sprint-status commits (done) on local main reset to origin/main; 4.1 status corrected to `review`.
-- Once 4.1 merges: 4.2, 4.3, and 5.1 can run in parallel.
+- **Story 4.1 PR #44 merged** (2026-04-19T19:46:47Z) — worktree `.worktrees/story-4.1-post-api-generate-route` cleaned up; remote branch deleted.
+- **Stories 4.2, 4.3, and 5.1 are now unblocked** — can run in parallel.
 - Epic ordering constraint: epics 5–8 may not start until epic 4 is fully merged into main.
 - Stories 7.1, 7.2, 7.3 have their direct dependencies met (3.2/3.3 merged) but are blocked by the epic ordering rule (epic 4 not yet complete).
-- **Pending open PRs:** #44 (story 4.1)
+- **Pending open PRs:** none
