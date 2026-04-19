@@ -76,71 +76,13 @@ So that a BullMQ job submitted via POST /api/generate executes the entire pipeli
 
 ## Tasks / Subtasks
 
-<<<<<<< HEAD
-- [ ] Task 1: Export `getSafeErrorMessage` from `src/workers/mirakl/apiClient.js` (AC: 8)
-  - [ ] Add `export function getSafeErrorMessage(err)` to `apiClient.js`
-  - [ ] Map by `err.status` or `err.constructor?.name`:
-=======
 - [x] Task 1: Export `getSafeErrorMessage` from `src/workers/mirakl/apiClient.js` (AC: 8)
   - [x] Add `export function getSafeErrorMessage(err)` to `apiClient.js`
   - [x] Map by `err.status` or `err.constructor?.name`:
->>>>>>> b8729f3 (Set story 3-7-full-worker-orchestration-and-phase-updates to review in sprint-status)
     - 401 or 403 → `"Chave API inválida ou sem permissão. Verifica se a chave está correcta e se a tua conta está activa no Worten."`
     - `EmptyCatalogError` (name match) → `"Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten."`
     - `CatalogTruncationError` (name match) → `"Catálogo obtido parcialmente. Tenta novamente."`
     - Default fallback → `"Ocorreu um erro inesperado. Tenta novamente ou contacta o suporte."` (Portuguese, never raw message)
-<<<<<<< HEAD
-  - [ ] Keep `getSafeErrorMessage` pure: no I/O, no imports beyond what apiClient.js already has
-  - [ ] ATDD AC-8 test imports it from `apiClient.js` first — this must be the canonical export location
-
-- [ ] Task 2: Wire full Phase B (scanCompetitors) into `src/workers/reportWorker.js` (AC: 1, 7)
-  - [ ] Add static import: `import { scanCompetitors } from './mirakl/scanCompetitors.js'`
-  - [ ] Before Phase B, call: `db.updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes…')`
-  - [ ] Call `scanCompetitors` with onProgress: update status every 500 EANs with `"A verificar concorrentes ({n} de {total} produtos)…"` (Portuguese format with `toLocaleString('pt-PT')`)
-  - [ ] Store result: `const competitors = await scanCompetitors(marketplace_url, catalog.map(o => o.ean), apiKey, onProgress)`
-    - Check the actual signature of `scanCompetitors` in `src/workers/mirakl/scanCompetitors.js` — the function signature takes `(baseUrl, eans, apiKey, onProgress)` (verify before coding)
-
-- [ ] Task 3: Wire full Phase C (computeReport) into `src/workers/reportWorker.js` (AC: 1, 7)
-  - [ ] Add static import: `import { computeReport } from './scoring/computeReport.js'`
-  - [ ] Before Phase C: `db.updateJobStatus(job_id, 'building_report', 'A construir relatório…')`
-  - [ ] Call: `const computedReport = computeReport(catalog, competitors)`
-  - [ ] `computeReport` is pure/sync (no await needed)
-
-- [ ] Task 4: Wire full Phase D (buildAndPersistReport) into `src/workers/reportWorker.js` (AC: 1, 7)
-  - [ ] Add static import: `import { buildAndPersistReport } from './scoring/buildReport.js'`
-  - [ ] Call: `buildAndPersistReport(report_id, email, catalog, computedReport)` — this handles CSV + `insertReport` + sets `expires_at = now + 172800` internally
-  - [ ] THEN: `db.updateJobStatus(job_id, 'complete', 'Relatório pronto!')`
-  - [ ] Phase D calls `buildAndPersistReport` BEFORE marking complete — but the `'complete'` status string must appear AFTER `buildAndPersistReport` call in source (for ATDD ordering check from story 3.6 AC-4)
-
-- [ ] Task 5: Wire Phase E (email) with real summary (AC: 1)
-  - [ ] The dynamic import for `sendReportEmail` already exists in the current worker (story 3.6 stub)
-  - [ ] Replace `summary: undefined` with `summary: { pt: computedReport.summary_pt, es: computedReport.summary_es }`
-  - [ ] The dynamic import pattern must remain (do not convert to static import) — ATDD ordering test from 3.6 requires `'complete'` literal to appear before `sendReportEmail` in source
-
-- [ ] Task 6: Fix catch block — use `getSafeErrorMessage` + `db.updateJobError` (AC: 3, 4, 5, 6)
-  - [ ] Import `getSafeErrorMessage` from `'./mirakl/apiClient.js'`
-  - [ ] Rewrite the `catch (err)` block:
-    ```js
-    catch (err) {
-      const safeMessage = getSafeErrorMessage(err)
-      db.updateJobError(job_id, safeMessage)
-      log.error({ job_id, error_code: err.code, error_type: err.constructor.name })
-      // do NOT re-throw — BullMQ retries are handled by the outer Worker
-    }
-    ```
-  - [ ] Remove the `throw err` that is currently in the catch block — the job status is now `error` in the DB; BullMQ Worker retry logic is separate from this status
-  - [ ] `err.message` must NOT appear in the catch block source at all (ATDD AC-6 static check)
-  - [ ] Log only safe shape: `{ job_id, error_code: err.code, error_type: err.constructor.name }` — never `err.message`, never full `err`
-
-- [ ] Task 7: Add initial session key guard with "A preparar…" phase message (AC: 7)
-  - [ ] When `keyStore.get(job_id)` returns `undefined`, update status to `'error'` with message `"A sessão expirou. Por favor, submete o formulário novamente."` BEFORE throwing
-  - [ ] Alternatively: the missing-key case currently throws directly — ensure the string `"A preparar"` appears elsewhere in the worker source (e.g. as a comment or initial phase) to satisfy ATDD AC-7 test for `"A preparar…"`
-
-- [ ] Task 8: Verify ATDD tests pass (AC: all)
-  - [ ] Run: `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js`
-  - [ ] All tests pass (AC-1 through AC-8 + STATIC checks)
-  - [ ] Run: `npm test` — all 274+ previously passing tests still pass (no regressions)
-=======
   - [x] Keep `getSafeErrorMessage` pure: no I/O, no imports beyond what apiClient.js already has
   - [x] ATDD AC-8 test imports it from `apiClient.js` first — this must be the canonical export location
 
@@ -183,7 +125,6 @@ So that a BullMQ job submitted via POST /api/generate executes the entire pipeli
   - [x] Run: `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js`
   - [x] All 27 tests pass (AC-1 through AC-8 + STATIC checks)
   - [x] Run: `npm test` — 336 tests pass, 0 failures (no regressions)
->>>>>>> b8729f3 (Set story 3-7-full-worker-orchestration-and-phase-updates to review in sprint-status)
 
 ### Review Findings
 
@@ -428,11 +369,6 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
-<<<<<<< HEAD
-### Completion Notes List
-
-### File List
-=======
 None — implementation completed without debugging issues.
 
 ### Completion Notes List
@@ -453,4 +389,3 @@ None — implementation completed without debugging issues.
 ### Change Log
 
 - 2026-04-19: Story 3.7 implementation complete — full worker orchestration wired, getSafeErrorMessage added, all 27 ATDD tests pass, 336/336 full suite green.
->>>>>>> b8729f3 (Set story 3-7-full-worker-orchestration-and-phase-updates to review in sprint-status)
