@@ -237,9 +237,29 @@ Once all four subagents return, synthesize a short verdict in main context:
 
 ## Recommendation
 {1-2 sentences — what to do next}
+
+## Deferred findings  ← ONLY emit this section when verdict is "Merge with awareness"
+  OR when verdict is "Safe to merge" but a subagent flagged non-blocking
+  improvements (weak-but-acceptable test, PR body hallucination, etc.).
+  Otherwise omit this section entirely.
+
+For each non-blocking finding, format it exactly like existing entries
+in `_bmad-output/implementation-artifacts/deferred-work.md`:
+
+  - **<one-line title>** [file:line or "route" or "PR body"] — <short
+    explanation>; <why deferred vs fixed now>.
+
+Example:
+  - **No test for queue.add() rejection path** [tests/epic4-4.1-*.test.js]
+    — route has queue.add inside try/catch with db.updateJobError rollback,
+    but no behavioral test asserts this path. Acceptable for MVP; add in
+    Epic 4 retro or an .additional.test.js supplement.
+  - **PR body claims "email trimming"** [PR body] — only api_key is
+    trimmed in generate.js; email is passed through untouched. Cosmetic
+    body overstatement per the known BAD Step 6 hallucination pattern.
 ```
 
-Then **HALT and wait for user confirmation** before doing anything destructive. Present the three options:
+Then **HALT and wait for user confirmation** before doing anything destructive. Present the three options (or four, when deferred findings exist):
 
 ```
 [M] Merge now — execute the safe-merge procedure
@@ -271,6 +291,66 @@ Read `references/merge-procedure.md` and follow it exactly. Core steps:
 
 ---
 
+## Phase 4.5: Capture deferred findings (only if Phase 3 emitted any)
+
+If the Phase 3 synthesis included a **## Deferred findings** block, close the loop before Phase 5 runs. Otherwise skip this phase entirely.
+
+### Step 1 — Prompt the user
+
+After the merge push completes, show:
+
+```
+Phase 3 flagged {N} non-blocking findings:
+  <list the one-line titles from Phase 3, numbered>
+
+Append these to `_bmad-output/implementation-artifacts/deferred-work.md`
+under a new section "Deferred from: PR #{N} review ({ISO-date})"?
+
+[Y] append + commit + push  |  [N] skip (findings live only in this chat log)
+```
+
+Wait for user reply. Do NOT auto-append.
+
+### Step 2 — If user replied [Y]
+
+1. **Read** the tail of `_bmad-output/implementation-artifacts/deferred-work.md` to confirm the existing section-header format. Current pattern:
+   ```
+   ## Deferred from: <source> (YYYY-MM-DD)
+
+   - **<title>** [file:line] — <explanation>.
+   ```
+
+2. **Append** a new section at the end of the file:
+   ```
+   ## Deferred from: PR #{PR_NUMBER} review ({ISO-date})
+
+   - **<finding 1 title>** [<location>] — <explanation>.
+   - **<finding 2 title>** [<location>] — <explanation>.
+   ...
+   ```
+   Use the exact bullets emitted in Phase 3's Deferred findings block.
+
+3. **Commit and push**:
+   ```bash
+   git add _bmad-output/implementation-artifacts/deferred-work.md
+   git commit -m "Record deferred findings from PR #{PR_NUMBER} review"
+   git push origin main
+   ```
+
+4. **Confirm** to the user: `Appended {N} findings to deferred-work.md ({commit-sha}).`
+
+### Step 3 — If user replied [N]
+
+No file changes. Just note in the Phase 5 final report: `Deferred findings NOT captured (user skipped).` This ensures the findings don't vanish silently — they're at least surfaced one more time in the session close.
+
+### What NOT to do in Phase 4.5
+
+- **Do not** append findings that were "blocking" in Phase 3 — those must be fixed, not deferred. (If verdict was "Needs fixes first", Phase 3 won't have emitted deferred findings, so this phase naturally skips.)
+- **Do not** rewrite or reformat existing entries in deferred-work.md — only append.
+- **Do not** split findings across multiple new sections — one PR review = one section.
+
+---
+
 ## Phase 5: Post-merge verify
 
 Run these in main context:
@@ -299,6 +379,9 @@ Run these in main context:
 - MCP alignment: ✓ intact
 - npm test: ✓ {passed/total} pass
 - CI on main: ✓ {conclusion}
+- Deferred findings: ✓ {N} appended to deferred-work.md  ← when Phase 4.5 ran with [Y]
+                     OR  ⚠ {N} flagged but NOT captured (user skipped)  ← [N]
+                     OR  (omit this line when no findings)
 
 Main is clean. Ready for next batch.
 ```
