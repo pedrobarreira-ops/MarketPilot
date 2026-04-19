@@ -406,7 +406,7 @@ describe('Story 3.7 — Full worker orchestration and phase updates', async () =
       )
     })
 
-    test('getSafeErrorMessage returns Portuguese message for EmptyCatalogError', () => {
+    test('getSafeErrorMessage returns Portuguese message for EmptyCatalogError', async () => {
       if (!safeErrModule) return
       const { getSafeErrorMessage: fn } = safeErrModule
 
