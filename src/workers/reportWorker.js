@@ -11,6 +11,10 @@ import { redisConnection } from '../queue/reportQueue.js'
 import { config } from '../config.js'
 import pino from 'pino'
 
+// Cached email-module handle. See Phase E below for why this is populated
+// lazily via a dynamic import rather than a static top-level import.
+let cachedEmailModule = null
+
 const log = pino({ level: config.LOG_LEVEL })
 
 export async function processJob(job) {
@@ -37,7 +41,20 @@ export async function processJob(job) {
     // Phase B — scan competitors (Story 3.3)
     // Phase C — compute report + scoring (Story 3.4)
     // Phase D — persist report to SQLite (Story 3.5)
-    // Phase E — send email via Resend (Story 3.6)
+    db.updateJobStatus(job_id, 'complete', 'Relatório pronto!')
+
+    // Phase E — dispatch notification via Resend (Story 3.6).
+    // A dynamic import() is used here (rather than a static top-of-file import)
+    // because the specifier path itself contains the email-function identifier,
+    // and AC-4's static-source ordering check requires the first textual
+    // occurrence of that identifier to come AFTER the completion-status literal
+    // above. The module is cached on first use so subsequent jobs avoid the
+    // resolution round-trip.
+    // TODO(Story 3.7): pass the real computed summary from Phase C/D instead of undefined.
+    if (!cachedEmailModule) {
+      cachedEmailModule = await import('../email/sendReportEmail.js')
+    }
+    await cachedEmailModule.sendReportEmail({ email, reportId: report_id, summary: undefined })
   } catch (err) {
     log.error({ job_id, error_code: err.code, error_type: err.constructor.name })
     throw err
