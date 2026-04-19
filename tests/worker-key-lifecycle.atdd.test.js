@@ -31,7 +31,7 @@ const WORKER_PATH = join(__dirname, '../src/workers/reportWorker.js')
 // ── env setup ──────────────────────────────────────────────────────────────
 process.env.NODE_ENV        = 'test'  // prevents BullMQ Worker from connecting at import time
 process.env.REDIS_URL       = process.env.REDIS_URL       || 'redis://localhost:6379'
-process.env.SQLITE_PATH     = process.env.SQLITE_PATH     || '/tmp/test.db'
+process.env.SQLITE_PATH     = process.env.SQLITE_PATH     || ':memory:'
 process.env.APP_BASE_URL    = process.env.APP_BASE_URL    || 'http://localhost:3000'
 process.env.WORTEN_BASE_URL = process.env.WORTEN_BASE_URL || 'https://www.worten.pt'
 process.env.PORT            = process.env.PORT            || '3000'
@@ -156,49 +156,55 @@ describe('Story 2.2 — Worker scaffold + key lifecycle', async () => {
     })
   })
 
-  // ── AC-2: Missing key → session-expired error ─────────────────────────────
-  describe('AC-2: keyStore.get returns undefined → fails with session-expired message', () => {
-    test('worker rejects with the session-expired message when key is not in keyStore', async () => {
+  // ── AC-2: Missing key → job transitions to 'error' status with session-expired message ─
+  //
+  // NOTE (Story 3.7 contract change): the original AC-2 tests asserted that
+  // processJob REJECTS with the session-expired message. Story 3.7 changed the
+  // catch block in reportWorker.js to SWALLOW errors and surface them via
+  // db.updateJobError(job_id, getSafeErrorMessage(err)) instead — so BullMQ sees
+  // the job as succeeded and does not retry a permanent error. These tests now
+  // verify the new non-throwing contract: processJob resolves, and the job row
+  // in generation_jobs has status='error'.
+  describe('AC-2: keyStore.get returns undefined → job status=error, processJob does not throw', () => {
+    test('processJob resolves (does not throw) when key is missing; status set to error in DB', async () => {
       const { processJob } = await import('../src/workers/reportWorker.js')
+      const db = await import('../src/db/queries.js')
 
-      const missingKeyJobId = 'job-key-missing-' + Date.now()
+      const jobId = 'job-key-missing-' + Date.now()
+      const reportId = 'report-' + Date.now()
+      db.createJob(jobId, reportId, 'test@example.com', 'https://www.worten.pt')
+
       // Deliberately do NOT call keyStore.set for this job_id
-      assert.equal(has(missingKeyJobId), false, 'precondition: key must not be in keyStore')
+      assert.equal(has(jobId), false, 'precondition: key must not be in keyStore')
 
-      const job = makeMockJob({ job_id: missingKeyJobId })
+      const job = makeMockJob({ job_id: jobId })
 
-      await assert.rejects(
+      await assert.doesNotReject(
         async () => processJob(job),
-        (err) => {
-          assert.ok(
-            err.message.includes('A sessão expirou. Por favor, submete o formulário novamente.'),
-            `Expected session-expired message, got: "${err.message}"`
-          )
-          return true
-        },
-        'Worker must throw with the session-expired Portuguese message when keyStore.get returns undefined'
+        'Story 3.7 contract: processJob must not throw — errors are surfaced via db.updateJobError'
+      )
+
+      const status = db.getJobStatus(jobId)
+      assert.ok(status, 'job row must exist after processJob')
+      assert.equal(
+        status.status,
+        'error',
+        'Job status must be "error" when key is missing (new non-throwing contract)'
       )
     })
 
-    test('session-expired error message is exact — no typos or truncation', async () => {
+    test('finally block cleans up keyStore on missing-key code path', async () => {
       const { processJob } = await import('../src/workers/reportWorker.js')
+      const db = await import('../src/db/queries.js')
 
-      const jobId = 'job-exact-msg-' + Date.now()
+      const jobId = 'job-cleanup-' + Date.now()
+      const reportId = 'report-' + Date.now()
+      db.createJob(jobId, reportId, 'test@example.com', 'https://www.worten.pt')
+
       const job = makeMockJob({ job_id: jobId })
+      await processJob(job)
 
-      let errorMessage
-      try {
-        await processJob(job)
-      } catch (err) {
-        errorMessage = err.message
-      }
-
-      assert.ok(errorMessage, 'Worker must throw an error when key is missing')
-      assert.ok(
-        errorMessage === 'A sessão expirou. Por favor, submete o formulário novamente.' ||
-        errorMessage.includes('A sessão expirou. Por favor, submete o formulário novamente.'),
-        `Message must contain exact Portuguese text. Got: "${errorMessage}"`
-      )
+      assert.equal(has(jobId), false, 'finally block must run keyStore.delete even on error path')
     })
   })
 
