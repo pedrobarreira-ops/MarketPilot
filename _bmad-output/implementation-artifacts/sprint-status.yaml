@@ -75,7 +75,7 @@ development_status:
 
   # ── Epic 4: HTTP API Layer ────────────────────────────────────────────────
   epic-4: in-progress
-  4-1-post-api-generate-route: review
+  4-1-post-api-generate-route: done
   4-2-get-api-jobs-polling-endpoint: backlog
   4-3-get-api-reports-and-csv-routes: backlog
   epic-4-retrospective: optional
