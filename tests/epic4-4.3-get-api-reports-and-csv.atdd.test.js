@@ -80,10 +80,11 @@ function makeReport({ reportId = null, expiresAt = null, email = 'user@example.c
  * in-memory SQLite database.
  */
 async function buildTestApp() {
-  const { default: Fastify }       = await import('fastify')
-  const { default: staticPlugin }  = await import('@fastify/static')
-  const { errorHandler }           = await import('../src/middleware/errorHandler.js')
+  const { default: Fastify }        = await import('fastify')
+  const { default: staticPlugin }   = await import('@fastify/static')
+  const { errorHandler }            = await import('../src/middleware/errorHandler.js')
   const { insertReport, getReport } = await import('../src/db/queries.js')
+  const { default: reportsRoute }   = await import('../src/routes/reports.js')
   const path                        = await import('path')
   const { fileURLToPath: ftu }      = await import('url')
 
@@ -99,49 +100,9 @@ async function buildTestApp() {
     return reply.sendFile('report.html')
   })
 
-  // GET /api/reports/:report_id — JSON report data
-  fastify.get('/api/reports/:report_id', async (request, reply) => {
-    const { report_id } = request.params
-    const now = Math.floor(Date.now() / 1000)
-    const row = getReport(report_id, now)
-
-    if (!row) {
-      return reply.status(404).send({
-        error:   'report_not_found',
-        message: 'Este relatório expirou ou não existe. Gera um novo relatório para obteres dados actualizados.',
-      })
-    }
-
-    return reply.send({
-      data: {
-        summary:           JSON.parse(row.summary_json),
-        opportunities_pt:  JSON.parse(row.opportunities_pt_json),
-        opportunities_es:  JSON.parse(row.opportunities_es_json),
-        quickwins_pt:      JSON.parse(row.quickwins_pt_json),
-        quickwins_es:      JSON.parse(row.quickwins_es_json),
-      },
-    })
-  })
-
-  // GET /api/reports/:report_id/csv — CSV download
-  fastify.get('/api/reports/:report_id/csv', async (request, reply) => {
-    const { report_id } = request.params
-    const now = Math.floor(Date.now() / 1000)
-    const row = getReport(report_id, now)
-
-    if (!row) {
-      return reply.status(404).send({
-        error:   'report_not_found',
-        message: 'Este relatório expirou ou não existe. Gera um novo relatório para obteres dados actualizados.',
-      })
-    }
-
-    return reply
-      .status(200)
-      .header('Content-Type', 'text/csv')
-      .header('Content-Disposition', 'attachment; filename="marketpilot-report.csv"')
-      .send(row.csv_data)
-  })
+  // Register the real report routes from src/routes/reports.js
+  // (covers GET /api/reports/:report_id and GET /api/reports/:report_id/csv)
+  await fastify.register(reportsRoute)
 
   await fastify.ready()
 
