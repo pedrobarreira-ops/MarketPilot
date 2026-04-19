@@ -88,6 +88,9 @@ export function getSafeErrorMessage(err) {
   if (status === 401 || status === 403) {
     return 'Chave API inválida ou sem permissão. Verifica se a chave está correcta e se a tua conta está activa no Worten.'
   }
+  if (name === 'SessionExpiredError') {
+    return 'A sessão expirou. Por favor, submete o formulário novamente.'
+  }
   if (name === 'EmptyCatalogError') {
     return 'Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten.'
   }

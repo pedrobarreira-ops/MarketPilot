@@ -30,8 +30,13 @@ export async function processJob(job) {
     db.updateJobStatus(job_id, 'queued', 'A preparar…')
     const apiKey = keyStore.get(job_id)
     if (apiKey === undefined) {
-      db.updateJobStatus(job_id, 'error', 'A sessão expirou. Por favor, submete o formulário novamente.')
-      throw new Error('A sessão expirou. Por favor, submete o formulário novamente.')
+      // Throw a named error so getSafeErrorMessage maps it to the specific
+      // session-expired message instead of the generic fallback. The catch
+      // block below will call db.updateJobError with the correct Portuguese
+      // text and status='error'. finally still runs keyStore.delete (AC-2).
+      const sessionErr = new Error('session expired')
+      sessionErr.name = 'SessionExpiredError'
+      throw sessionErr
     }
 
     // Phase A — fetch catalog
@@ -84,7 +89,7 @@ export async function processJob(job) {
   } catch (err) {
     const safeMessage = getSafeErrorMessage(err)
     db.updateJobError(job_id, safeMessage)
-    log.error({ job_id, error_code: err.code, error_type: err.constructor.name })
+    log.error({ job_id, status: 'error', error_code: err.code, error_type: err.constructor.name })
     // No throw — job status is set to 'error' in DB; BullMQ handles retry externally
   } finally {
     keyStore.delete(job_id)
