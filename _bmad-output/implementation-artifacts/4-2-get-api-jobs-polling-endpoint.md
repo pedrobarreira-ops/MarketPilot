@@ -3,7 +3,7 @@
 **Epic:** 4 — HTTP API Layer
 **Story:** 4.2
 **Story Key:** 4-2-get-api-jobs-polling-endpoint
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-19
 
 No Mirakl API calls in this story. This route reads only from local SQLite via `db.getJobStatus()` — no MCP verification required.
@@ -59,24 +59,24 @@ So that the browser can drive the progress bar and navigate to the report when c
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `src/routes/jobs.js` route module (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] Import `* as db` from `../db/queries.js`
-  - [ ] Export default async function that registers the route on the Fastify instance
-  - [ ] Register `GET /api/jobs/:job_id` with Fastify
-  - [ ] In handler: call `db.getJobStatus(request.params.job_id)`
-  - [ ] If result is null → `reply.status(404).send({ error: 'job_not_found', message: 'Job não encontrado.' })`
-  - [ ] If result found → `reply.send({ data: { status: row.status, phase_message: row.phase_message ?? null, report_id: row.report_id } })`
-  - [ ] Do NOT register `GET /api/jobs` (listing path) — route is `:job_id` only
+- [x] Task 1: Create `src/routes/jobs.js` route module (AC: 1, 2, 3, 4, 5, 6)
+  - [x] Import `* as db` from `../db/queries.js`
+  - [x] Export default async function that registers the route on the Fastify instance
+  - [x] Register `GET /api/jobs/:job_id` with Fastify
+  - [x] In handler: call `db.getJobStatus(request.params.job_id)`
+  - [x] If result is null → `reply.status(404).send({ error: 'job_not_found', message: 'Job não encontrado.' })`
+  - [x] If result found → `reply.send({ data: { status: row.status, phase_message: row.phase_message ?? null, report_id: row.report_id } })`
+  - [x] Do NOT register `GET /api/jobs` (listing path) — route is `:job_id` only
 
-- [ ] Task 2: Register the route in `src/server.js` (AC: 1, 2, 5)
-  - [ ] Add `import jobsRoute from './routes/jobs.js'`
-  - [ ] Call `await fastify.register(jobsRoute)` AFTER the existing `await fastify.register(generateRoute)` line (line 80)
-  - [ ] Confirm `GET /api/jobs` (no id) returns 404 — Fastify only registers the parameterised path
+- [x] Task 2: Register the route in `src/server.js` (AC: 1, 2, 5)
+  - [x] Add `import jobsRoute from './routes/jobs.js'`
+  - [x] Call `await fastify.register(jobsRoute)` AFTER the existing `await fastify.register(generateRoute)` line (line 80)
+  - [x] Confirm `GET /api/jobs` (no id) returns 404 — Fastify only registers the parameterised path
 
-- [ ] Task 3: Validate against pre-existing ATDD tests (AC: all)
-  - [ ] Run: `node --test tests/epic4-4.2-get-api-jobs-polling.atdd.test.js`
-  - [ ] All tests pass (14 tests across AC-1 through AC-6)
-  - [ ] Run: `npm test` — all existing tests remain green (no regressions)
+- [x] Task 3: Validate against pre-existing ATDD tests (AC: all)
+  - [x] Run: `node --test tests/epic4-4.2-get-api-jobs-polling.atdd.test.js`
+  - [x] All tests pass (22 tests across AC-1 through AC-6)
+  - [x] Run: `npm test` — all existing tests remain green (no regressions, 440/440 pass)
 
 ---
 
@@ -272,20 +272,28 @@ Story 4.1 established the route registration pattern: export default async funct
 
 ### Agent Model Used
 
-_to be filled by dev agent_
+claude-sonnet-4-6
 
 ### Debug Log References
 
-_to be filled by dev agent_
+None — implementation was straightforward, no debug iterations required.
 
 ### Completion Notes List
 
-_to be filled by dev agent_
+- Created `src/routes/jobs.js` following the exact pattern from `src/routes/generate.js`.
+- Registered `jobsRoute` in `src/server.js` after `generateRoute` (Story 4.1 constraint respected).
+- Used `row.phase_message ?? null` (not `||`) to preserve valid empty strings.
+- GET /api/jobs (listing path) is NOT registered — Fastify returns 404 naturally.
+- Pino redact config in `src/server.js` left unchanged.
+- All 22 ATDD tests pass; full suite 440/440 pass with 0 regressions.
 
 ### File List
 
-_to be filled by dev agent_
+- src/routes/jobs.js (created)
+- src/server.js (modified — added import and registration of jobsRoute)
+- _bmad-output/implementation-artifacts/4-2-get-api-jobs-polling-endpoint.md (story status/tasks updated)
 
 ### Change Log
 
 - 2026-04-19: Story 4.2 spec created — create-story workflow, comprehensive developer guide.
+- 2026-04-19: Story 4.2 implemented — GET /api/jobs/:job_id route created and registered; all 22 ATDD tests + 440 full suite tests pass.
