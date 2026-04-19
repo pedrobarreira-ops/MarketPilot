@@ -87,3 +87,25 @@ Items deferred during code review. Each entry includes the review date and sourc
 **Gap**: Log redaction tests cover `req.body.api_key`, top-level `api_key`, nested `*.api_key`, and `Authorization` header. They do not assert that error-path log lines (e.g. the rollback catch at [src/routes/generate.js:70-88], or any `fastify.log.error(err)` call) never include `err.message` content that might echo the api_key value back (e.g. from a Mirakl-side validation error surfaced through the queue layer).
 **Why deferred**: Relies on pino redact config + caller discipline (logging structured fields, not err.message). No current code path is known to leak, so this is a defense-in-depth test.
 **Action**: Add an `additional.test.js` case that triggers an error path with a mock that throws an `Error(<api_key value>)` and asserts no log line contains the api_key.
+
+## Deferred from: code review of 4-2-get-api-jobs-polling-endpoint (2026-04-19)
+
+### No rate limiting on polling endpoint [src/routes/jobs.js]
+**Gap**: `GET /api/jobs/:job_id` has no rate limit. The progress page polls every 1–2 s per open tab; a misbehaving or hostile client could generate millions of lookups/minute. Each lookup is a sub-ms in-memory SQLite SELECT, so the real-world CPU bound is high — but it's still a DoS amplification vector with no circuit breaker.
+**Why deferred**: Rate limiting is cross-cutting for the entire HTTP API (POST /api/generate and future GET /api/reports/:id), not specific to Story 4.2. Belongs in a separate "platform hardening" story that installs `@fastify/rate-limit` and applies it globally or per-route.
+**Action**: Add `@fastify/rate-limit` plugin registration in `src/server.js` with a sane default (e.g. 60 req/min/IP) and tighter limits for `POST /api/generate`. Consider a higher per-job_id budget (or no limit) for the legitimate polling path from browsers that authenticate to the generating user.
+
+### No behavioral test for `db.getJobStatus()` throwing (Story 4.2)
+**Gap**: If `better-sqlite3` throws (disk I/O error, DB locked, schema drift, corrupt file), the exception propagates to `errorHandler` which returns the safe 500. This is correct behavior but there is no test asserting it — a future refactor that `try/catch`es inside the route handler and `reply.send({ data: null })` instead of rethrowing would silently change the contract without failing any test.
+**Why deferred**: Same pattern already deferred for Story 4.1 (`db.createJob` throw path). Defense-in-depth, not a present bug.
+**Action**: Add an `additional.test.js` case that stubs `getJobStatus` to throw and asserts the route returns 500 `{ error: 'internal_server_error', message: ... }` via the global error handler.
+
+### No response JSON schema on GET /api/jobs/:job_id [src/routes/jobs.js]
+**Gap**: The route has no Fastify response schema. Today it is safe because `getJobStatus()` narrows to 3 columns and the route builds a fresh literal, so only `{ status, phase_message, report_id }` can serialize. A future refactor that replaces the literal with a spread (`...row`) or extends `getJobStatus()` to return more columns could accidentally leak fields without any test noticing at the serialization layer.
+**Why deferred**: Spec (Story 4.2 §"No Fastify Schema on This Route") explicitly says not to add one since there is no request body to validate. Adding an output schema (not input) would be belt-and-suspenders defense-in-depth.
+**Action**: Add `schema: { response: { 200: { type: 'object', properties: { data: { type: 'object', additionalProperties: false, required: ['status','phase_message','report_id'], properties: { status: { type: 'string' }, phase_message: { type: ['string','null'] }, report_id: { type: 'string' } } } } } } }` on the GET route. Fastify's fast-json-stringify will then drop any unknown fields at the serializer layer regardless of what the handler builds.
+
+### Control-character scrubbing in access logs relies on Pino's default serializer (Story 4.2)
+**Gap**: A malicious `job_id` containing `\r\n` or NUL bytes is currently safe from log-line injection because Pino's default `req` serializer emits structured JSON — control chars are escaped. If a future change swaps Pino for a plain-text logger, or registers a custom `req` serializer that string-concatenates the URL into a message, a crafted `job_id` could split or spoof log lines.
+**Why deferred**: No current code path is affected; today's Pino config is safe by construction.
+**Action**: Add a regression test that sends `GET /api/jobs/%00%0A%0Devil` (percent-encoded NUL/CR/LF) while capturing Pino log output, and asserts the emitted log line is a single well-formed JSON object with the control chars JSON-escaped.
