@@ -358,9 +358,19 @@ Run these in main context:
 1. **Pull main** to ensure local matches origin.
 2. **Sprint-status check**:
    ```bash
-   grep -E "^  {story-prefix}" _bmad-output/implementation-artifacts/sprint-status.yaml
+   # Actual format in sprint-status.yaml is `{epic}-{story}-<slug>:` — e.g.
+   #   3-1-mirakl-api-client-with-retry: done
+   #   4-1-post-api-generate-route: done
+   # Grep for the {epic}-{story}- prefix. Do NOT use `{epic}.{story}` (e.g. `4.1`) —
+   # that pattern does not appear in the yaml and the grep will return nothing.
+   grep -nE "^  {epic}-{story}-" _bmad-output/implementation-artifacts/sprint-status.yaml
    ```
-   Confirm the merged story shows `done`. If not, the push race stranded it — apply a quick one-commit fix: edit the yaml, commit, push.
+   Confirm the merged story shows `done`. If it shows `review`/`atdd-done`/anything else, the push race stranded it — apply a quick one-commit fix: edit the yaml to flip to `done`, commit, push.
+
+   **Optional batching** (style choice — either is fine):
+   - Default: commit the sprint-status fix as its own commit (`"Set story X to done in sprint-status (post-merge reconciliation)"`). Cleanest history when someone reads the log.
+   - Batch with Phase 4.5: if Phase 4.5 ran [Y] and sprint-status also needs fixing, combine both edits into one commit (`"Post-merge: deferred-work + sprint-status reconciliation"`). Saves one commit per merge, marginally noisier commit message.
+   - Do not batch if Phase 4.5 was skipped ([N]) or didn't fire (no deferred findings) — reconciliation stands on its own.
 3. **MCP alignment smoke test** — confirm no regression:
    ```bash
    grep -rE "state === 'ACTIVE'|product_ids: batchEans|o\.channel_code ===" src/workers/mirakl
