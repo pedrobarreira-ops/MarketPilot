@@ -3,7 +3,7 @@
 **Epic:** 4 — HTTP API Layer
 **Story:** 4.2
 **Story Key:** 4-2-get-api-jobs-polling-endpoint
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-19
 
 No Mirakl API calls in this story. This route reads only from local SQLite via `db.getJobStatus()` — no MCP verification required.
