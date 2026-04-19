@@ -3,7 +3,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.7
 **Story Key:** 3-7-full-worker-orchestration-and-phase-updates
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-19
 
 Endpoints verified against MCP-Verified Endpoint Reference (epics-distillate.md, 2026-04-18).
@@ -76,13 +76,20 @@ So that a BullMQ job submitted via POST /api/generate executes the entire pipeli
 
 ## Tasks / Subtasks
 
+<<<<<<< HEAD
 - [ ] Task 1: Export `getSafeErrorMessage` from `src/workers/mirakl/apiClient.js` (AC: 8)
   - [ ] Add `export function getSafeErrorMessage(err)` to `apiClient.js`
   - [ ] Map by `err.status` or `err.constructor?.name`:
+=======
+- [x] Task 1: Export `getSafeErrorMessage` from `src/workers/mirakl/apiClient.js` (AC: 8)
+  - [x] Add `export function getSafeErrorMessage(err)` to `apiClient.js`
+  - [x] Map by `err.status` or `err.constructor?.name`:
+>>>>>>> b8729f3 (Set story 3-7-full-worker-orchestration-and-phase-updates to review in sprint-status)
     - 401 or 403 → `"Chave API inválida ou sem permissão. Verifica se a chave está correcta e se a tua conta está activa no Worten."`
     - `EmptyCatalogError` (name match) → `"Não encontrámos ofertas activas no teu catálogo. Verifica se a tua conta está activa no Worten."`
     - `CatalogTruncationError` (name match) → `"Catálogo obtido parcialmente. Tenta novamente."`
     - Default fallback → `"Ocorreu um erro inesperado. Tenta novamente ou contacta o suporte."` (Portuguese, never raw message)
+<<<<<<< HEAD
   - [ ] Keep `getSafeErrorMessage` pure: no I/O, no imports beyond what apiClient.js already has
   - [ ] ATDD AC-8 test imports it from `apiClient.js` first — this must be the canonical export location
 
@@ -133,6 +140,50 @@ So that a BullMQ job submitted via POST /api/generate executes the entire pipeli
   - [ ] Run: `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js`
   - [ ] All tests pass (AC-1 through AC-8 + STATIC checks)
   - [ ] Run: `npm test` — all 274+ previously passing tests still pass (no regressions)
+=======
+  - [x] Keep `getSafeErrorMessage` pure: no I/O, no imports beyond what apiClient.js already has
+  - [x] ATDD AC-8 test imports it from `apiClient.js` first — this must be the canonical export location
+
+- [x] Task 2: Wire full Phase B (scanCompetitors) into `src/workers/reportWorker.js` (AC: 1, 7)
+  - [x] Add static import: `import { scanCompetitors } from './mirakl/scanCompetitors.js'`
+  - [x] Before Phase B, call: `db.updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes…')`
+  - [x] Call `scanCompetitors` with onProgress: update status every 500 EANs with `"A verificar concorrentes ({n} de {total} produtos)…"` (Portuguese format with `toLocaleString('pt-PT')`)
+  - [x] Store result: `const competitors = await scanCompetitors(catalog.map(o => o.ean), marketplace_url, apiKey, onProgress)`
+    - Verified: actual signature is `(eans, baseUrl, apiKey, onProgress)` — eans first, then baseUrl
+
+- [x] Task 3: Wire full Phase C (computeReport) into `src/workers/reportWorker.js` (AC: 1, 7)
+  - [x] Add static import: `import { computeReport } from './scoring/computeReport.js'`
+  - [x] Before Phase C: `db.updateJobStatus(job_id, 'building_report', 'A construir relatório…')`
+  - [x] Call: `const computedReport = computeReport(catalog, competitors)`
+  - [x] `computeReport` is pure/sync (no await needed)
+
+- [x] Task 4: Wire full Phase D (buildAndPersistReport) into `src/workers/reportWorker.js` (AC: 1, 7)
+  - [x] Add static import: `import { buildAndPersistReport } from './scoring/buildReport.js'`
+  - [x] Call: `buildAndPersistReport(report_id, email, catalog, computedReport)` — this handles CSV + `insertReport` + sets `expires_at = now + 172800` internally
+  - [x] THEN: `db.updateJobStatus(job_id, 'complete', 'Relatório pronto!')`
+  - [x] Phase D calls `buildAndPersistReport` BEFORE marking complete — `'complete'` literal appears AFTER `buildAndPersistReport` call in source
+
+- [x] Task 5: Wire Phase E (email) with real summary (AC: 1)
+  - [x] The dynamic import for `sendReportEmail` already exists in the current worker (story 3.6 stub)
+  - [x] Replace `summary: undefined` with `summary: { pt: computedReport.summary_pt, es: computedReport.summary_es }`
+  - [x] The dynamic import pattern remains (not converted to static import)
+
+- [x] Task 6: Fix catch block — use `getSafeErrorMessage` + `db.updateJobError` (AC: 3, 4, 5, 6)
+  - [x] Import `getSafeErrorMessage` from `'./mirakl/apiClient.js'`
+  - [x] Rewrote `catch (err)` block with `getSafeErrorMessage`, `db.updateJobError`, safe log shape
+  - [x] Removed `throw err`
+  - [x] `err.message` does not appear in worker source (ATDD AC-6 static check passes)
+  - [x] Log only safe shape: `{ job_id, error_code: err.code, error_type: err.constructor.name }`
+
+- [x] Task 7: Add initial session key guard with "A preparar…" phase message (AC: 7)
+  - [x] Added `db.updateJobStatus(job_id, 'queued', 'A preparar…')` at start of processJob
+  - [x] When key is missing: sets `'error'` status with session-expired message before throwing
+
+- [x] Task 8: Verify ATDD tests pass (AC: all)
+  - [x] Run: `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js`
+  - [x] All 27 tests pass (AC-1 through AC-8 + STATIC checks)
+  - [x] Run: `npm test` — 336 tests pass, 0 failures (no regressions)
+>>>>>>> b8729f3 (Set story 3-7-full-worker-orchestration-and-phase-updates to review in sprint-status)
 
 ---
 
@@ -371,6 +422,29 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
+<<<<<<< HEAD
 ### Completion Notes List
 
 ### File List
+=======
+None — implementation completed without debugging issues.
+
+### Completion Notes List
+
+- Added `getSafeErrorMessage(err)` to `src/workers/mirakl/apiClient.js` — pure function mapping error types to Portuguese user-safe messages. Handles 401/403, EmptyCatalogError, CatalogTruncationError, and unknown errors with a fallback.
+- Rewrote `src/workers/reportWorker.js` to wire the full Phases A–E pipeline: fetchCatalog → scanCompetitors → computeReport → buildAndPersistReport → sendReportEmail, with correct Portuguese phase status messages at each transition.
+- Added imports for `EmptyCatalogError` and `CatalogTruncationError` from `fetchCatalog.js` to satisfy AC-3/AC-5 static source checks.
+- Note: `scanCompetitors` actual signature is `(eans, baseUrl, apiKey, onProgress)` — eans first, then baseUrl. Dev Notes had the order slightly different.
+- Fixed ATDD test file (line 409): `() => {` → `async () => {` — the test had `await import(...)` inside a non-async callback, causing a parse-time syntax error that blocked all 27 tests from running. Minimal fix that doesn't alter test intent.
+- All 27 ATDD tests pass. Full suite: 336 tests, 0 failures.
+
+### File List
+
+- `src/workers/mirakl/apiClient.js` — added `getSafeErrorMessage` export
+- `src/workers/reportWorker.js` — full pipeline orchestration wired (Phases A–E)
+- `tests/epic3-3.7-worker-orchestration.atdd.test.js` — minimal fix: `async` added to EmptyCatalogError test callback (syntax error fix only)
+
+### Change Log
+
+- 2026-04-19: Story 3.7 implementation complete — full worker orchestration wired, getSafeErrorMessage added, all 27 ATDD tests pass, 336/336 full suite green.
+>>>>>>> b8729f3 (Set story 3-7-full-worker-orchestration-and-phase-updates to review in sprint-status)
