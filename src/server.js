@@ -13,6 +13,7 @@ import { reportQueue } from './queue/reportQueue.js'  // establishes Redis conne
 import { worker as reportWorker } from './workers/reportWorker.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { runMigrations } from './db/migrate.js'
+import generateRoute from './routes/generate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // Absolute path required by @fastify/static — server.js lives in src/, public/ is one level up
@@ -74,6 +75,9 @@ try {
   fastify.log.error({ error_type: err.constructor.name }, 'Migration failed — aborting startup')
   process.exit(1)
 }
+
+// Register routes — AFTER setErrorHandler and runMigrations (Story 4.1)
+await fastify.register(generateRoute)
 
 // Start listening — v5 requires object syntax; positional args from v4 are not supported
 try {
