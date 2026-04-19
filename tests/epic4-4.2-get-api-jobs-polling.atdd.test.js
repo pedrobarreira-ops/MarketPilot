@@ -41,13 +41,16 @@ function randomId() {
  * Build a minimal Fastify app wiring the GET /api/jobs/:job_id route
  * against a real in-memory SQLite database via queries.js.
  *
- * Returns { app, db } where db.createJob can be used to seed data.
+ * Returns { app, createJob } where createJob can be used to seed data.
+ *
+ * NOTE: registers the REAL src/routes/jobs.js plugin — not an inline stub.
  */
 async function buildTestApp() {
   const { default: Fastify }      = await import('fastify')
   const { default: staticPlugin } = await import('@fastify/static')
   const { errorHandler }          = await import('../src/middleware/errorHandler.js')
-  const { createJob, getJobStatus } = await import('../src/db/queries.js')
+  const { createJob }             = await import('../src/db/queries.js')
+  const { default: jobsRoute }    = await import('../src/routes/jobs.js')
   const path                      = await import('path')
   const { fileURLToPath: ftu }    = await import('url')
 
@@ -58,28 +61,12 @@ async function buildTestApp() {
   await fastify.register(staticPlugin, { root: PUBLIC_DIR, prefix: '/' })
   fastify.setErrorHandler(errorHandler)
 
-  // GET /api/jobs/:job_id — matches Story 4.2 spec
-  fastify.get('/api/jobs/:job_id', async (request, reply) => {
-    const { job_id } = request.params
-    const row = getJobStatus(job_id)
-    if (!row) {
-      return reply.status(404).send({
-        error:   'job_not_found',
-        message: 'Job não encontrado.',
-      })
-    }
-    return reply.send({
-      data: {
-        status:        row.status,
-        phase_message: row.phase_message ?? null,
-        report_id:     row.report_id,
-      },
-    })
-  })
+  // Register the REAL route plugin from src/routes/jobs.js
+  await fastify.register(jobsRoute)
 
   await fastify.ready()
 
-  return { app: fastify, createJob, getJobStatus }
+  return { app: fastify, createJob }
 }
 
 // ── test suite ─────────────────────────────────────────────────────────────
