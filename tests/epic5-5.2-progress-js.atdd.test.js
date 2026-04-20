@@ -249,6 +249,44 @@ describe('AC-2 (static): job_id and report_id sourced from URL query params', ()
   })
 })
 
+// ── AC-9: copy button aria-label set during init ──────────────────────────
+
+describe('AC-9 (static): copy button aria-label set during initialisation', () => {
+  /**
+   * progress.js must call setAttribute('aria-label', 'Copiar link do relatório')
+   * on the copy button during init (outside any click handler or setInterval callback).
+   * We verify the aria-label string is present in source AND that it appears before
+   * the setInterval call (init-time, not inside the polling callback).
+   */
+  test('T-P-static.4a — aria-label "Copiar link do relatório" present in source', () => {
+    const src = requireSource()
+    assert.ok(
+      /aria-label/.test(src) && /Copiar link do relat/.test(src),
+      'progress.js must set aria-label "Copiar link do relatório" on the copy button (AC-9)'
+    )
+  })
+
+  test('T-P-static.4b — aria-label assignment appears before setInterval (init-time, not in callback)', () => {
+    const lines = requireLines()
+    const ariaLabelIdx = lines.findIndex(l => l.includes('aria-label') && l.includes('Copiar'))
+    const intervalIdx  = lines.findIndex(l => l.includes('setInterval('))
+
+    assert.ok(
+      ariaLabelIdx >= 0,
+      'progress.js must set aria-label for the copy button (AC-9)'
+    )
+    assert.ok(
+      intervalIdx >= 0,
+      'progress.js must contain a setInterval( call (AC-3)'
+    )
+    assert.ok(
+      ariaLabelIdx < intervalIdx,
+      `aria-label assignment (line ${ariaLabelIdx + 1}) must appear before setInterval (line ${intervalIdx + 1}) — ` +
+      'the accessible label must be set during init, not inside the polling callback (AC-9)'
+    )
+  })
+})
+
 // ── Architecture invariants (defence-in-depth) ────────────────────────────
 
 describe('Architecture invariants: progress.js must not reach outside its scope', () => {
