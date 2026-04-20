@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-20T00:00:00Z_
+_Last updated: 2026-04-20T14:30:00Z (phase0 reconciliation: PR#49 merged, 3.5a=done, epic-3=done)_
 
 ## Stories
 
@@ -17,7 +17,7 @@ _Last updated: 2026-04-20T00:00:00Z_
 | 3.3   | 3    | P11 Competitor Scan (Batch + Concurrent) | done | #11 | #39 | merged | 3.1 | ✅ Yes (done) |
 | 3.4   | 3    | WOW Score + Quick Wins Scoring | done | #12 | #40 | merged | 3.2, 3.3 | ✅ Yes (done) |
 | 3.5   | 3    | Report Persistence & CSV Generation | done | #13 | #41 | merged | 3.4 | ✅ Yes (done) |
-| 3.5a  | 3    | CSV Formula Injection Hardening | ready-for-dev | #47 | — | — | 3.5 | ✅ Yes |
+| 3.5a  | 3    | CSV Formula Injection Hardening | done | #47 | #49 | merged | 3.5 | ✅ Yes (done) |
 | 3.6   | 3    | Email Dispatch via Resend | done | #14 | #42 | merged | 3.5 | ✅ Yes (done) |
 | 3.7   | 3    | Full Worker Orchestration & Phase Updates | done | #15 | #43 | merged | 3.2, 3.3, 3.4, 3.5, 3.6 | ✅ Yes (done) |
 | 4.1   | 4    | POST /api/generate Route | done | #16 | #44 | merged | 1.2, 3.7 | ✅ Yes (done) |
@@ -55,9 +55,9 @@ _Last updated: 2026-04-20T00:00:00Z_
 - **4.2** depends on: 4.1
 - **4.2a** depends on: 4.2, 3.7
 - **4.3** depends on: 4.1
-- **5.1** depends on: 4.1 (blocked: epic 4 not complete — 4.2a not merged)
+- **5.1** depends on: 4.1 (blocked: epic 4 not complete — 4.2a not yet merged)
 - **5.2** depends on: 5.1
-- **6.1** depends on: 4.3 (blocked: epic 4 not complete — 4.2a not merged)
+- **6.1** depends on: 4.3 (blocked: epic 4 not complete — 4.2a not yet merged)
 - **6.2** depends on: 6.1
 - **6.3** depends on: 6.1
 - **6.4** depends on: 6.2, 6.3
@@ -71,10 +71,10 @@ _Last updated: 2026-04-20T00:00:00Z_
 
 ## Notes
 
-- **Epics 1 and 2 are fully complete** — all stories have merged PRs.
-- **Epic 3 reopened** (2026-04-20): Story 3.5a (CSV formula injection hardening, CWE-1236) added retroactively. All other epic-3 stories are merged. 3.5a is ready-for-dev with no unmet dependencies.
-- **Epic 4 reopened** (2026-04-20): Story 4.2a (polling progress contract — structured counts) added retroactively. Stories 4.1, 4.2, 4.3 all have merged PRs. 4.2a is ready-for-dev with no unmet dependencies.
-- **Stories 3.5a and 4.2a are the current blocking stories** — both must merge before epics 5–8 can begin (epic ordering rule).
-- **Stale worktrees cleaned** (2026-04-20): `.worktrees/story-4.2-get-api-jobs-polling-endpoint` and `.worktrees/story-4.3-get-api-reports-and-csv` removed; remote branches deleted.
+- **Epics 1, 2, and 3 are fully complete** — all stories have merged PRs.
+- **Epic 3 closed** (2026-04-20): PR #49 (story 3.5a, CSV formula injection hardening, CWE-1236) merged. Epic 3 row flipped to done.
+- **Epic 4 reopened** (2026-04-20): Story 4.2a (polling progress contract — structured counts) added retroactively. Stories 4.1, 4.2, 4.3 all have merged PRs. 4.2a is ready-for-dev — the only remaining blocker for epics 5–8.
+- **Story 4.2a is the current blocking story** — must merge before epics 5–8 can begin (epic ordering rule).
+- **Stale worktrees cleaned** (2026-04-20): `.worktrees/story-3.5a-csv-formula-injection-hardening` removed; remote branch deleted.
 - **Pending open PRs:** none
-- **Parallelization opportunity:** 3.5a and 4.2a have no dependency on each other — they can be worked in parallel.
+- **No parallelization needed:** only one story (4.2a) remains in epic 4.
