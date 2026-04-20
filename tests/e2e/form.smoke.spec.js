@@ -35,7 +35,7 @@ test.describe('Form page (public/index.html)', () => {
   // ── UNSKIP when Story 5.1 ships form.js ───────────────────────────────────
   // Pattern: validation on empty submit should surface inline error messages
   // linked via aria-describedby (per epics-distillate.md:145).
-  test.skip('validation — empty submit surfaces Portuguese inline errors with aria-describedby', async ({ page }) => {
+  test('validation — empty submit surfaces Portuguese inline errors with aria-describedby', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: /gerar/i }).click()
 
@@ -58,7 +58,7 @@ test.describe('Form page (public/index.html)', () => {
   // ── UNSKIP when Story 5.1 ships form.js ───────────────────────────────────
   // Pattern: valid submission mocks POST /api/generate → 202, then frontend
   // navigates to /progress?job_id=...&report_id=...
-  test.skip('valid submission — mocked 202 response navigates to progress page', async ({ page }) => {
+  test('valid submission — mocked 202 response navigates to progress page', async ({ page }) => {
     await page.route('**/api/generate', (route) => {
       expect(route.request().method()).toBe('POST')
       route.fulfill({
@@ -80,7 +80,7 @@ test.describe('Form page (public/index.html)', () => {
 
   // ── UNSKIP when Story 5.1 ships form.js ───────────────────────────────────
   // Pattern: server error response surfaces inline error above submit, button returns to default.
-  test.skip('server error — non-success response shows inline error and preserves retry-ability', async ({ page }) => {
+  test('server error — non-success response shows inline error and preserves retry-ability', async ({ page }) => {
     await page.route('**/api/generate', (route) => route.fulfill({
       status: 500,
       contentType: 'application/json',
