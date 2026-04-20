@@ -295,7 +295,7 @@ Keep the seller engaged during the 2–10 minute generation window. Surface the 
   - "A construir relatório..."
 - **Style:** Inter body, `#475569`, centred
 - **Update frequency:** Refreshed on each status poll response (polling interval: 2–3 seconds)
-- **Numbers:** When available from the job status endpoint, show actual progress counts. Format large numbers with `.` thousand separator (Portuguese locale).
+- **Numbers:** The polling endpoint (`GET /api/jobs/:job_id`) returns `progress_current` and `progress_total` integer fields alongside `status` and `phase_message`. The frontend composes `{phase_message} ({progress_current.toLocaleString('pt-PT')} / {progress_total.toLocaleString('pt-PT')} produtos)` when both fields are non-null; otherwise renders just `{phase_message}`. The `building_report` phase never emits counts (both fields are null) — the UI shows only `phase_message` (e.g. "A construir relatório…"). The `queued` phase similarly has null counts.
 
 #### "PROCESSAMENTO EM TEMPO REAL" Label
 

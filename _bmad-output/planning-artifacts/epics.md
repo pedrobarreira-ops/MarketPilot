@@ -649,6 +649,32 @@ So that the report is accessible via UUID for 48 hours and the CSV download is a
 
 ---
 
+### Story 3.5a: CSV Formula Injection Hardening
+
+As the operator of MarketPilot,
+I want `src/workers/scoring/buildReport.js` to neutralise spreadsheet-formula payloads in competitor-controlled text cells of the generated CSV (EAN, product_title, shop_sku),
+So that a malicious seller cannot weaponise their `product_title` to exfiltrate credentials or execute commands when the CSV is opened in Excel, LibreOffice Calc, or Google Sheets.
+
+**Satisfies:** OWASP CSV Injection prevention (CWE-1236). Retroactive hardening against Story 3.5 — elevated to pre-Epic-5 critical path per Epic 4 retrospective (2026-04-20) because Gabriel will open the CSV in Excel.
+
+**Origin:** Sprint Change Proposal follow-up (2026-04-20) — deferred-work item "CSV formula injection (CWE-1236) — competitor-controlled cells unescaped (Story 3.5 / 4.3)".
+
+**Dependencies:** Story 3.5 must be done (prerequisite: `buildReport.js` exists). No forward dependencies.
+
+**Scope (full spec in `_bmad-output/implementation-artifacts/3-5a-csv-formula-injection-hardening.md`):**
+- Add `escapeTextCell(val)` helper to `buildReport.js` that prefixes `'` when first char is in `[= + - @ \t \r]`.
+- Row builder uses `escapeTextCell` for EAN / product_title / shop_sku; keeps `escapeCell` (RFC 4180 only) for 9 numeric columns so legitimate `-0.50` gaps pass through unmodified.
+- New behavioural tests in `tests/epic3-3.5a-csv-formula-injection.additional.test.js` covering each trigger character + a realistic HYPERLINK payload.
+- Existing ATDD fixtures in Stories 3.5 and 4.3 remain byte-identical (their text cells all start with safe characters).
+
+**Given** a competitor listing has `product_title = '=HYPERLINK("http://evil/","click")'`
+**When** the worker runs `buildAndPersistReport` and persists the CSV
+**Then** the corresponding cell in `csv_data` is prefixed with `'` so Excel treats it as literal text
+**And** no formula executes when the report CSV is opened in Excel or Google Sheets
+**And** numeric cells (prices, gaps) are unchanged byte-for-byte — `escapeCell` behaviour preserved
+
+---
+
 ### Story 3.6: Email Dispatch via Resend
 
 **GH Issue:** #14
@@ -762,6 +788,36 @@ So that the progress screen can show me what the system is doing in real time.
 **And** for an unknown `job_id`: returns `404 { error: "not_found", message: "..." }`  
 **And** response time is consistently < 100ms (single SQLite read)  
 **And** no `api_key` data is ever returned in this response
+
+---
+
+### Story 4.2a: Polling Progress Contract — Structured Counts
+
+As the frontend developer building `progress.js`,
+I want `GET /api/jobs/:job_id` to return structured `progress_current` and `progress_total` integer fields alongside `status`, `phase_message`, and `report_id`,
+So that the live status line can render `{phase_message} ({current} / {total} produtos)` per the UX spec without parsing Portuguese prose out of `phase_message`.
+
+**Satisfies:** Sprint Change Proposal 2026-04-20 path "A1" (3 phases + structured counts, no status-value split). UX-DR updated to name the exact fields and their null-handling contract.
+
+**Origin:** Design handoff (2026-04-20) surfaced that the UX doc already specified structured counts (`ux-design.md:293-298`) but the shipped `/api/jobs/:id` buried them inside prose `phase_message`. Pre-Epic-5 critical path — Story 5.2 depends on the new contract.
+
+**Dependencies:** Story 4.2 must be done (prerequisite: `/api/jobs/:job_id` route + `getJobStatus` + `updateJobStatus` exist). Story 3.7 must be done (prerequisite: worker `onProgress` callback structure). No forward blockers.
+
+**Scope (full spec in `_bmad-output/implementation-artifacts/4-2a-polling-progress-contract.md`):**
+- Schema: `generation_jobs` gains two nullable INTEGER columns `progress_current`, `progress_total`. Migration uses PRAGMA-based column-existence check to stay idempotent on existing dev DBs (SQLite < 3.35 lacks `ADD COLUMN IF NOT EXISTS`).
+- `updateJobStatus(jobId, status, phaseMessage, progressCurrent, progressTotal)` — two new optional params with three-state semantic (`undefined` → omit, `null` → clear, value → set).
+- `getJobStatus` returns 5-field snake-case object: `{status, phase_message, progress_current, progress_total, report_id}`.
+- `reportWorker.js` — `onProgress` callbacks pass `n, total` as 4th/5th args; phase transitions explicitly pass `null, null` to clear stale counts across boundaries.
+- Route `/api/jobs/:job_id` exposes all 5 fields; null values serialise as JSON `null`.
+- Story 4.2 original ATDD line 156 "exact-fields" assertion updated to the new 5-field set.
+- New `.additional.test.js` with 7 behavioural tests + idempotency test.
+
+**Given** a job is in `fetching_catalog` phase after the worker's `onProgress` has fired with (7200, 31179)
+**When** a client polls `GET /api/jobs/{job_id}`
+**Then** the response is `{ data: { status: "fetching_catalog", phase_message: "A obter catálogo… (7 200 de 31 179 produtos)", progress_current: 7200, progress_total: 31179, report_id: "..." } }`
+**And** when the phase transitions to `scanning_competitors`, both count fields are explicitly cleared to `null` at the transition instant so stale counts do not bleed across phases
+**And** the `building_report` and `complete` phases always return both count fields as `null`
+**And** no `api_key` leaks in the response; response time stays < 100ms
 
 ---
 

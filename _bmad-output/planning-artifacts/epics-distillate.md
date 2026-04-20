@@ -118,7 +118,7 @@ parts: 1
 
 ## HTTP API Routes
 - `POST /api/generate`: body `{ api_key, email }`; validates both fields; generates `job_id` + `report_id` via `crypto.randomUUID()`; `keyStore.set(job_id, api_key)`; `reportQueue.add('generate', { job_id, report_id, email, marketplace_url })`; `db.createJob(...)`; returns `202 { data: { job_id, report_id } }`; target < 2s
-- `GET /api/jobs/:job_id`: returns `{ data: { status, phase_message, report_id } }`; 404 for unknown; < 100ms target
+- `GET /api/jobs/:job_id`: returns `{ data: { status, phase_message, progress_current, progress_total, report_id } }`; `progress_current` and `progress_total` are integers or null (null in `queued`, `building_report`, `complete` phases; non-null during `fetching_catalog` and `scanning_competitors`); 404 for unknown; < 100ms target
 - `GET /api/reports/:report_id`: `WHERE report_id = ? AND expires_at > now`; returns `{ data: { summary, opportunities_pt, opportunities_es, quickwins_pt, quickwins_es } }`; 404 response: `{ error: "report_not_found", message: "Este relatório expirou ou não existe. Gera um novo relatório para obteres dados actualizados." }`
 - `GET /api/reports/:report_id/csv`: returns `csv_data` with `Content-Type: text/csv`; `Content-Disposition: attachment; filename="marketpilot-report.csv"`; < 3s target
 - `GET /report/:report_id`: static route returning `public/report.html`
@@ -148,6 +148,7 @@ parts: 1
 - On page load: immediately populate URL field with `{APP_BASE_URL}/report/{report_id}` (from query params) — before any poll
 - Poll `GET /api/jobs/:job_id` every 2 seconds
 - Progress bar fill by phase: `fetching_catalog` → ~30%; `scanning_competitors` → ~80% (crawl animation); `building_report` → ~95%; `complete` → 100%
+- Live status line: compose `{phase_message} ({progress_current} / {progress_total} produtos)` when both count fields non-null, else `{phase_message}` alone; numbers formatted with pt-PT locale (thousand separator is `.`)
 - Progress bar ARIA: `role="progressbar"`, `aria-valuemin="0"`, `aria-valuemax="100"`, `aria-valuenow` updated each transition
 - Copy button: `navigator.clipboard.writeText()`; icon → checkmark, outline green (`#16A34A`) for 2s then revert; fallback: select text + tooltip `"Link seleccionado — copia com Ctrl+C"`; `aria-label="Copiar link do relatório"`
 - `status: "complete"`: bar 100%, `"Relatório pronto!"`, after 1.5s navigate to `/report/{report_id}`; fallback if no redirect in 3s: show `"O teu relatório está pronto — [ver relatório →]"`
@@ -257,7 +258,7 @@ parts: 1
 ### Epic 4 — HTTP API
 
 - 4.1 Validates api_key non-empty + valid email → 400 if invalid; crypto.randomUUID() for job_id+report_id; keyStore.set(job_id, api_key) — ONLY place; queue.add payload has NO api_key; db.createJob; returns 202 {data:{job_id,report_id}} < 2s
-- 4.2 Returns {data:{status, phase_message, report_id}}; 404 for unknown job_id; < 100ms; no api_key in response
+- 4.2 Returns {data:{status, phase_message, progress_current, progress_total, report_id}}; `progress_current`/`progress_total` may be null per phase; 404 for unknown job_id; < 100ms; no api_key in response
 - 4.3 GET /api/reports/:id: WHERE report_id=? AND expires_at>now → report JSON; 404: `"Este relatório expirou ou não existe..."`; GET /api/reports/:id/csv: csv_data, Content-Type:text/csv, Content-Disposition:attachment filename="marketpilot-report.csv", < 3s; GET /api/reports (no id) NOT registered → 404; GET /report/:id → public/report.html
 
 ### Epic 5 — Frontend Form & Progress
