@@ -18,6 +18,8 @@
  * Run: node --test tests/epic4-4.2a-polling-progress-contract.additional.test.js
  *
  * Epic 4 retro lesson: NO source-text scans. Every assertion is behavioural.
+ *
+ * Test count: 24 leaf tests across 10 describe suites.
  */
 
 import { test, describe, before, after } from 'node:test'
@@ -256,6 +258,55 @@ describe('Story 4.2a — Polling Progress Contract (structured counts)', async (
       assert.equal(data.status, 'complete')
       assert.strictEqual(data.progress_current, null, 'progress_current must be null in complete phase')
       assert.strictEqual(data.progress_total, null, 'progress_total must be null in complete phase')
+    })
+  })
+
+  // ── Case 2b: HTTP-layer zero value — progress_current = 0 serialises as 0 ─
+  describe('Case 2b — HTTP response: progress_current = 0 serialises as JSON 0 (not null, not missing)', () => {
+    test('progress_current 0 passes through HTTP layer as JSON number 0 (not coerced to null)', async () => {
+      const job_id    = randomId()
+      const report_id = randomId()
+      createJob(job_id, report_id, 'user@example.com', 'https://marketplace.worten.pt')
+
+      // progress_current = 0 is a valid value at the start of a counting phase
+      // The route uses ?? null; 0 is not null/undefined so must NOT be coerced
+      updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes…', 0, 28440)
+
+      const res = await app.inject({ method: 'GET', url: `/api/jobs/${job_id}` })
+      assert.equal(res.statusCode, 200)
+      const { data } = JSON.parse(res.body)
+
+      assert.strictEqual(data.progress_current, 0,
+        'progress_current 0 must serialise as JSON 0 — not null, not missing (guards against ?? vs || confusion)')
+      assert.strictEqual(data.progress_total, 28440,
+        'progress_total must be 28440')
+      assert.equal(typeof data.progress_current, 'number',
+        'progress_current must be a number in JSON even when value is 0')
+    })
+  })
+
+  // ── Case 2c: error phase — counts survive updateJobError (debug-friendly) ─
+  describe('Case 2c — error phase: counts persist through updateJobError (last known counts remain visible)', () => {
+    test('progress counts survive a job error transition (useful for post-mortem debugging)', async () => {
+      const { updateJobError } = await import('../src/db/queries.js')
+      const job_id    = randomId()
+      const report_id = randomId()
+      createJob(job_id, report_id, 'user@example.com', 'https://marketplace.worten.pt')
+
+      // Job fails mid-fetching_catalog with 7200 items processed
+      updateJobStatus(job_id, 'fetching_catalog', 'A obter catálogo…', 7200, 31179)
+      updateJobError(job_id, 'API timeout')
+
+      const res = await app.inject({ method: 'GET', url: `/api/jobs/${job_id}` })
+      assert.equal(res.statusCode, 200)
+      const { data } = JSON.parse(res.body)
+
+      assert.equal(data.status, 'error',
+        'status must be error after updateJobError')
+      assert.strictEqual(data.progress_current, 7200,
+        'progress_current must retain last written value (7200) — counts survive error transition')
+      assert.strictEqual(data.progress_total, 31179,
+        'progress_total must retain last written value (31179) — counts survive error transition')
     })
   })
 
