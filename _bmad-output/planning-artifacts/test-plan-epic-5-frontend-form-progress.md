@@ -135,7 +135,7 @@ These tests read `public/js/form.js` source text and apply regex assertions. The
 | AC-11 | `status: "complete"` → bar fills to 100%, after 1.5s navigate to `/report/{report_id}` | E2E-P11.1 |
 | AC-12 | `status: "complete"` fallback: if no navigation within 3s → show inline link `"O teu relatório está pronto — [ver relatório →]"` | E2E-P12.1 |
 | AC-13 | `status: "error"` → polling stops; bar fill → red `#DC2626` at current position | E2E-P13.1 |
-| AC-14 | `status: "error"` → `"PROCESSAMENTO EM TEMPO REAL"` label hidden | E2E-P14.1 |
+| AC-14 | `status: "error"` → `"Processamento em tempo real"` label hidden (DOM text is mixed-case; visually all-caps via CSS `text-transform: uppercase`) | E2E-P14.1 |
 | AC-15 | `status: "error"` → status line shows server `phase_message`; link box label → `"Este link não está disponível — a geração falhou."` | E2E-P15.1 |
 | AC-16 | `status: "error"` → `"Tentar novamente"` button (→ `/`) + `"Contacta-nos"` link visible | E2E-P16.1 |
 | AC-17 (static) | `job_id` and `report_id` never read from `localStorage` or `sessionStorage` | T-P-static.1 |
@@ -162,7 +162,7 @@ All behavioural tests below are `test.skip` templates in the scaffold. The Story
 | E2E-P11.1 | Mocked `status: "complete"` | URL navigates to `/report/test-report-xyz` within 5s |
 | E2E-P12.1 | `status: "complete"` but navigation is blocked (simulate by patching navigate) | Fallback text `/teu relatório está pronto/i` with a link containing `/report/` is shown within 4s |
 | E2E-P13.1 | Mocked `status: "error"` | Progressbar or fill element has a red colour class or style (`#DC2626` or `text-red` / `bg-red`) |
-| E2E-P14.1 | `status: "error"` | `"PROCESSAMENTO EM TEMPO REAL"` text element is hidden or not visible |
+| E2E-P14.1 | `status: "error"` | `"Processamento em tempo real"` text element is hidden or not visible (DOM text is mixed-case; CSS `text-transform: uppercase` renders it visually as all-caps — Playwright must match DOM text, e.g. `/processamento em tempo real/i`) |
 | E2E-P15.1 | `status: "error"` with `phase_message: "Chave API inválida…"` | That message text is visible; link box label contains `/este link não está disponível/i` |
 | E2E-P16.1 | `status: "error"` | "Tentar novamente" button (href `/` or navigates to `/`) visible; "Contacta-nos" link visible |
 
