@@ -128,6 +128,149 @@ If local main is at the same commit as origin/main:
 
 ---
 
+## Pre-merge conflict handling (new in v5)
+
+Called from Phase 4 step 2 when `gh pr view <N> --json mergeable,mergeStateStatus` returns `BEHIND` or `CONFLICTING`. Do NOT halt immediately — handle both cases inline.
+
+### Case: `mergeStateStatus: BEHIND`
+
+PR branch is behind main. No actual conflict — just needs to catch up. Fast path:
+
+1. Check out the PR branch in its existing worktree:
+   ```bash
+   git -C .worktrees/story-<N>-<slug> fetch origin main
+   git -C .worktrees/story-<N>-<slug> merge origin/main
+   ```
+2. If the merge is clean (no conflicts), push:
+   ```bash
+   git -C .worktrees/story-<N>-<slug> push origin story-<N>-<slug>
+   ```
+3. Re-check `gh pr view <N> --json mergeable,mergeStateStatus`. Once `CLEAN`, return to Phase 4 step 3.
+4. If the merge produced conflicts (shouldn't for `BEHIND`, but possible if the file sets overlap): treat as `CONFLICTING` case below.
+
+### Case: `mergeable: CONFLICTING, mergeStateStatus: DIRTY`
+
+PR branch conflicts with main. Try mechanical resolution before halting:
+
+1. Check out the PR branch in its worktree (as above) and merge origin/main:
+   ```bash
+   git -C .worktrees/story-<N>-<slug> fetch origin main
+   git -C .worktrees/story-<N>-<slug> merge origin/main
+   ```
+   This will fail with a conflict message listing the affected files.
+
+2. **Identify conflicted files:**
+   ```bash
+   git -C .worktrees/story-<N>-<slug> diff --name-only --diff-filter=U
+   ```
+
+3. **For each conflicted file**, match against the **Known-mechanical conflict patterns** table below. If the file matches, apply the documented resolution. If it doesn't match, add it to a `halt_files` list and continue checking the others.
+
+4. **After checking all files:**
+   - If `halt_files` is empty: all conflicts were mechanical; proceed to step 5.
+   - If `halt_files` is non-empty: abort the merge (`git -C <path> merge --abort`), report the files to the user, and stop. Those files need human judgment.
+
+5. **Verify resolution** — after editing each conflicted file, check no markers remain:
+   ```bash
+   grep -c "<<<<<<< HEAD" <file>
+   ```
+   Expect `0` for every file. If non-zero, you missed a block — fix before continuing.
+
+6. **Run `npm test` in the worktree:**
+   ```bash
+   cd .worktrees/story-<N>-<slug> && npm test
+   ```
+   - All pass → proceed to step 7.
+   - Failures → abort the merge, report failures, halt. Do not push a failing test suite.
+
+7. **Commit and push the merge resolution:**
+   ```bash
+   git -C .worktrees/story-<N>-<slug> add <conflicted-files>
+   git -C .worktrees/story-<N>-<slug> commit -m "Merge origin/main — resolve <files> conflict (mechanical: <pattern name>)"
+   git -C .worktrees/story-<N>-<slug> push origin story-<N>-<slug>
+   ```
+
+8. **Wait for GitHub to re-evaluate** (usually 3-10 seconds), then re-check mergeable state:
+   ```bash
+   gh pr view <N> --json mergeable,mergeStateStatus
+   ```
+   Once `MERGEABLE` / `CLEAN` (may briefly show `UNSTABLE` while CI re-runs — that's fine, wait for CI to go green), return to Phase 4 step 3.
+
+---
+
+## Known-mechanical conflict patterns
+
+Patterns observed and resolved safely multiple times in this repo. Each has an unambiguous resolution. If a conflicted file matches one of these patterns, resolve per the rule; if not, halt.
+
+### Pattern A — `src/server.js` parallel route registration
+
+**Symptom:** Two PRs each added a route import + `fastify.register(...)` call. Git can't auto-merge parallel additions in the same region.
+
+**Resolution:** Keep BOTH sides. Order: put them in story-number order (lower-numbered story's route first) if their imports/register calls are peers. Never drop either side.
+
+Example conflict:
+```
+<<<<<<< HEAD
+import jobsRoute from './routes/jobs.js'
+fastify.register(jobsRoute)
+=======
+import reportsRoute from './routes/reports.js'
+fastify.register(reportsRoute)
+>>>>>>> origin/main
+```
+
+Resolution:
+```
+import jobsRoute from './routes/jobs.js'
+import reportsRoute from './routes/reports.js'
+fastify.register(jobsRoute)
+fastify.register(reportsRoute)
+```
+
+### Pattern B — `_bmad-output/implementation-artifacts/sprint-status.yaml` different-story flips
+
+**Symptom:** Both branches updated sprint-status for DIFFERENT stories. Each side has a different story at a different state.
+
+**Resolution:** Accept both changes (union). If the same story shows different states on each side (rare — typically only happens if BAD's reconciliation flipped it twice in different directions), take the status that matches the PR's CURRENT GitHub state (`merged` → `done`, `open` → `review` or prior).
+
+### Pattern C — `_bmad-output/implementation-artifacts/deferred-work.md` both sides added new sections
+
+**Symptom:** Each side appended a new `## Deferred from: ...` section at the end. Git sees both as "new content at end of file".
+
+**Resolution:** Keep both sections. Order them chronologically by the date in each section header (oldest first).
+
+### Pattern D — `package.json` `test` script parallel file additions
+
+**Symptom:** Both branches added new test file entries to the `"test": "node --test ..."` script argument list.
+
+**Resolution:** Union — include every test file path mentioned on either side. Preserve alphabetical or existing order convention.
+
+### What's NOT on this list (halt instead)
+
+- `src/workers/**/*.js` — worker logic changes need semantic review
+- `src/routes/**/*.js` (the route file itself, not server.js registration) — same
+- Any `src/**/*.js` non-trivial diff — same
+- Any test file's assertion logic — false-positive rate too high
+- `_bmad-output/planning-artifacts/**/*.md` — epic/PRD/distillate changes need human review
+- Individual story spec files (`implementation-artifacts/N-M-*.md`) — semantic content
+- `README.md`, `CLAUDE.md`, retrospectives — human judgment
+
+When in doubt: **halt and show the user the conflicted file and its conflict markers**. Over-halting is safer than under-halting.
+
+---
+
+## Interpreting `git status` output during a merge
+
+When you see a long list of `M` (modified) and `A` (added) files right after `git merge origin/main`, do NOT assume these are uncommitted dev-state changes. Most are files being brought in from main as part of the merge.
+
+For the user's benefit, narrate clearly when reporting status. Example:
+
+> "After `git merge origin/main`, the worktree shows 7 modified/added files. These are NOT local uncommitted changes — they are main's changes being merged into the PR branch. Only `UU src/server.js` is an unresolved conflict that needs attention."
+
+The `UU` prefix (or `git diff --diff-filter=U`) is the reliable signal for an actual unresolved conflict. Everything else is either staged-from-merge (`M`/`A`) or truly untracked (`??`).
+
+---
+
 ## Post-merge verification
 
 Whichever path was taken, confirm main is in a good state:

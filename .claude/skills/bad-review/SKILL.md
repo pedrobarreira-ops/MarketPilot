@@ -276,16 +276,48 @@ Do NOT auto-merge. The user must explicitly confirm.
 Read `references/merge-procedure.md` and follow it exactly. Core steps:
 
 1. **Stash any local dev-state changes** (e.g. `.claude/settings.local.json`) so they don't get swept into git state.
-2. **Detect local/origin divergence**. If local main has BAD's stranded sprint-status commits:
-   - Do NOT reset local to origin (that would lose BAD's intent)
+2. **Re-check PR mergeable state RIGHT BEFORE the merge** (not just what was captured at Phase 1 — state may have drifted if another PR merged in the meantime):
+   ```bash
+   gh pr view {PR_NUMBER} --json mergeable,mergeStateStatus
+   ```
+   - `mergeable: MERGEABLE, mergeStateStatus: CLEAN` → proceed to step 3.
+   - `mergeStateStatus: BEHIND` → PR branch is behind main; auto-catch-up. See **"Pre-merge conflict handling"** in `references/merge-procedure.md`.
+   - `mergeable: CONFLICTING, mergeStateStatus: DIRTY` → conflict. Try mechanical-conflict resolution (see below). If unresolvable, halt.
+3. **Detect local/origin divergence** (local has BAD's stranded sprint-status commits):
+   - Do NOT reset local to origin (would lose BAD's intent)
    - Do NOT merge-commit (messy history)
    - DO rebase local onto origin after the PR merge completes on GitHub
-3. `gh pr merge <N> --squash --delete-branch` — GitHub handles the squash.
-4. `git fetch origin main && git rebase origin/main` — replay any local commits onto the new tip.
-5. **If rebase hits conflicts** (typically on the story spec file — "Status" field, checkboxes, or Dev Agent Record): resolve by keeping the MORE COMPLETE local version (BAD's post-review state has checkmarks + Dev Agent Record populated; origin's squashed state has raw unchecked skeleton).
-6. **Check for conflict markers left behind** before continuing: `grep -c "<<<<<<< HEAD" <spec-file>`. If non-zero, fix them before pushing.
-7. `git push origin main` — this completes the merge safely.
-8. Pop the stash.
+4. `gh pr merge <N> --squash --delete-branch` — GitHub handles the squash.
+5. `git fetch origin main && git rebase origin/main` — replay any local commits onto the new tip.
+6. **If rebase hits conflicts** (typically on the story spec file — "Status" field, checkboxes, or Dev Agent Record): resolve by keeping the MORE COMPLETE local version (BAD's post-review state has checkmarks + Dev Agent Record populated; origin's squashed state has raw unchecked skeleton).
+7. **Check for conflict markers left behind** before continuing: `grep -c "<<<<<<< HEAD" <spec-file>`. If non-zero, fix them before pushing.
+8. `git push origin main` — this completes the merge safely.
+9. Pop the stash.
+
+### Mechanical-conflict resolution (step 2 CONFLICTING case)
+
+When `mergeStateStatus: DIRTY`, the PR branch conflicts with main. Do NOT immediately halt. First try known-mechanical auto-resolution:
+
+1. **Check out the PR branch in its existing worktree** (`.worktrees/story-{N}-<slug>/`). Do NOT create a new worktree or change the main worktree's branch.
+2. **Merge `origin/main` into the PR branch:**
+   ```bash
+   git -C <worktree-path> fetch origin main
+   git -C <worktree-path> merge origin/main
+   ```
+3. **Identify conflicted files:** `git -C <worktree-path> diff --name-only --diff-filter=U`.
+4. **For each conflicted file, check against the known-mechanical pattern list** in `references/merge-procedure.md` ("Known-mechanical conflict patterns"). If ALL conflicted files match known patterns, resolve each per the documented rule. If ANY conflicted file is outside the list, halt with a clear report to the user — this needs human judgment.
+5. **After resolving:** run `npm test` in the worktree to verify no regression. If green, commit the merge resolution with a message like `"Merge origin/main — resolve <files> conflict (mechanical: <pattern>)"` and push. If red, halt with test output.
+6. **Re-check mergeable state** — GitHub needs a few seconds to re-evaluate. Once `MERGEABLE`, return to step 4 of Phase 4.
+
+**Never guess.** If the conflict pattern is unfamiliar, don't try to resolve it — halt and describe the conflicted files to the user.
+
+### Rule on `cd` in Bash commands
+
+Shell CWD persists across Bash tool calls in the same session. Avoid the stuck-in-worktree footgun:
+- **Good:** `git -C <path> status`, `cd path && cmd` (CWD only persists within that one command), absolute paths.
+- **Bad:** standalone `cd path` on its own line — the next Bash call will still be in that path.
+
+If a `cd` is unavoidable (e.g. `npm test` doesn't support `-C`), pair it with the actual command: `cd path && npm test`.
 
 **Do NOT proceed to Phase 5 if any step in Phase 4 fails.** Report the failure to the user and stop.
 
