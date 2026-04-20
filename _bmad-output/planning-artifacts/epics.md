@@ -856,6 +856,8 @@ So that I can view the report page and download the full analysis at any time wi
 
 **Goal:** Implement `public/js/form.js` and `public/js/progress.js` to wire up the existing Stitch-built HTML pages. Do NOT modify HTML structure — only add/edit JS. Covers all state transitions: validation, loading, submission, progress bar animation, copy button, auto-redirect, and error display.
 
+**Test strategy:** Two complementary layers. (1) Node `--test` unit tests for pure logic (validation predicates, phase→bar% mapping, state transitions). (2) Playwright E2E smoke + behavioural tests in `tests/e2e/*.spec.js`. Before writing any E2E tests, **read `tests/e2e/README.md`** — it is the authoritative pattern contract for frontend tests in this repo. Scaffold files `tests/e2e/form.smoke.spec.js` and `tests/e2e/progress.smoke.spec.js` already exist with a DOM-smoke test (runs today) plus behavioural templates guarded by `test.skip` — the dev agent UNSKIPS the relevant templates and extends them to cover every AC. Non-negotiable rules: mock all `/api/*` calls via `page.route()` (no real backend in E2E), prefer role/label/text selectors over Tailwind classes, match Portuguese copy with case-insensitive regex, use `expect.poll` / `toPass` for timing (never `waitForTimeout`). `npm run test:e2e` runs the full suite.
+
 ### Story 5.1: form.js — Validation, Loading State & Submission
 
 **GH Issue:** #19
