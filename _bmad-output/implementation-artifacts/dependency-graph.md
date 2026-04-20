@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-20T14:30:00Z (phase0 reconciliation: PR#49 merged, 3.5a=done, epic-3=done)_
+_Last updated: 2026-04-20T16:00:00Z (phase0 reconciliation: PR#50 merged, 4.2a=done, epic-4=done, epic-5 unblocked)_
 
 ## Stories
 
@@ -22,11 +22,11 @@ _Last updated: 2026-04-20T14:30:00Z (phase0 reconciliation: PR#49 merged, 3.5a=d
 | 3.7   | 3    | Full Worker Orchestration & Phase Updates | done | #15 | #43 | merged | 3.2, 3.3, 3.4, 3.5, 3.6 | ✅ Yes (done) |
 | 4.1   | 4    | POST /api/generate Route | done | #16 | #44 | merged | 1.2, 3.7 | ✅ Yes (done) |
 | 4.2   | 4    | GET /api/jobs/:job_id Polling Endpoint | done | #17 | #45 | merged | 4.1 | ✅ Yes (done) |
-| 4.2a  | 4    | Polling Progress Contract — Structured Counts | ready-for-dev | #48 | — | — | 4.2, 3.7 | ✅ Yes |
+| 4.2a  | 4    | Polling Progress Contract — Structured Counts | done | #48 | #50 | merged | 4.2, 3.7 | ✅ Yes (done) |
 | 4.3   | 4    | GET /api/reports & CSV Routes | done | #18 | #46 | merged | 4.1 | ✅ Yes (done) |
-| 5.1   | 5    | form.js — Validation, Loading & Submission | backlog | #19 | — | — | 4.1 | ❌ No (epic 4 not complete: 4.2a not merged) |
+| 5.1   | 5    | form.js — Validation, Loading & Submission | backlog | #19 | — | — | 4.1 | ✅ Yes |
 | 5.2   | 5    | progress.js — Progress Bar, Copy & Redirect | backlog | #20 | — | — | 5.1 | ❌ No (5.1 not merged) |
-| 6.1   | 6    | report.js — Data Fetch, Skeleton & Your Position | backlog | #21 | — | — | 4.3 | ❌ No (epic 4 not complete: 4.2a not merged) |
+| 6.1   | 6    | report.js — Data Fetch, Skeleton & Your Position | backlog | #21 | — | — | 4.3 | ❌ No (epic 5 not complete) |
 | 6.2   | 6    | Biggest Opportunities & Quick Wins Tables | backlog | #22 | — | — | 6.1 | ❌ No (6.1 not merged) |
 | 6.3   | 6    | CSV Download & CTA | backlog | #23 | — | — | 6.1 | ❌ No (6.1 not merged) |
 | 6.4   | 6    | Mobile & Screen-Share Layout Verification | backlog | #24 | — | — | 6.2, 6.3 | ❌ No (6.2, 6.3 not merged) |
@@ -55,9 +55,9 @@ _Last updated: 2026-04-20T14:30:00Z (phase0 reconciliation: PR#49 merged, 3.5a=d
 - **4.2** depends on: 4.1
 - **4.2a** depends on: 4.2, 3.7
 - **4.3** depends on: 4.1
-- **5.1** depends on: 4.1 (blocked: epic 4 not complete — 4.2a not yet merged)
+- **5.1** depends on: 4.1 (UNBLOCKED: epic 4 complete as of 2026-04-20)
 - **5.2** depends on: 5.1
-- **6.1** depends on: 4.3 (blocked: epic 4 not complete — 4.2a not yet merged)
+- **6.1** depends on: 4.3 (blocked: epic 5 not complete)
 - **6.2** depends on: 6.1
 - **6.3** depends on: 6.1
 - **6.4** depends on: 6.2, 6.3
@@ -71,10 +71,11 @@ _Last updated: 2026-04-20T14:30:00Z (phase0 reconciliation: PR#49 merged, 3.5a=d
 
 ## Notes
 
-- **Epics 1, 2, and 3 are fully complete** — all stories have merged PRs.
+- **Epics 1, 2, 3, and 4 are fully complete** — all stories have merged PRs.
 - **Epic 3 closed** (2026-04-20): PR #49 (story 3.5a, CSV formula injection hardening, CWE-1236) merged. Epic 3 row flipped to done.
-- **Epic 4 reopened** (2026-04-20): Story 4.2a (polling progress contract — structured counts) added retroactively. Stories 4.1, 4.2, 4.3 all have merged PRs. 4.2a is ready-for-dev — the only remaining blocker for epics 5–8.
-- **Story 4.2a is the current blocking story** — must merge before epics 5–8 can begin (epic ordering rule).
-- **Stale worktrees cleaned** (2026-04-20): `.worktrees/story-3.5a-csv-formula-injection-hardening` removed; remote branch deleted.
+- **Epic 4 closed** (2026-04-20): PR #50 (story 4.2a, polling progress contract — structured counts) merged. Epic 4 row flipped to done. All epic-4 stories done.
+- **Epic 5 is now the current epic** — story 5.1 (form.js) is unblocked and ready to work.
+- **Story 5.2 blocked on 5.1** — sequential dependency within epic 5.
+- **Stale worktrees cleaned** (2026-04-20): `.worktrees/story-4.2a-polling-progress-contract-structured-counts` removed; remote branch deleted.
 - **Pending open PRs:** none
-- **No parallelization needed:** only one story (4.2a) remains in epic 4.
+- **Epic 6 blocked on epic 5** — 6.1 depends on epic ordering rule (5 must complete first).
