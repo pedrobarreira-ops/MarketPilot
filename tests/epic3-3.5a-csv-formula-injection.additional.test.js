@@ -122,6 +122,13 @@ function parseRfc4180Row(row) {
       } else {
         cells.push(row.slice(i, end))
         i = end + 1
+        // If we just consumed the last comma and there is nothing left, the
+        // final cell is an empty string — push it so the cell count matches
+        // the column count (important for 12-column rows ending with empty fields).
+        if (i === row.length) {
+          cells.push('')
+          break
+        }
       }
     }
   }
@@ -170,7 +177,7 @@ describe('AC-6 (T5a.1–T5a.6): Formula trigger characters are neutralised in pr
         `Got cell value: ${JSON.stringify(titleCell)} in row: ${JSON.stringify(dataRow)}`
       )
       assert.ok(
-        titleCell.includes(trigger === '\t' || trigger === '\r' ? trigger : trigger),
+        titleCell.includes(trigger),
         `The original trigger character must still be present after the single-quote prefix. ` +
         `Got: ${JSON.stringify(titleCell)}`
       )
