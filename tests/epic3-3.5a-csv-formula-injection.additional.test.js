@@ -12,9 +12,14 @@
  * AC-7: npm test green across all tests
  * AC-8: No new imports, no DB schema changes, no new dependencies
  *
- * ALL tests here are BEHAVIOURAL: call buildAndPersistReport with a constructed
+ * Most tests here are BEHAVIOURAL: call buildAndPersistReport with a constructed
  * catalog entry, retrieve the persisted csv_data via getReport, split by \n, and
- * assert on the data row. No source-text scans for behavioural invariants.
+ * assert on the data row.
+ *
+ * The AC-1 + AC-4 (static) describe block at the end of this file is intentionally
+ * a source-text scan — it verifies structural code decisions (column classification
+ * and the removal of the deferred-trade-off comment) that are architectural invariants
+ * per the project's ATDD convention for security/architecture checks.
  *
  * Uses Node.js built-in test runner (node:test) — no extra dependencies needed.
  * Run: node --test tests/epic3-3.5a-csv-formula-injection.additional.test.js
