@@ -141,8 +141,18 @@
       .then(function (res) {
         if (res.status === 202) {
           return res.json().then(function (data) {
-            var d = data.data
-            window.location.href = '/progress?job_id=' + encodeURIComponent(d['job_id']) + '&report_id=' + encodeURIComponent(d['report_id'])
+            var d = data && data.data
+            var jobId = d && d['job_id']
+            var reportId = d && d['report_id']
+            if (!jobId || !reportId) {
+              // 202 accepted but response body is missing the expected { data: { job_id, report_id } }
+              // wrapper. Treat as a generic failure (AC-7 fallback) rather than navigating with
+              // "undefined" query params or throwing an opaque TypeError.
+              setLoading(false)
+              showGeneralError()
+              return
+            }
+            window.location.href = '/progress?job_id=' + encodeURIComponent(jobId) + '&report_id=' + encodeURIComponent(reportId)
           })
         } else if (res.status === 400) {
           return res.json().then(function (body) {
