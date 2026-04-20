@@ -23,7 +23,7 @@ test.describe('Progress page (public/progress.html)', () => {
   // ── UNSKIP when Story 5.2 ships progress.js ─────────────────────────────
   // Pattern: polling with mocked status transitions drives the progress bar fill.
   // Must poll every 2s; three phases map to ~30% / ~80% / ~95% / 100% fills.
-  test.skip('polling — status transitions update aria-valuenow on the progress bar', async ({ page }) => {
+  test('polling — status transitions update aria-valuenow on the progress bar', async ({ page }) => {
     // Serve a sequence of polling responses
     let pollCount = 0
     const timeline = [
@@ -58,7 +58,7 @@ test.describe('Progress page (public/progress.html)', () => {
   // Pattern: live status line composes phase_message + counts when both count
   // fields are non-null; otherwise just phase_message. Counts use pt-PT locale
   // (thousand separator is `.`).
-  test.skip('live status line — composes phase_message + counts in pt-PT locale', async ({ page }) => {
+  test('live status line — composes phase_message + counts in pt-PT locale', async ({ page }) => {
     await page.route('**/api/jobs/test-job', (route) => route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -80,7 +80,7 @@ test.describe('Progress page (public/progress.html)', () => {
 
   // ── UNSKIP when Story 5.2 ships progress.js ─────────────────────────────
   // Pattern: status=complete drives a 1.5s-delayed navigate to /report/{report_id}.
-  test.skip('completion — status=complete auto-redirects to /report/{report_id} after 1.5s', async ({ page }) => {
+  test('completion — status=complete auto-redirects to /report/{report_id} after 1.5s', async ({ page }) => {
     await page.route('**/api/jobs/test-job', (route) => route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -97,7 +97,7 @@ test.describe('Progress page (public/progress.html)', () => {
   // ── UNSKIP when Story 5.2 ships progress.js ─────────────────────────────
   // Pattern: copy-to-clipboard button calls navigator.clipboard.writeText, then
   // icon swaps to check + outline goes green for 2s.
-  test.skip('copy button — writes report URL to clipboard and shows success state', async ({ browser }) => {
+  test('copy button — writes report URL to clipboard and shows success state', async ({ browser }) => {
     // Grant clipboard permissions (Chromium requires explicit grant)
     const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] })
     const page = await context.newPage()

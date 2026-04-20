@@ -3,7 +3,7 @@
 **Epic:** 5 — Frontend Form & Progress Pages
 **Story:** 5.2
 **Story Key:** 5-2-progress-js-progress-bar-copy-redirect
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-20
 
 This story does NOT call Mirakl endpoints directly. It consumes `GET /api/jobs/:job_id` (Stories 4.2 + 4.2a). No Mirakl MCP check required.
@@ -121,57 +121,57 @@ So that I can share or bookmark the report link upfront and get redirected witho
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0: Add `<script>` tag to `progress.html`** (AC: 20)
-  - [ ] Add `<script src="/js/progress.js"></script>` immediately before `</body>` in `public/progress.html`
-  - [ ] Verify the DOM smoke test still passes: `npx playwright test tests/e2e/progress.smoke.spec.js --grep "DOM smoke"`
+- [x] **Task 0: Add `<script>` tag to `progress.html`** (AC: 20)
+  - [x] Add `<script src="/js/progress.js"></script>` immediately before `</body>` in `public/progress.html`
+  - [x] Verify the DOM smoke test still passes: `npx playwright test tests/e2e/progress.smoke.spec.js --grep "DOM smoke"`
 
-- [ ] **Task 1: Wire progress.js — DOM references and initialisation** (AC: 1, 2, 9)
-  - [ ] Read `job_id` and `report_id` from `new URLSearchParams(window.location.search)` only
-  - [ ] Get DOM references: outer progress container (`role="progressbar"` target), inner fill `<div>`, status text `<p>`, `<code>` URL element, copy `<button>`, processing label `<span>`
-  - [ ] Immediately assign `<code>` text to `window.location.origin + '/report/' + reportId` (synchronously, before any `setInterval`)
-  - [ ] Set `aria-label="Copiar link do relatório"` on copy button during init
-  - [ ] Set ARIA attributes on progress bar: `role="progressbar"`, `aria-valuemin="0"`, `aria-valuemax="100"`, `aria-valuenow="0"`
+- [x] **Task 1: Wire progress.js — DOM references and initialisation** (AC: 1, 2, 9)
+  - [x] Read `job_id` and `report_id` from `new URLSearchParams(window.location.search)` only
+  - [x] Get DOM references: outer progress container (`role="progressbar"` target), inner fill `<div>`, status text `<p>`, `<code>` URL element, copy `<button>`, processing label `<span>`
+  - [x] Immediately assign `<code>` text to `window.location.origin + '/report/' + reportId` (synchronously, before any `setInterval`)
+  - [x] Set `aria-label="Copiar link do relatório"` on copy button during init
+  - [x] Set ARIA attributes on progress bar: `role="progressbar"`, `aria-valuemin="0"`, `aria-valuemax="100"`, `aria-valuenow="0"`
 
-- [ ] **Task 2: Progress bar fill function** (AC: 4, 5)
-  - [ ] Implement `setProgress(phase)` — maps phase string to a percentage:
+- [x] **Task 2: Progress bar fill function** (AC: 4, 5)
+  - [x] Implement `setProgress(phase)` — maps phase string to a percentage:
     - `queued` → 0 (or leave at current; do not reset)
     - `fetching_catalog` → 30
     - `scanning_competitors` → 80 (add `progress-pulse` class)
     - `building_report` → 95 (remove `progress-pulse` class)
     - `complete` → 100 (remove `progress-pulse` class)
-  - [ ] Update `aria-valuenow` on each call
-  - [ ] Use `innerFill.style.width = pct + '%'`; manage `progress-pulse` class add/remove
-  - [ ] Error state: preserve current `style.width`; replace `bg-primary` with `bg-red-600`; remove `progress-pulse`
+  - [x] Update `aria-valuenow` on each call
+  - [x] Use `innerFill.style.width = pct + '%'`; manage `progress-pulse` class add/remove
+  - [x] Error state: preserve current `style.width`; replace `bg-primary` with `bg-red-600`; remove `progress-pulse`
 
-- [ ] **Task 3: Live status line** (AC: 6, 7)
-  - [ ] Implement `updateStatusLine(data)`:
+- [x] **Task 3: Live status line** (AC: 6, 7)
+  - [x] Implement `updateStatusLine(data)`:
     - If `data.progress_current !== null && data.progress_total !== null`:
       `statusEl.textContent = data.phase_message + ' (' + data.progress_current.toLocaleString('pt-PT') + ' / ' + data.progress_total.toLocaleString('pt-PT') + ' produtos)'`
     - Else: `statusEl.textContent = data.phase_message`
 
-- [ ] **Task 4: Polling loop** (AC: 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16)
-  - [ ] Start `setInterval` at 2000ms after AC-1 URL assignment (so URL is always set first in source order)
-  - [ ] Each tick: `fetch('/api/jobs/' + jobId)` → parse JSON → extract `data`
-  - [ ] Call `setProgress(data.status)` and `updateStatusLine(data)`
-  - [ ] On `status === 'complete'`: `clearInterval(intervalId)`; set bar 100%; after 1.5s `window.location.href = '/report/' + reportId`; also set a 3s fallback timeout to show the inline link (AC-12)
-  - [ ] On `status === 'error'`: `clearInterval(intervalId)`; apply red bar (AC-13); hide processing label (AC-14); update status text and link box label (AC-15); show retry/contact actions (AC-16)
-  - [ ] Network/fetch errors: log to console; continue polling (do not crash)
+- [x] **Task 4: Polling loop** (AC: 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16)
+  - [x] Start `setInterval` at 2000ms after AC-1 URL assignment (so URL is always set first in source order)
+  - [x] Each tick: `fetch('/api/jobs/' + jobId)` → parse JSON → extract `data`
+  - [x] Call `setProgress(data.status)` and `updateStatusLine(data)`
+  - [x] On `status === 'complete'`: `clearInterval(intervalId)`; set bar 100%; after 1.5s `window.location.href = '/report/' + reportId`; also set a 3s fallback timeout to show the inline link (AC-12)
+  - [x] On `status === 'error'`: `clearInterval(intervalId)`; apply red bar (AC-13); hide processing label (AC-14); update status text and link box label (AC-15); show retry/contact actions (AC-16)
+  - [x] Network/fetch errors: log to console; continue polling (do not crash)
 
-- [ ] **Task 5: Copy button behaviour** (AC: 8, 10)
-  - [ ] Attach click listener to copy button
-  - [ ] On click: try `navigator.clipboard.writeText(reportUrl)`; on success: swap icon to `check`/`check_circle`, add green colour class, restore after 2s via `setTimeout`
-  - [ ] Catch / fallback: if `navigator.clipboard` undefined or throws → use `document.execCommand('copy')` after selecting the `<code>` text, show inline tooltip `"Link seleccionado — copia com Ctrl+C"`
+- [x] **Task 5: Copy button behaviour** (AC: 8, 10)
+  - [x] Attach click listener to copy button
+  - [x] On click: try `navigator.clipboard.writeText(reportUrl)`; on success: swap icon to `check`/`check_circle`, add green colour class, restore after 2s via `setTimeout`
+  - [x] Catch / fallback: if `navigator.clipboard` undefined or throws → use `document.execCommand('copy')` after selecting the `<code>` text, show inline tooltip `"Link seleccionado — copia com Ctrl+C"`
 
-- [ ] **Task 6: Create static ATDD file** (AC: 17, 18)
-  - [ ] Create `tests/epic5-5.2-progress-js.atdd.test.js` (new file)
-  - [ ] T-P-static.1: read `public/js/progress.js` source; assert `/(localStorage|sessionStorage)/` does NOT match
-  - [ ] T-P-static.2: read source; find line index of `<code>` element URL assignment; find line index of `setInterval(`; assert URL assignment line index < `setInterval` line index
-  - [ ] Run: `node --test tests/epic5-5.2-progress-js.atdd.test.js` — all tests must pass
+- [x] **Task 6: Create static ATDD file** (AC: 17, 18)
+  - [x] Create `tests/epic5-5.2-progress-js.atdd.test.js` (new file — already created by Step 2 ATDD agent)
+  - [x] T-P-static.1: read `public/js/progress.js` source; assert `/(localStorage|sessionStorage)/` does NOT match
+  - [x] T-P-static.2: read source; find line index of `<code>` element URL assignment; find line index of `setInterval(`; assert URL assignment line index < `setInterval` line index
+  - [x] Run: `node --test tests/epic5-5.2-progress-js.atdd.test.js` — all 11 tests pass
 
-- [ ] **Task 7: Unskip Playwright E2E tests** (AC: 19 and all E2E-P tests)
-  - [ ] In `tests/e2e/progress.smoke.spec.js`, change `test.skip(` → `test(` for all skipped tests
-  - [ ] Run `npx playwright test tests/e2e/progress.smoke.spec.js` — all tests pass
-  - [ ] Verify DOM smoke test remains passing
+- [x] **Task 7: Unskip Playwright E2E tests** (AC: 19 and all E2E-P tests)
+  - [x] In `tests/e2e/progress.smoke.spec.js`, change `test.skip(` → `test(` for all 4 skipped tests
+  - [x] Run `npx playwright test tests/e2e/progress.smoke.spec.js` — all 5 tests pass
+  - [x] Verify DOM smoke test remains passing
 
 ---
 
@@ -471,20 +471,33 @@ This story is 100% frontend (`public/js/progress.js`). The only backend it calls
 
 ### Agent Model Used
 
-_To be filled by dev agent_
+claude-sonnet-4-6 (Claude Code, Step 3 dev-story)
 
 ### Debug Log References
 
-_To be filled by dev agent_
+- Static scan T-P-static.2 required combining the `textContent` assignment and `/report/` URL path onto a single line to satisfy the scan heuristic. Fixed by inlining: `codeEl.textContent = window.location.origin + '/report/' + reportId`
+- Copy button success state: Playwright test locator checked for `[data-state="copied"]` — added `copyBtn.setAttribute('data-state', 'copied')` on success to satisfy the E2E test.
 
 ### Completion Notes List
 
-_To be filled by dev agent_
+- Implemented `public/js/progress.js` as plain IIFE browser script (no ESM, no imports)
+- URL field (`<code>`) populated synchronously before `setInterval` call (AC-1, AC-18)
+- `job_id` and `report_id` read from `URLSearchParams` only — no localStorage/sessionStorage (AC-2, AC-17)
+- `setProgress(phase)` maps phases to percentages (0/30/80/95/100), manages `progress-pulse` class, updates `aria-valuenow` (AC-4, AC-5)
+- `updateStatusLine(data)` formats counts with `toLocaleString('pt-PT')` when non-null (AC-6, AC-7)
+- Polling via `setInterval(2000ms)` — stops on `complete` or `error` (AC-3, AC-11, AC-13)
+- Complete state: 1.5s navigate + 3s fallback link injection (AC-11, AC-12)
+- Error state: red bar, hide processing label, update link box label, inject retry/contact actions (AC-13-16)
+- Copy button: clipboard.writeText with icon swap + `data-state="copied"` + green colour; fallback via `execCommand('copy')` + tooltip (AC-8, AC-9, AC-10)
+- All 11 ATDD static scans pass; all 5 Playwright E2E tests pass; full 517-test suite and 10 E2E tests pass (0 regressions)
 
 ### File List
 
-_To be filled by dev agent_
+- `public/js/progress.js` — implemented (was 2-line stub)
+- `public/progress.html` — added `<script src="/js/progress.js"></script>` before `</body>` (Task 0 only)
+- `tests/e2e/progress.smoke.spec.js` — unskipped 4 `test.skip` → `test` calls
 
 ### Change Log
 
 - 2026-04-20: Story 5.2 spec created — create-story workflow, comprehensive developer guide.
+- 2026-04-20: Story 5.2 implemented — progress.js full implementation; script tag added to progress.html; 4 E2E tests unskipped. All tests green.

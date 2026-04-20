@@ -92,7 +92,7 @@ development_status:
   # ── Epic 5: Frontend — Form & Progress Pages ─────────────────────────────
   epic-5: in-progress
   5-1-form-js-validation-loading-and-submission: done
-  5-2-progress-js-bar-copy-redirect-error: backlog
+  5-2-progress-js-progress-bar-copy-redirect: review
   epic-5-retrospective: optional
 
   # ── Epic 6: Frontend — Report Page ───────────────────────────────────────
