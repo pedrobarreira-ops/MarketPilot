@@ -3,7 +3,7 @@
 **Epic:** 4 — HTTP API Layer
 **Story:** 4.2a (retroactive contract extension against Story 4.2)
 **Story Key:** 4-2a-polling-progress-contract
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-20
 **Origin:** Sprint Change Proposal 2026-04-20 (`_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-20.md`). Design handoff revealed the progress page needs structured per-phase counts; the UX doc already specified them (`ux-design.md:293-298`) but the shipped polling endpoint buries counts inside the prose `phase_message`. This story exposes them as dedicated fields.
 
@@ -377,3 +377,12 @@ No issues encountered. Implementation was straightforward — all source changes
 
 - 2026-04-20: Story 4.2a created — retroactive extension of the polling endpoint contract to expose `progress_current` / `progress_total` fields. Pre-Epic-5 critical path item per Sprint Change Proposal 2026-04-20 and Epic 4 retrospective.
 - 2026-04-20: Story 4.2a implemented — all 9 tasks complete; 493 tests pass (20 new in 4.2a file, 1 updated assertion in 4.2 file). Status set to review.
+- 2026-04-20: Code review (Step 5) complete — 1 documentation patch applied (SECURITY comment on `ensureColumn` helper in `src/db/migrate.js`), 2 low-severity items deferred. Zero blockers / high / medium findings. Full suite: 495 tests pass, 0 fail.
+
+---
+
+### Review Findings
+
+- [x] [Review][Patch] `ensureColumn` helper uses unsanitized identifier interpolation — SECURITY comment added [src/db/migrate.js:10-24]
+- [x] [Review][Defer] No validation that `progress_current` ≤ `progress_total` — deferred, out of scope (Story 5.2 concern)
+- [x] [Review][Defer] `updateJobStatus` does not type-check count params — deferred, internal API only; platform-hardening story

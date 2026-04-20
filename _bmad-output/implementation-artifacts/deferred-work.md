@@ -177,3 +177,8 @@ Items deferred during code review. Each entry includes the review date and sourc
 ### PR body overstates "12-column header contract enforcement" (PR #46)
 **Gap**: PR body describes the CSV route as "enforcing" the 12-column header contract. The route streams `row.csv_data` verbatim from SQLite; header enforcement lives upstream in Story 3.5's `buildReport()`. The route itself has a documentation comment listing the columns but no code that validates them. Consistent with the "(d) CSV formula injection deferred to Story 3.5" caveat in the same PR body.
 **Why deferred**: Not actionable — noting for future audit context and as a reminder that header-contract regressions would need to be caught at the build-time test (Story 3.5), not at the route test.
+
+## Deferred from: code review of 4-2a-polling-progress-contract (2026-04-20)
+
+- **No validation that `progress_current` ≤ `progress_total`** [src/db/queries.js:57-67, src/workers/reportWorker.js] — Worker passes Mirakl-reported n/total verbatim; no guard against `n > total`. Out of scope for this story (rendering is Story 5.2 frontend responsibility). Revisit if Story 5.2 encounters out-of-bounds renders.
+- **`updateJobStatus` does not type-check the count params** [src/db/queries.js:57-67] — Passing `NaN`, a negative integer, or a string would be silently inserted by Drizzle. All current callers are internal (worker only) and pass well-typed integers. Add runtime type guards in a future platform-hardening story if the API surface widens.

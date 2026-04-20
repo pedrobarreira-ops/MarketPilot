@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-20  (story 4-2a dev complete → 4-2a=review)
+last_updated: 2026-04-20  (story 4-2a code review complete; 1 doc patch applied + 2 deferred, marked done)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -85,7 +85,7 @@ development_status:
   epic-4: in-progress
   4-1-post-api-generate-route: done
   4-2-get-api-jobs-polling-endpoint: done
-  4-2a-polling-progress-contract: review
+  4-2a-polling-progress-contract: done
   4-3-get-api-reports-and-csv-routes: done
   epic-4-retrospective: done
 
