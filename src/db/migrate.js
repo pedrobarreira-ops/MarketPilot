@@ -10,6 +10,11 @@ import { sqlite } from './database.js'
 /**
  * Idempotent column-existence check for ALTER TABLE ADD COLUMN.
  * SQLite < 3.35 does not support ADD COLUMN IF NOT EXISTS, so we detect via PRAGMA.
+ *
+ * SECURITY: tableName, columnName, and columnType are interpolated directly into
+ * SQL without parameterization (SQLite does not support bind parameters for DDL
+ * identifiers). Callers MUST pass trusted literal identifiers only — never user
+ * input. All current call sites pass hardcoded string literals.
  */
 function ensureColumn(tableName, columnName, columnType) {
   const cols = sqlite.prepare(`PRAGMA table_info(${tableName})`).all().map(r => r.name)
