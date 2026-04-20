@@ -14,19 +14,27 @@ const TTL_SECONDS = 172800
 // EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score
 const CSV_HEADER = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
 
+// Column classification for CSV formula injection prevention (CWE-1236):
+//
+// Text columns (ean, product_title, shop_sku) are attacker-controllable via
+// Mirakl P11 competitor listings. escapeTextCell prefixes any formula-trigger
+// first-character (= + - @ \t \r) with a single quote so Excel/Sheets treat
+// the cell as text, not as a formula. Numeric columns are system-computed and
+// do NOT go through the prefixer — a legitimate "-0.50" gap must stay a
+// machine-parseable number.
+//
+// Note: leading-whitespace bypass (e.g. " =cmd") is NOT handled — Excel
+// generally treats leading whitespace as literal, so this is acceptable for MVP.
+
+// Formula trigger characters per OWASP CSV Injection guidance.
+const FORMULA_TRIGGERS = new Set(['=', '+', '-', '@', '\t', '\r'])
+
 /**
  * Escape a single CSV cell value per RFC 4180.
  * - null / undefined / '' → empty cell
  * - Numbers & non-zero falsy values coerce to their String() form (0 → "0", false → "false")
  * - Cells containing commas, double-quotes, CR, or LF are wrapped in double quotes
  *   and any internal double quotes are doubled
- *
- * Note on formula / CSV injection: cells starting with =, +, -, @, \t, \r when
- * opened in Excel / LibreOffice / Google Sheets can be interpreted as a formula
- * (CWE-1236). This MVP does NOT prefix such cells with a leading ' — it would
- * break the exact-byte contract asserted by ATDD tests (e.g. numeric prices like
- * "19.99"). Deferred as a hardening task once the report contract is stable and
- * we classify cells as "text" vs "numeric" — see deferred-work.md.
  */
 function escapeCell(val) {
   if (val === null || val === undefined || val === '') return ''
@@ -40,6 +48,27 @@ function escapeCell(val) {
     return `"${str.replace(/"/g, '""')}"`
   }
   return str
+}
+
+/**
+ * Escape a text-column CSV cell — applies formula-injection neutralisation
+ * (CWE-1236) BEFORE RFC 4180 quoting.
+ *
+ * Use this for attacker-controllable text columns: ean, product_title, shop_sku.
+ * Do NOT use for numeric columns — a legitimate "-0.50" gap must stay numeric.
+ *
+ * - null / undefined / '' → returns '' (unchanged, parity with escapeCell)
+ * - If the first character of String(val) is a formula trigger (= + - @ \t \r),
+ *   a single straight-quote ' is prepended BEFORE RFC 4180 quoting.
+ * - RFC 4180 quoting is then applied via escapeCell (no duplication).
+ */
+function escapeTextCell(val) {
+  if (val === null || val === undefined || val === '') return ''
+  const str = String(val)
+  if (FORMULA_TRIGGERS.has(str[0])) {
+    return escapeCell(`'${str}`)
+  }
+  return escapeCell(str)
 }
 
 /**
@@ -88,19 +117,21 @@ export function buildAndPersistReport(reportId, email, catalog, computedReport) 
     const pt = ptMap.get(entry.ean)   // undefined if winning or uncontested in PT
     const es = esMap.get(entry.ean)   // undefined if winning or uncontested in ES
 
+    // Text columns (attacker-controllable via Mirakl P11) → escapeTextCell
+    // Numeric columns (system-computed)                   → escapeCell
     const row = [
-      escapeCell(entry.ean),
-      escapeCell(entry.product_title),
-      escapeCell(entry.shop_sku),
-      escapeCell(entry.price),                    // my_price
-      escapeCell(pt ? pt.competitor_first : ''),  // pt_first_price
-      escapeCell(pt ? pt.gap             : ''),   // pt_gap_eur
-      escapeCell(pt ? pt.gap_pct         : ''),   // pt_gap_pct
-      escapeCell(pt ? pt.wow_score       : ''),   // pt_wow_score
-      escapeCell(es ? es.competitor_first : ''),  // es_first_price
-      escapeCell(es ? es.gap             : ''),   // es_gap_eur
-      escapeCell(es ? es.gap_pct         : ''),   // es_gap_pct
-      escapeCell(es ? es.wow_score       : ''),   // es_wow_score
+      escapeTextCell(entry.ean),                          // text: attacker-controllable
+      escapeTextCell(entry.product_title),                // text: attacker-controllable
+      escapeTextCell(entry.shop_sku),                     // text: attacker-controllable
+      escapeCell(entry.price),                            // my_price (numeric)
+      escapeCell(pt ? pt.competitor_first : ''),          // pt_first_price (numeric)
+      escapeCell(pt ? pt.gap             : ''),           // pt_gap_eur (numeric)
+      escapeCell(pt ? pt.gap_pct         : ''),           // pt_gap_pct (numeric)
+      escapeCell(pt ? pt.wow_score       : ''),           // pt_wow_score (numeric)
+      escapeCell(es ? es.competitor_first : ''),          // es_first_price (numeric)
+      escapeCell(es ? es.gap             : ''),           // es_gap_eur (numeric)
+      escapeCell(es ? es.gap_pct         : ''),           // es_gap_pct (numeric)
+      escapeCell(es ? es.wow_score       : ''),           // es_wow_score (numeric)
     ].join(',')
 
     rows.push(row)
