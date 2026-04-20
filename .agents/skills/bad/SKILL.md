@@ -363,6 +363,19 @@ Auto-approve all tool calls (yolo mode).
    Include "Fixes #{gh_issue_number}" in the PR description body (omit only if
    no issue number was found in step 3).
 
+   PR BODY HALLUCINATION GUARD — after /commit-commands:commit-push-pr drafts the
+   PR body, review it against the actual diff (`git diff main`) BEFORE pushing.
+   Only cite specific filenames, function names, table/column names, exact string
+   values, env var names, CLI flags, or explicit behavioural claims (e.g. "adds
+   retry logic", "emits X field") that you can confirm are present in the diff.
+   For anything else, use general prose ("adds the route", "extends the worker").
+   If the draft contains a specific claim you cannot verify in the diff,
+   generalise it or remove it before the PR is created. This rule applies only
+   to the PR BODY — the PR TITLE can be the story slug as-is. Repeating pattern
+   observed across Epics 2, 3, and 4: PR bodies hallucinate filenames, header
+   values, and "enforces X" claims that the diff does not support. Do not
+   continue the pattern.
+
 5. CI:
    - If RUN_CI_LOCALLY is true → skip GitHub Actions and run the Local CI Fallback below.
    - Otherwise, if MONITOR_SUPPORT is true → use the Monitor tool to watch CI status:
