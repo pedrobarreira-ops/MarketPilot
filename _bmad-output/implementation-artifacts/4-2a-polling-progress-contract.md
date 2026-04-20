@@ -3,7 +3,7 @@
 **Epic:** 4 — HTTP API Layer
 **Story:** 4.2a (retroactive contract extension against Story 4.2)
 **Story Key:** 4-2a-polling-progress-contract
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-20
 **Origin:** Sprint Change Proposal 2026-04-20 (`_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-20.md`). Design handoff revealed the progress page needs structured per-phase counts; the UX doc already specified them (`ux-design.md:293-298`) but the shipped polling endpoint buries counts inside the prose `phase_message`. This story exposes them as dedicated fields.
 
@@ -112,90 +112,45 @@ So that the live status line can render `{phase_message} ({current} / {total} pr
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Update Drizzle schema** (AC: 1)
-  - [ ] Add two columns to `generationJobs` in `src/db/schema.js`:
+- [x] **Task 1: Update Drizzle schema** (AC: 1)
+  - [x] Add two columns to `generationJobs` in `src/db/schema.js`:
     ```js
     progressCurrent: integer('progress_current'),
     progressTotal:   integer('progress_total'),
     ```
     Both nullable (no `.notNull()`).
 
-- [ ] **Task 2: Update migration with idempotent ALTER TABLE** (AC: 1, 9)
-  - [ ] In `src/db/migrate.js`, add the two columns to the `CREATE TABLE IF NOT EXISTS generation_jobs` DDL.
-  - [ ] Add a PRAGMA-based column-existence check and conditional `ALTER TABLE generation_jobs ADD COLUMN ...` for the case where the table existed before this story. Pattern:
-    ```js
-    const cols = sqlite.prepare("PRAGMA table_info(generation_jobs)").all().map(r => r.name)
-    if (!cols.includes('progress_current')) {
-      sqlite.exec('ALTER TABLE generation_jobs ADD COLUMN progress_current INTEGER')
-    }
-    if (!cols.includes('progress_total')) {
-      sqlite.exec('ALTER TABLE generation_jobs ADD COLUMN progress_total INTEGER')
-    }
-    ```
-  - [ ] Verify idempotency by running `runMigrations()` twice in a unit-level check inside the new `.additional.test.js` OR by manual smoke test (documented in Dev Agent Record).
+- [x] **Task 2: Update migration with idempotent ALTER TABLE** (AC: 1, 9)
+  - [x] In `src/db/migrate.js`, add the two columns to the `CREATE TABLE IF NOT EXISTS generation_jobs` DDL.
+  - [x] Add a PRAGMA-based column-existence check and conditional `ALTER TABLE generation_jobs ADD COLUMN ...` via `ensureColumn()` helper function.
+  - [x] Idempotency verified by AC-9 tests in the `.additional.test.js` file (3 tests: twice, thrice, and getJobStatus still works after repeated calls).
 
-- [ ] **Task 3: Extend `updateJobStatus` signature and `getJobStatus` return shape** (AC: 2, 3)
-  - [ ] Change `updateJobStatus(jobId, status, phaseMessage)` to `updateJobStatus(jobId, status, phaseMessage, progressCurrent, progressTotal)`.
-  - [ ] Apply the three-state (`undefined` → omit / `null` → clear / value → set) pattern for each new param — mirror the existing `phaseMessage` logic:
-    ```js
-    if (progressCurrent !== undefined) updates.progressCurrent = progressCurrent
-    if (progressTotal   !== undefined) updates.progressTotal   = progressTotal
-    ```
-  - [ ] In `getJobStatus`, add both columns to the `db.select({...})` projection and to the returned snake-case object:
-    ```js
-    progress_current: row.progressCurrent,
-    progress_total:   row.progressTotal,
-    ```
-  - [ ] Update the JSDoc comment on `getJobStatus` (line 125) from `Return { status, phase_message, report_id }` to the new 5-field shape.
+- [x] **Task 3: Extend `updateJobStatus` signature and `getJobStatus` return shape** (AC: 2, 3)
+  - [x] Changed `updateJobStatus(jobId, status, phaseMessage)` to `updateJobStatus(jobId, status, phaseMessage, progressCurrent, progressTotal)`.
+  - [x] Three-state semantic applied for both new params (undefined → omit, null → clear, value → set).
+  - [x] `getJobStatus` returns 5-key object with snake_case keys and `?? null` defensive guards.
+  - [x] JSDoc updated to the new 5-field shape.
 
-- [ ] **Task 4: Update `reportWorker.js` to write counts** (AC: 5, 6)
-  - [ ] Update the two `onProgress` callbacks in `processJob` to pass `n` and `total` as the 4th and 5th args to `updateJobStatus`.
-  - [ ] Add explicit `null, null` clearing at the phase transition `updateJobStatus` calls:
-    - `db.updateJobStatus(job_id, 'fetching_catalog', 'A obter catálogo…', null, null)` before the fetchCatalog loop
-    - `db.updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes…', null, null)` before the scanCompetitors loop
-    - `db.updateJobStatus(job_id, 'building_report', 'A construir relatório…', null, null)` before the compute step
-    - `db.updateJobStatus(job_id, 'complete', 'Relatório pronto!', null, null)` on successful finish
-  - [ ] The `queued → A preparar…` transition at the top of `processJob` can also pass `null, null` for consistency (optional — these default to null for new rows).
+- [x] **Task 4: Update `reportWorker.js` to write counts** (AC: 5, 6)
+  - [x] Both `onProgress` callbacks updated to pass `n, total` as 4th and 5th args.
+  - [x] Explicit `null, null` clearing at all phase transitions: `fetching_catalog`, `scanning_competitors`, `building_report`, `complete`.
 
-- [ ] **Task 5: Expose new fields on `GET /api/jobs/:job_id`** (AC: 4)
-  - [ ] In `src/routes/jobs.js`, pass through the new fields to the response:
-    ```js
-    return reply.send({
-      data: {
-        status:           row.status,
-        phase_message:    row.phase_message ?? null,
-        progress_current: row.progress_current ?? null,
-        progress_total:   row.progress_total ?? null,
-        report_id:        row.report_id,
-      },
-    })
-    ```
-    The `?? null` is defensive — `getJobStatus` already returns `null` for NULL columns, but `?? null` keeps the route tolerant if DB row shape changes.
-  - [ ] Update the JSDoc header in `src/routes/jobs.js` to document the new 5-field response shape.
+- [x] **Task 5: Expose new fields on `GET /api/jobs/:job_id`** (AC: 4)
+  - [x] `src/routes/jobs.js` passes through 5-field response with `?? null` defensive guards.
+  - [x] JSDoc header updated to document the 5-field shape.
 
-- [ ] **Task 6: Update the one assertion in the existing 4.2 ATDD file** (AC: 7)
-  - [ ] `tests/epic4-4.2-get-api-jobs-polling.atdd.test.js:156` — change the expected keys array:
-    - FROM: `['phase_message', 'report_id', 'status']`
-    - TO:   `['phase_message', 'progress_current', 'progress_total', 'report_id', 'status']`
-  - [ ] Update the assertion message to match (change description + expected shape literal in the human-readable message). No other changes to that file.
+- [x] **Task 6: Update the one assertion in the existing 4.2 ATDD file** (AC: 7)
+  - [x] `tests/epic4-4.2-get-api-jobs-polling.atdd.test.js:156` already updated by ATDD step to 5-field array `['phase_message', 'progress_current', 'progress_total', 'report_id', 'status']`. No further changes needed.
 
-- [ ] **Task 7: Create `tests/epic4-4.2a-polling-progress-contract.additional.test.js`** (AC: 8, 9)
-  - [ ] Follow the pattern of `tests/epic4-4.2-get-api-jobs-polling.atdd.test.js`: in-memory SQLite + real Fastify + real `jobsRoute` registration via `fastify.register(jobsRoute)`.
-  - [ ] Write 7 tests aligned with AC-8's seven cases, plus one idempotency test (run `runMigrations()` twice, assert no throw).
-  - [ ] Import `updateJobStatus` and `getJobStatus` from `src/db/queries.js` for direct round-trip tests (no need to go through the HTTP layer for every test — direct DB calls are equally behavioural and cheaper).
-  - [ ] For the HTTP-layer tests, use `app.inject({ method: 'GET', url: '/api/jobs/{jobId}' })` exactly as 4.2's ATDD does.
+- [x] **Task 7: Create `tests/epic4-4.2a-polling-progress-contract.additional.test.js`** (AC: 8, 9)
+  - [x] File created by ATDD step with 20 tests across 7 cases + AC-9 idempotency tests. All pass.
 
-- [ ] **Task 8: Regression sweep** (AC: 10, 11)
-  - [ ] `npm test` — all tests green. Especially verify:
-    - Story 4.2 original ATDD still passes (with Task 6's single update applied).
-    - Story 3.5 ATDD still passes (no DB structural change affects report tables).
-    - Story 3.7 worker ATDD still passes (worker update is additive — new args are optional from the caller's perspective).
-  - [ ] If Story 3.5a CSV hardening has merged first, run its tests too — no interaction expected.
+- [x] **Task 8: Regression sweep** (AC: 10, 11)
+  - [x] `npm test` — 493 tests pass, 0 failures. Full suite including Stories 4.2, 3.5, 3.7.
 
-- [ ] **Task 9: Smoke test — real polling against a seeded DB** (AC: all integration)
-  - [ ] Write a throwaway Node script (or inline REPL) that: creates a job, calls `updateJobStatus` in sequence mimicking the worker, hits the route after each update, logs the response.
-  - [ ] Verify the response shape matches AC-4 at each phase and that counts appear/clear as AC-5 and AC-6 require.
-  - [ ] Report the output in Dev Agent Record → Completion Notes List.
+- [x] **Task 9: Smoke test — real polling against a seeded DB** (AC: all integration)
+  - [x] Inline smoke test run via node --input-type=module. Output recorded in Dev Agent Record.
+  - [x] All phases verified correct null/count behavior.
 
 ---
 
@@ -380,20 +335,45 @@ After completing all tasks, verify:
 
 ### Agent Model Used
 
-_to be filled by dev agent_
+claude-sonnet-4-6
 
 ### Debug Log References
 
-_to be filled by dev agent_
+No issues encountered. Implementation was straightforward — all source changes were additive and the ATDD tests were already written by Step 2.
 
 ### Completion Notes List
 
-_to be filled by dev agent — MUST include the Task 9 smoke-test output_
+- Task 1 complete: `src/db/schema.js` — `generationJobs` now has 11 columns; `progressCurrent` and `progressTotal` added as `integer(...)` without `.notNull()`.
+- Task 2 complete: `src/db/migrate.js` — DDL updated with new columns; `ensureColumn()` helper added for PRAGMA-based idempotent migration on pre-existing DBs.
+- Task 3 complete: `src/db/queries.js` — `updateJobStatus` extended to 5 params with three-state semantic; `getJobStatus` returns 5-key snake_case object with `?? null` guards.
+- Task 4 complete: `src/workers/reportWorker.js` — both `onProgress` callbacks now pass `n, total`; all 4 phase-transition calls explicitly clear with `null, null`.
+- Task 5 complete: `src/routes/jobs.js` — 5-field response shape with `?? null` guards; JSDoc updated.
+- Task 6 complete: The 4.2 ATDD file's line-156 assertion was already updated by the ATDD step (Step 2) to the 5-field contract. No further changes needed.
+- Task 7 complete: The additional test file was created by the ATDD step with 20 behavioural tests. All pass.
+- Task 8 complete: Full regression sweep — 493 tests, 0 failures. Confirmed 4.2, 3.5, 3.7, 3.5a all green.
+- Task 9 (Smoke test output):
+  ```
+  queued: {"status":"queued","progress_current":null,"progress_total":null}
+  fetching_catalog (transition, counts cleared): {"status":"fetching_catalog","progress_current":null,"progress_total":null}
+  fetching_catalog (7200/31179): {"status":"fetching_catalog","progress_current":7200,"progress_total":31179}
+  scanning_competitors (transition, counts cleared): {"status":"scanning_competitors","progress_current":null,"progress_total":null}
+  scanning_competitors (15427/28440): {"status":"scanning_competitors","progress_current":15427,"progress_total":28440}
+  building_report: {"status":"building_report","progress_current":null,"progress_total":null}
+  complete: {"status":"complete","progress_current":null,"progress_total":null}
+  Smoke test PASSED — all phases show correct null/count behavior
+  ```
 
 ### File List
 
-_to be filled by dev agent_
+- `src/db/schema.js` — added `progressCurrent` and `progressTotal` integer columns
+- `src/db/migrate.js` — added `ensureColumn()` helper; added new columns to DDL and idempotent ALTER TABLE calls
+- `src/db/queries.js` — extended `updateJobStatus` to 5-param signature; extended `getJobStatus` to 5-field return shape
+- `src/workers/reportWorker.js` — updated `onProgress` callbacks and phase-transition calls to pass/clear counts
+- `src/routes/jobs.js` — updated response shape to 5 fields; updated JSDoc
+- `tests/epic4-4.2-get-api-jobs-polling.atdd.test.js` — AC-7 exact-fields assertion already updated by ATDD step (no dev change needed)
+- `tests/epic4-4.2a-polling-progress-contract.additional.test.js` — created by ATDD step (no dev change needed; all 20 tests pass)
 
 ### Change Log
 
 - 2026-04-20: Story 4.2a created — retroactive extension of the polling endpoint contract to expose `progress_current` / `progress_total` fields. Pre-Epic-5 critical path item per Sprint Change Proposal 2026-04-20 and Epic 4 retrospective.
+- 2026-04-20: Story 4.2a implemented — all 9 tasks complete; 493 tests pass (20 new in 4.2a file, 1 updated assertion in 4.2 file). Status set to review.
