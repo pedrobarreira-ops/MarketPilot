@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-20T16:00:00Z (phase0 reconciliation: PR#50 merged, 4.2a=done, epic-4=done, epic-5 unblocked)_
+_Last updated: 2026-04-20T18:00:00Z (phase0 reconciliation: PR#51 merged, 5.1=done, 5.2 unblocked; stale 5.1 worktree removed)_
 
 ## Stories
 
@@ -24,8 +24,8 @@ _Last updated: 2026-04-20T16:00:00Z (phase0 reconciliation: PR#50 merged, 4.2a=d
 | 4.2   | 4    | GET /api/jobs/:job_id Polling Endpoint | done | #17 | #45 | merged | 4.1 | ✅ Yes (done) |
 | 4.2a  | 4    | Polling Progress Contract — Structured Counts | done | #48 | #50 | merged | 4.2, 3.7 | ✅ Yes (done) |
 | 4.3   | 4    | GET /api/reports & CSV Routes | done | #18 | #46 | merged | 4.1 | ✅ Yes (done) |
-| 5.1   | 5    | form.js — Validation, Loading & Submission | backlog | #19 | — | — | 4.1 | ✅ Yes |
-| 5.2   | 5    | progress.js — Progress Bar, Copy & Redirect | backlog | #20 | — | — | 5.1 | ❌ No (5.1 not merged) |
+| 5.1   | 5    | form.js — Validation, Loading & Submission | done | #19 | #51 | merged | 4.1 | ✅ Yes (done) |
+| 5.2   | 5    | progress.js — Progress Bar, Copy & Redirect | backlog | #20 | — | — | 5.1 | ✅ Yes |
 | 6.1   | 6    | report.js — Data Fetch, Skeleton & Your Position | backlog | #21 | — | — | 4.3 | ❌ No (epic 5 not complete) |
 | 6.2   | 6    | Biggest Opportunities & Quick Wins Tables | backlog | #22 | — | — | 6.1 | ❌ No (6.1 not merged) |
 | 6.3   | 6    | CSV Download & CTA | backlog | #23 | — | — | 6.1 | ❌ No (6.1 not merged) |
@@ -55,8 +55,8 @@ _Last updated: 2026-04-20T16:00:00Z (phase0 reconciliation: PR#50 merged, 4.2a=d
 - **4.2** depends on: 4.1
 - **4.2a** depends on: 4.2, 3.7
 - **4.3** depends on: 4.1
-- **5.1** depends on: 4.1 (UNBLOCKED: epic 4 complete as of 2026-04-20)
-- **5.2** depends on: 5.1
+- **5.1** depends on: 4.1 (DONE: PR #51 merged 2026-04-20)
+- **5.2** depends on: 5.1 (UNBLOCKED: 5.1 merged 2026-04-20)
 - **6.1** depends on: 4.3 (blocked: epic 5 not complete)
 - **6.2** depends on: 6.1
 - **6.3** depends on: 6.1
@@ -74,8 +74,8 @@ _Last updated: 2026-04-20T16:00:00Z (phase0 reconciliation: PR#50 merged, 4.2a=d
 - **Epics 1, 2, 3, and 4 are fully complete** — all stories have merged PRs.
 - **Epic 3 closed** (2026-04-20): PR #49 (story 3.5a, CSV formula injection hardening, CWE-1236) merged. Epic 3 row flipped to done.
 - **Epic 4 closed** (2026-04-20): PR #50 (story 4.2a, polling progress contract — structured counts) merged. Epic 4 row flipped to done. All epic-4 stories done.
-- **Epic 5 is now the current epic** — story 5.1 (form.js) is unblocked and ready to work.
-- **Story 5.2 blocked on 5.1** — sequential dependency within epic 5.
-- **Stale worktrees cleaned** (2026-04-20): `.worktrees/story-4.2a-polling-progress-contract-structured-counts` removed; remote branch deleted.
+- **Story 5.1 done** (2026-04-20): PR #51 merged. form.js validation, loading & submission complete.
+- **Epic 5 is now the current epic** — story 5.2 (progress.js) is unblocked and ready to work.
+- **Stale worktrees cleaned** (2026-04-20): `.worktrees/story-5.1-form-js-validation-loading-submission` removed; remote branch deleted.
 - **Pending open PRs:** none
 - **Epic 6 blocked on epic 5** — 6.1 depends on epic ordering rule (5 must complete first).
