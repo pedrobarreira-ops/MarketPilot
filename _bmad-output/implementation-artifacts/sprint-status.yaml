@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-20  (story 5-1 created → ready-for-dev; epic-5 flipped to in-progress)
+last_updated: 2026-04-20  (story 5-1 implemented → review; epic-5 in-progress)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -91,7 +91,7 @@ development_status:
 
   # ── Epic 5: Frontend — Form & Progress Pages ─────────────────────────────
   epic-5: in-progress
-  5-1-form-js-validation-loading-and-submission: atdd-done
+  5-1-form-js-validation-loading-and-submission: review
   5-2-progress-js-bar-copy-redirect-error: backlog
   epic-5-retrospective: optional
 
