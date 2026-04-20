@@ -90,9 +90,9 @@ development_status:
   epic-4-retrospective: done
 
   # ── Epic 5: Frontend — Form & Progress Pages ─────────────────────────────
-  epic-5: in-progress
+  epic-5: done
   5-1-form-js-validation-loading-and-submission: done
-  5-2-progress-js-progress-bar-copy-redirect: review
+  5-2-progress-js-progress-bar-copy-redirect: done
   epic-5-retrospective: optional
 
   # ── Epic 6: Frontend — Report Page ───────────────────────────────────────
