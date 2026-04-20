@@ -24,3 +24,8 @@ skills-lock.json
 # BMAD per-user config — canonical module files stay in _bmad/
 _bmad/config.user.yaml
 _bmad/module-help.csv
+
+# Playwright E2E artifacts — regenerated on each run
+playwright-report/
+test-results/
+playwright/.cache/

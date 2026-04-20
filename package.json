@@ -10,7 +10,10 @@
     "dev": "node --watch src/server.js",
     "test": "node --env-file-if-exists=.env --test tests/**/*.test.js",
     "test:legacy-allowlist": "node --env-file-if-exists=.env --test tests/db.atdd.test.js tests/docker.atdd.test.js tests/epic3-3.1-api-client.atdd.test.js tests/epic3-3.2-fetch-catalog.atdd.test.js tests/epic3-3.3-scan-competitors.atdd.test.js tests/epic3-3.4-wow-scoring.atdd.test.js tests/epic3-3.4-wow-scoring.unit.test.js tests/epic3-3.5-report-persistence.atdd.test.js tests/epic3-3.5-report-persistence.additional.test.js tests/epic3-3.6-email-dispatch.atdd.test.js tests/epic3-3.6-email-dispatch.additional.test.js tests/epic3-3.7-worker-orchestration.atdd.test.js tests/keystore.atdd.test.js tests/queue.atdd.test.js tests/server.atdd.test.js tests/worker-key-lifecycle.atdd.test.js",
-    "test:atdd": "node --env-file-if-exists=.env --test tests/server.atdd.test.js"
+    "test:atdd": "node --env-file-if-exists=.env --test tests/server.atdd.test.js",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@fastify/static": "^9.1.1",
@@ -24,6 +27,7 @@
     "uuid": "^11.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "drizzle-kit": "^0.21.0"
   }
 }
