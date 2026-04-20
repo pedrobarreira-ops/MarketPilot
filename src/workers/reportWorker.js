@@ -40,36 +40,41 @@ export async function processJob(job) {
     }
 
     // Phase A — fetch catalog
-    db.updateJobStatus(job_id, 'fetching_catalog', 'A obter catálogo…')
+    // Explicit null, null clear ensures counts don't bleed from a previous phase
+    // during the window between the transition call and the first onProgress fire.
+    db.updateJobStatus(job_id, 'fetching_catalog', 'A obter catálogo…', null, null)
     const catalog = await fetchCatalog(
       marketplace_url,
       apiKey,
       (n, total) => {
         const msg = `A obter catálogo… (${n.toLocaleString('pt-PT')} de ${total.toLocaleString('pt-PT')} produtos)`
-        db.updateJobStatus(job_id, 'fetching_catalog', msg)
+        db.updateJobStatus(job_id, 'fetching_catalog', msg, n, total)
       },
       job_id
     )
 
     // Phase B — scan competitors
-    db.updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes…')
+    // Explicit null, null clear prevents stale fetching_catalog counts from being visible.
+    db.updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes…', null, null)
     const competitors = await scanCompetitors(
       catalog.map(o => o.ean),
       marketplace_url,
       apiKey,
       (n, total) => {
         const msg = `A verificar concorrentes (${n.toLocaleString('pt-PT')} de ${total.toLocaleString('pt-PT')} produtos)…`
-        db.updateJobStatus(job_id, 'scanning_competitors', msg)
+        db.updateJobStatus(job_id, 'scanning_competitors', msg, n, total)
       }
     )
 
     // Phase C — compute report + scoring
-    db.updateJobStatus(job_id, 'building_report', 'A construir relatório…')
+    // building_report has no onProgress — counts remain null for the entire phase.
+    db.updateJobStatus(job_id, 'building_report', 'A construir relatório…', null, null)
     const computedReport = computeReport(catalog, competitors)
 
     // Phase D — persist report to SQLite
     buildAndPersistReport(report_id, email, catalog, computedReport)
-    db.updateJobStatus(job_id, 'complete', 'Relatório pronto!')
+    // complete: explicitly clear counts (no counting in this phase).
+    db.updateJobStatus(job_id, 'complete', 'Relatório pronto!', null, null)
 
     // Phase E — dispatch notification via Resend (Story 3.6).
     // A dynamic import() is used here (rather than a static top-of-file import)

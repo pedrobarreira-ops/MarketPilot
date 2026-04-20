@@ -145,7 +145,7 @@ describe('Story 4.2 — GET /api/jobs/:job_id', async () => {
       assert.equal(data.status, 'queued', 'freshly created job must have status "queued"')
     })
 
-    test('data object contains exactly {status, phase_message, report_id} — no extra fields', async () => {
+    test('data object contains exactly {status, phase_message, progress_current, progress_total, report_id} — no extra fields', async () => {
       const job_id    = randomId()
       const report_id = randomId()
       createJob(job_id, report_id, 'user@example.com', 'https://marketplace.worten.pt')
@@ -153,7 +153,7 @@ describe('Story 4.2 — GET /api/jobs/:job_id', async () => {
       const res = await app.inject({ method: 'GET', url: `/api/jobs/${job_id}` })
       const { data } = JSON.parse(res.body)
       const keys = Object.keys(data).sort()
-      assert.deepEqual(keys, ['phase_message', 'report_id', 'status'], 'data must contain exactly {status, phase_message, report_id}')
+      assert.deepEqual(keys, ['phase_message', 'progress_current', 'progress_total', 'report_id', 'status'], 'data must contain exactly {status, phase_message, progress_current, progress_total, report_id}')
     })
   })
 

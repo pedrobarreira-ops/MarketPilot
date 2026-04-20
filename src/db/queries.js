@@ -37,16 +37,28 @@ export function createJob(jobId, reportId, email, marketplaceUrl) {
 }
 
 /**
- * Update job status and phase message.
+ * Update job status, phase message, and progress counts.
  * Sets completed_at only when status transitions to 'complete'.
  *
- * If phaseMessage is undefined, Drizzle omits that column from the SET clause,
- * preserving the previous phase_message value rather than clearing it to NULL.
- * Pass null explicitly to clear the phase message.
+ * Three-state semantic for phaseMessage, progressCurrent, progressTotal:
+ *   undefined → column omitted from SET (preserves previous DB value)
+ *   null      → column cleared (written as NULL)
+ *   value     → column set to that value
+ *
+ * Existing callers passing only 3 args continue to work unchanged —
+ * progressCurrent and progressTotal default to undefined → omitted from SET.
+ *
+ * @param {string} jobId
+ * @param {string} status
+ * @param {string|null|undefined} phaseMessage
+ * @param {number|null|undefined} progressCurrent
+ * @param {number|null|undefined} progressTotal
  */
-export function updateJobStatus(jobId, status, phaseMessage) {
+export function updateJobStatus(jobId, status, phaseMessage, progressCurrent, progressTotal) {
   const updates = { status }
-  if (phaseMessage !== undefined) updates.phaseMessage = phaseMessage
+  if (phaseMessage     !== undefined) updates.phaseMessage     = phaseMessage
+  if (progressCurrent  !== undefined) updates.progressCurrent  = progressCurrent
+  if (progressTotal    !== undefined) updates.progressTotal    = progressTotal
   if (status === 'complete') updates.completedAt = unixNow()
   db.update(generationJobs)
     .set(updates)
@@ -122,15 +134,19 @@ export function getReport(reportId, now) {
 }
 
 /**
- * Return { status, phase_message, report_id } for a job, or null if not found.
+ * Return { status, phase_message, report_id, progress_current, progress_total }
+ * for a job, or null if not found.
  * Snake-case keys are the HTTP API contract consumed by Epic 4 routes.
+ * NULL DB values are returned as JavaScript null (not undefined, not 0).
  */
 export function getJobStatus(jobId) {
   const row = db
     .select({
-      status:       generationJobs.status,
-      phaseMessage: generationJobs.phaseMessage,
-      reportId:     generationJobs.reportId,
+      status:          generationJobs.status,
+      phaseMessage:    generationJobs.phaseMessage,
+      reportId:        generationJobs.reportId,
+      progressCurrent: generationJobs.progressCurrent,
+      progressTotal:   generationJobs.progressTotal,
     })
     .from(generationJobs)
     .where(eq(generationJobs.jobId, jobId))
@@ -138,8 +154,10 @@ export function getJobStatus(jobId) {
     .get()
   if (!row) return null
   return {
-    status:        row.status,
-    phase_message: row.phaseMessage,
-    report_id:     row.reportId,
+    status:           row.status,
+    phase_message:    row.phaseMessage,
+    report_id:        row.reportId,
+    progress_current: row.progressCurrent ?? null,
+    progress_total:   row.progressTotal   ?? null,
   }
 }
