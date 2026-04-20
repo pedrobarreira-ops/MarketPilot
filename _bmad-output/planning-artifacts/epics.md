@@ -651,6 +651,8 @@ So that the report is accessible via UUID for 48 hours and the CSV download is a
 
 ### Story 3.5a: CSV Formula Injection Hardening
 
+**GH Issue:** #47
+
 As the operator of MarketPilot,
 I want `src/workers/scoring/buildReport.js` to neutralise spreadsheet-formula payloads in competitor-controlled text cells of the generated CSV (EAN, product_title, shop_sku),
 So that a malicious seller cannot weaponise their `product_title` to exfiltrate credentials or execute commands when the CSV is opened in Excel, LibreOffice Calc, or Google Sheets.
@@ -792,6 +794,8 @@ So that the progress screen can show me what the system is doing in real time.
 ---
 
 ### Story 4.2a: Polling Progress Contract — Structured Counts
+
+**GH Issue:** #48
 
 As the frontend developer building `progress.js`,
 I want `GET /api/jobs/:job_id` to return structured `progress_current` and `progress_total` integer fields alongside `status`, `phase_message`, and `report_id`,
