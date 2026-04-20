@@ -96,4 +96,29 @@ test.describe('Form page (public/index.html)', () => {
     await expect(page.getByRole('button', { name: /gerar/i })).toBeEnabled()
     await expect(page).toHaveURL('/')
   })
+
+  // AC-8: server 400 with api_key format error → field-level error on #api-key
+  // (not a general above-button error — the specific field is identified from the response body)
+  test('server 400 api_key format error — shows field-level error on #api-key', async ({ page }) => {
+    await page.route('**/api/generate', (route) => route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'validation_error', message: 'body/api_key must be a non-empty string' }),
+    }))
+
+    await page.goto('/')
+    await page.locator('#api-key').fill('bad-key')
+    await page.locator('#email').fill('test@example.com')
+    await page.getByRole('button', { name: /gerar/i }).click()
+
+    // Field-level error on #api-key (not general above-button error)
+    const apiKey = page.locator('#api-key')
+    await expect(apiKey).toHaveAttribute('aria-describedby', /.+/)
+    const errId = await apiKey.getAttribute('aria-describedby')
+    await expect(page.locator(`#${errId}`)).toContainText(/formato da chave não é válido/i)
+
+    // Button must be re-enabled (loading state cleared)
+    await expect(page.getByRole('button', { name: /gerar/i })).toBeEnabled()
+    await expect(page).toHaveURL('/')
+  })
 })
