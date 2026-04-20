@@ -142,9 +142,7 @@
         if (res.status === 202) {
           return res.json().then(function (data) {
             var d = data.data
-            var jKey = 'job_' + 'id'
-            var rKey = 'report_' + 'id'
-            window.location.href = '/progress?' + jKey + '=' + encodeURIComponent(d[jKey]) + '&' + rKey + '=' + encodeURIComponent(d[rKey])
+            window.location.href = '/progress?job_id=' + encodeURIComponent(d['job_id']) + '&report_id=' + encodeURIComponent(d['report_id'])
           })
         } else if (res.status === 400) {
           return res.json().then(function (body) {
