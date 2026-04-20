@@ -3,7 +3,7 @@
 **Epic:** 3 — Report Generation Pipeline
 **Story:** 3.5a (retroactive hardening against Story 3.5)
 **Story Key:** 3-5a-csv-formula-injection-hardening
-**Status:** ready-for-dev
+**Status:** done
 **Date Created:** 2026-04-20
 **Origin:** Deferred-work item "CSV formula injection (CWE-1236) — competitor-controlled cells unescaped (Story 3.5 / 4.3)" — surfaced in Story 4.3 code review (PR #46). Elevated ahead of Epic 5 frontend work because the seller-facing CSV download must not ship with a known CWE.
 
@@ -107,6 +107,34 @@ So that a malicious seller cannot weaponise their `product_title` (attacker-cont
 - [ ] **Task 5: Regression sweep** (AC: 5, 7)
   - [ ] Run `npm test` — all 441+ tests green.
   - [ ] Specifically verify: `tests/epic3-3.5-report-persistence.atdd.test.js` and `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js` both pass WITHOUT any fixture changes. If either fails, STOP and re-check — the fix may have introduced an unexpected byte-level difference.
+
+### Review Findings
+
+Step 5 Code Review (2026-04-20) — three adversarial layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor).
+
+Result: clean review. 19 findings raised across layers; 18 dismissed as noise/false-positive/intentional-design, 1 deferred as pre-existing.
+
+- [x] [Review][Defer] No null-entry validation in `buildAndPersistReport` catalog loop [src/workers/scoring/buildReport.js:116] — deferred, pre-existing (inherited from Story 3.5 scope; orthogonal to CWE-1236 hardening).
+
+Dismissed finding themes (for future reference):
+
+- **FORMULA_TRIGGERS set correctness** — matches OWASP CWE-1236 canonical list (`=`, `+`, `-`, `@`, `\t`, `\r`); LF is intentionally omitted per spec AC-2.
+- **String coercion edge cases** — `String(val)` handles `0`, `false`, `{}`, `[]`, arrays-with-trigger-as-first-element correctly; `str[0]` is `undefined` for empty string but already guarded upstream.
+- **UTF-16 surrogate gotcha** — high surrogate (0xD800-0xDBFF) as first code unit is not in FORMULA_TRIGGERS; not an Excel formula trigger either. Not exploitable.
+- **Numeric columns attacker-controlled?** — `computeReport.js:44-59` type-guards all competitor values to finite numbers; `String(number)` cannot produce a trigger-prefixed string. `entry.price` is seller-owned OF21 catalog data, not attacker-controlled. Safe.
+- **Static tests vs behavioural-only convention** — the six AC-1/AC-4/AC-8 source-text assertions are architectural invariants (classification + import-count + anti-regression guard), aligned with the "keep static scans to security/architecture invariants" memory feedback.
+- **`parseRfc4180Row` trailing-empty-cell bug** — already fixed in commit `80fbc5c` ("test(3.5a): fix parseRfc4180Row trailing-empty-cell bug + simplify tautological ternary").
+- **Leading-whitespace bypass (` =cmd`)** — documented trade-off per AC-2 source comment; modern Excel/Sheets treat leading whitespace as literal.
+
+Acceptance criteria coverage:
+- AC-1 classification explicit at call site ✅
+- AC-2 `escapeTextCell` with six triggers + null/empty parity ✅
+- AC-3 exactly 3 text / 9 numeric calls ✅
+- AC-4 deferred comment replaced ✅
+- AC-5 existing fixtures unchanged, still green ✅
+- AC-6 new behavioural tests cover all trigger chars + realistic payloads ✅
+- AC-7 `npm test` green (471 pass / 0 fail / 175 suites) ✅
+- AC-8 no new imports, no schema change, no route change ✅
 
 ---
 
