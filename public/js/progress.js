@@ -174,8 +174,9 @@
     setTimeout(function () { tooltip.remove(); }, 3000);
   }
 
-  // ── fallbackCopy(text) — AC-10 ─────────────────────────────────────────────
-  function fallbackCopy(text) {
+  // ── fallbackCopy() — AC-10 ────────────────────────────────────────────────
+  // Selects the text in the <code> element using execCommand and shows a tooltip.
+  function fallbackCopy() {
     try {
       var range = document.createRange();
       range.selectNodeContents(codeEl);
@@ -207,17 +208,16 @@
             copyBtn.removeAttribute('data-state');
           }, 2000);
         }).catch(function () {
-          fallbackCopy(currentUrl);
+          fallbackCopy();
         });
       } else {
-        fallbackCopy(currentUrl);
+        fallbackCopy();
       }
     });
   }
 
   // ── Polling loop — starts AFTER URL assignment above (AC-18) ───────────────
   var intervalId = null;
-  var isCompleted = false;
   var didNavigate = false;
 
   // applyErrorState(message) — local helper, invoked on server-error status AND
@@ -288,7 +288,6 @@
 
         if (data.status === 'complete') {
           clearInterval(intervalId);
-          isCompleted = true;
 
           // AC-11: Navigate after 1.5s
           setTimeout(function () {
