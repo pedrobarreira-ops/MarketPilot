@@ -11,9 +11,11 @@ export const generationJobs = sqliteTable('generation_jobs', {
   phaseMessage:   text('phase_message'),
   email:          text('email').notNull(),
   marketplaceUrl: text('marketplace_url').notNull(),
-  createdAt:      integer('created_at'),
-  completedAt:    integer('completed_at'),
-  errorMessage:   text('error_message'),
+  createdAt:       integer('created_at'),
+  completedAt:     integer('completed_at'),
+  errorMessage:    text('error_message'),
+  progressCurrent: integer('progress_current'),
+  progressTotal:   integer('progress_total'),
 })
 
 export const reports = sqliteTable('reports', {
