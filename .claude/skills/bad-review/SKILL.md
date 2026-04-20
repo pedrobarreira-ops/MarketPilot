@@ -41,10 +41,18 @@ Run these in parallel — all `gh` CLI, no subagent needed:
 3. Locate the story spec file: look in `_bmad-output/implementation-artifacts/` for a filename matching the story number (e.g. `3-4-*.md` for Story 3.4). Parse from PR title (typical format: `story-3.4-<slug> - fixes #N`).
 4. Locate the ATDD test file + any `.additional.test.js` / `.unit.test.js` supplements in `tests/`.
 5. Check `gh pr checks <N>` — CI state.
+6. **Cross-reference prior deferred items for this story-family.** Extract the story prefix from the PR title (e.g., `5-1` from `story-5.1-form-js-...`) and grep the deferred-work backlog for any entries that reference it or the same story slug:
+   ```bash
+   grep -nE "Story {story-id}|{story-prefix}-[a-z-]+\.md|code review of {story-prefix}-|PR #[0-9]+ review.*{story-prefix}" \
+     _bmad-output/implementation-artifacts/deferred-work.md
+   ```
+   Also grep for the bare story prefix across the whole file as a safety net (`grep -nE "^- .*{story-prefix}[-.]" deferred-work.md`). Save the matching sections (section header + bullet titles) as `PRIOR_DEFERRED_ITEMS`. This is what the parent session would have known implicitly; dump it here so fresh sessions see it too.
 
-Save the results as variables for the audit phase: `PR_NUMBER`, `PR_TITLE`, `STORY_FILE`, `CODE_FILES` (list), `TEST_FILES` (list), `PR_BODY`.
+Save the results as variables for the audit phase: `PR_NUMBER`, `PR_TITLE`, `STORY_FILE`, `CODE_FILES` (list), `TEST_FILES` (list), `PR_BODY`, `PRIOR_DEFERRED_ITEMS` (may be empty — that's fine).
 
 **If PR state is not OPEN or mergeable is CONFLICTING:** stop. Report to user — "PR is <state>, cannot audit in this session." This skill does not resolve PR-branch conflicts.
+
+**Purpose of `PRIOR_DEFERRED_ITEMS`:** used in Phase 3 to (a) deduplicate observations — if an audit subagent surfaces a finding that's already recorded in deferred-work, label it as "previously deferred" rather than a new finding; (b) flag patterns — if the same kind of observation appears across two or more PRs in the same story-family, that's signal for a retro discussion. Without this step, fresh `/bad-review` sessions would re-log the same observation on every PR.
 
 ---
 
@@ -211,10 +219,17 @@ story" or "adds tests".
 
 ## Phase 3: Synthesize
 
-Once all four subagents return, synthesize a short verdict in main context:
+Once all four subagents return, synthesize a short verdict in main context. Before writing the verdict, **cross-reference each subagent's findings against `PRIOR_DEFERRED_ITEMS`** (from Phase 1 step 6). For any new observation that duplicates a prior deferred item (same file:line, same root cause, same security-invariant class), don't re-surface it as a new finding — flag it as "previously deferred, still not fixed" in the recommendation. This prevents fresh `/bad-review` sessions from re-logging the same observation across every PR in a story-family.
 
 ```
 # PR #{N} audit — {one-line verdict}
+
+## Prior deferred context  ← include only if PRIOR_DEFERRED_ITEMS is non-empty
+Prior deferred items that touch this story-family (from deferred-work.md):
+- **<title from existing entry>** [source section] — summarise in one line.
+  Status: still-open / superseded-by-this-PR / partially-addressed.
+
+Flag if this PR ignored or contradicts a prior deferred item; otherwise just list for continuity.
 
 ## Code vs spec
 {from Subagent A — copy the AC Coverage table + scope/contradictions bullets}
@@ -243,7 +258,13 @@ Once all four subagents return, synthesize a short verdict in main context:
   improvements (weak-but-acceptable test, PR body hallucination, etc.).
   Otherwise omit this section entirely.
 
-For each non-blocking finding, format it exactly like existing entries
+**Deduplication rule:** before listing a finding here, check `PRIOR_DEFERRED_ITEMS`.
+If the same observation is already recorded (same file:line or same root cause),
+SKIP it in this new list. Instead, mention it in the Recommendation section as
+"pattern recurring from [prior section header] — worth retro discussion" so the
+recurrence is visible without creating a duplicate entry.
+
+For each non-duplicate finding, format it exactly like existing entries
 in `_bmad-output/implementation-artifacts/deferred-work.md`:
 
   - **<one-line title>** [file:line or "route" or "PR body"] — <short
