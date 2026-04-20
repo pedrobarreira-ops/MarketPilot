@@ -94,6 +94,8 @@
   // ── showFallbackLink(rid) — AC-12 ──────────────────────────────────────────
   function showFallbackLink(rid) {
     if (!statusEl) return;
+    // Idempotency guard — avoid duplicate injection if multiple complete ticks race
+    if (document.getElementById('fallback-link')) return;
     // Inject below status line
     var fallback = document.createElement('p');
     fallback.id = 'fallback-link';
@@ -216,17 +218,66 @@
   // ── Polling loop — starts AFTER URL assignment above (AC-18) ───────────────
   var intervalId = null;
   var isCompleted = false;
+  var didNavigate = false;
 
-  if (!jobId) {
-    // No job_id — show error-like state but don't crash
-    if (statusEl) statusEl.textContent = 'ID de trabalho em falta.';
+  // applyErrorState(message) — local helper, invoked on server-error status AND
+  // on persistent non-OK responses (e.g. 404 job_not_found).
+  function applyErrorState(message) {
+    if (intervalId) clearInterval(intervalId);
+
+    // AC-13: Red bar at current position. We set both the Tailwind class AND
+    // an inline backgroundColor because the Tailwind Play CDN JIT may not have
+    // generated `bg-red-600` (it scans the HTML tokens at load time; classes
+    // added dynamically after load may be missed). The inline style guarantees
+    // the red rendering regardless of JIT behaviour.
+    if (progressFill) {
+      progressFill.classList.remove('bg-primary', 'progress-pulse');
+      progressFill.classList.add('bg-red-600');
+      progressFill.style.backgroundColor = '#DC2626';
+    }
+
+    // AC-14: Hide processing label
+    if (processingEl) {
+      processingEl.style.display = 'none';
+    }
+
+    // AC-15: Status text + link box label
+    if (statusEl) {
+      statusEl.textContent = message || 'Erro desconhecido.';
+    }
+    if (linkLabel) {
+      linkLabel.textContent = 'Este link não está disponível — a geração falhou.';
+    }
+
+    // AC-16: Retry + contact actions
+    showErrorActions();
+  }
+
+  // Guard: required query params. Without them we cannot poll or navigate.
+  if (!jobId || !reportId) {
+    applyErrorState('Ligação inválida — faltam parâmetros do relatório.');
     return;
   }
 
   intervalId = setInterval(function () {
     fetch('/api/jobs/' + jobId)
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        // Treat non-OK (e.g. 404 job_not_found) as a terminal error — stop
+        // polling and surface the server message instead of polling forever.
+        if (!res.ok) {
+          return res.json().then(function (json) {
+            var msg = (json && (json.message || json.error)) || 'Job não encontrado.';
+            applyErrorState(msg);
+            return null;
+          }, function () {
+            applyErrorState('Erro de servidor.');
+            return null;
+          });
+        }
+        return res.json();
+      })
       .then(function (json) {
+        if (!json) return;  // terminal error already handled above
         var data = json.data || json;
 
         // Update progress bar and status line every tick
@@ -239,48 +290,23 @@
           clearInterval(intervalId);
           isCompleted = true;
 
-          // Bar to 100% (already set by setProgress('complete'))
-          if (progressFill) {
-            progressFill.style.width = '100%';
-          }
-          if (progressOuter) {
-            progressOuter.setAttribute('aria-valuenow', '100');
-          }
-
           // AC-11: Navigate after 1.5s
           setTimeout(function () {
+            didNavigate = true;
             window.location.href = '/report/' + reportId;
           }, 1500);
 
-          // AC-12: Fallback link at 3s (fires if navigation didn't complete)
+          // AC-12: Fallback link at 3s — only show if primary navigation
+          // has not yet occurred (in real browsers the page unloads before
+          // this fires; the guard covers E2E/edge cases where navigation
+          // is intercepted or hung).
           setTimeout(function () {
+            if (didNavigate) return;
             showFallbackLink(reportId);
           }, 3000);
 
         } else if (data.status === 'error') {
-          clearInterval(intervalId);
-
-          // AC-13: Red bar at current position
-          if (progressFill) {
-            progressFill.classList.remove('bg-primary', 'progress-pulse');
-            progressFill.classList.add('bg-red-600');
-          }
-
-          // AC-14: Hide processing label
-          if (processingEl) {
-            processingEl.style.display = 'none';
-          }
-
-          // AC-15: Status text + link box label
-          if (statusEl) {
-            statusEl.textContent = data.phase_message || 'Erro desconhecido.';
-          }
-          if (linkLabel) {
-            linkLabel.textContent = 'Este link não está disponível — a geração falhou.';
-          }
-
-          // AC-16: Retry + contact actions
-          showErrorActions();
+          applyErrorState(data.phase_message);
         }
       })
       .catch(function (err) {

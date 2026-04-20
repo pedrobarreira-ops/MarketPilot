@@ -501,3 +501,14 @@ claude-sonnet-4-6 (Claude Code, Step 3 dev-story)
 
 - 2026-04-20: Story 5.2 spec created — create-story workflow, comprehensive developer guide.
 - 2026-04-20: Story 5.2 implemented — progress.js full implementation; script tag added to progress.html; 4 E2E tests unskipped. All tests green.
+- 2026-04-20: Code review completed (Step 5) — 5 actionable findings auto-applied (1 HIGH, 4 MEDIUM). All regressions green.
+
+---
+
+## Review Findings
+
+- [x] [Review][Patch] AC-13 red bar may not render via Tailwind Play CDN JIT — add inline backgroundColor [public/js/progress.js:263-267] — fixed
+- [x] [Review][Patch] showFallbackLink fires unconditionally at 3s — add didNavigate guard [public/js/progress.js:255-258] — fixed
+- [x] [Review][Patch] No handling for 404/non-OK responses from /api/jobs/:job_id — silent forever-poll [public/js/progress.js:227-230] — fixed
+- [x] [Review][Patch] reportId === null produces "/report/null" — add guard analogous to jobId [public/js/progress.js:31, 37, 252] — fixed
+- [x] [Review][Patch] showFallbackLink not idempotent — add duplicate-check [public/js/progress.js:95-110] — fixed
