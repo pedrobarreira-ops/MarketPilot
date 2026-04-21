@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-21T00:00:00Z (phase0 reconciliation: PR#52 merged, 5.2=done; epic-5=done; stale 5.2 worktree removed)_
+_Last updated: 2026-04-21T12:00:00Z (phase0 reconciliation: PR#53 merged, 6.1=done; 6.2, 6.3, 6.5 unblocked)_
 
 ## Stories
 
@@ -26,11 +26,11 @@ _Last updated: 2026-04-21T00:00:00Z (phase0 reconciliation: PR#52 merged, 5.2=do
 | 4.3   | 4    | GET /api/reports & CSV Routes | done | #18 | #46 | merged | 4.1 | ✅ Yes (done) |
 | 5.1   | 5    | form.js — Validation, Loading & Submission | done | #19 | #51 | merged | 4.1 | ✅ Yes (done) |
 | 5.2   | 5    | progress.js — Progress Bar, Copy & Redirect | done | #20 | #52 | merged | 5.1 | ✅ Yes (done) |
-| 6.1   | 6    | report.js — Data Fetch, Skeleton & Your Position | backlog | #21 | — | — | 4.3 | ✅ Yes |
-| 6.2   | 6    | Biggest Opportunities & Quick Wins Tables | backlog | #22 | — | — | 6.1 | ❌ No (6.1 not merged) |
-| 6.3   | 6    | CSV Download & CTA | backlog | #23 | — | — | 6.1 | ❌ No (6.1 not merged) |
+| 6.1   | 6    | report.js — Data Fetch, Skeleton & Your Position | done | #21 | #53 | merged | 4.3 | ✅ Yes (done) |
+| 6.2   | 6    | Biggest Opportunities & Quick Wins Tables | backlog | #22 | — | — | 6.1 | ✅ Yes |
+| 6.3   | 6    | CSV Download & CTA | backlog | #23 | — | — | 6.1 | ✅ Yes |
 | 6.4   | 6    | Mobile & Screen-Share Layout Verification | backlog | #24 | — | — | 6.2, 6.3 | ❌ No (6.2, 6.3 not merged) |
-| 6.5   | 6    | Expired Report & Fetch Error States | backlog | #25 | — | — | 6.1 | ❌ No (6.1 not merged) |
+| 6.5   | 6    | Expired Report & Fetch Error States | backlog | #25 | — | — | 6.1 | ✅ Yes |
 | 6.6   | 6    | Accessibility Baseline | backlog | #26 | — | — | 6.4, 6.5 | ❌ No (6.4, 6.5 not merged) |
 | 7.1   | 7    | Empty Catalog & Auth Failure Path | backlog | #27 | — | — | 3.2, 3.3 | ❌ No (epics 4, 5, 6 not complete) |
 | 7.2   | 7    | total_count Mismatch Handling | backlog | #28 | — | — | 3.2 | ❌ No (epics 4, 5, 6 not complete) |
@@ -57,7 +57,7 @@ _Last updated: 2026-04-21T00:00:00Z (phase0 reconciliation: PR#52 merged, 5.2=do
 - **4.3** depends on: 4.1
 - **5.1** depends on: 4.1 (DONE: PR #51 merged 2026-04-20)
 - **5.2** depends on: 5.1 (DONE: PR #52 merged 2026-04-20)
-- **6.1** depends on: 4.3 (UNBLOCKED: epic 5 complete 2026-04-20)
+- **6.1** depends on: 4.3 (DONE: PR #53 merged 2026-04-21)
 - **6.2** depends on: 6.1
 - **6.3** depends on: 6.1
 - **6.4** depends on: 6.2, 6.3
@@ -77,6 +77,7 @@ _Last updated: 2026-04-21T00:00:00Z (phase0 reconciliation: PR#52 merged, 5.2=do
 - **Story 5.1 done** (2026-04-20): PR #51 merged. form.js validation, loading & submission complete.
 - **Story 5.2 done** (2026-04-20): PR #52 merged. progress.js progress bar, copy & redirect complete.
 - **Epic 5 closed** (2026-04-20): All stories (5.1, 5.2) merged. Epic 5 retrospective already done.
-- **Epic 6 is now the current epic** — story 6.1 (report.js data fetch, skeleton & your position) is unblocked and ready to work.
+- **Story 6.1 done** (2026-04-21): PR #53 merged. report.js data fetch, skeleton & your position complete.
+- **Epic 6 is the current epic** — stories 6.2, 6.3, and 6.5 are now unblocked and ready to work.
 - **Stale worktrees cleaned** (2026-04-21): `.worktrees/story-5.2-progress-js-progress-bar-copy-redirect` removed; remote branch deleted.
 - **Pending open PRs:** none
