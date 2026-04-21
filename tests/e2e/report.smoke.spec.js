@@ -40,6 +40,14 @@ const SAMPLE_REPORT = {
 
 test.describe('Report page (public/report.html served at /report/:id)', () => {
   test('DOM smoke — page loads with expected static elements', async ({ page }) => {
+    // Mock the API route so Story 6.5 error-state code does not replace the h1.
+    // Without this mock, the 404 from the test-static-server triggers replaceMainContentWith()
+    // which removes the h1 from the DOM (regression introduced by Story 6.5).
+    await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: SAMPLE_REPORT }),
+    }))
     await page.goto(`/report/${SAMPLE_ID}`)
 
     // Brand
