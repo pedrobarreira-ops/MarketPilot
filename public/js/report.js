@@ -323,10 +323,26 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
   // ── Story 6.5 scaffold: Expired / fetch-error states ─────────────────────
   // Full error-card rendering wired in Story 6.5.
 
-  function showExpiryCard () {
+  // Replaces main content with an error card while preserving the CTA banner (AC-5).
+  // The CTA section lives inside <main> — using mainEl.innerHTML = '' would wipe it.
+  // Instead: remove all children except the CTA section, then insert the card before it.
+  function replaceMainContentWith (card) {
     const mainEl = document.querySelector('main')
     if (!mainEl) return
+    const ctaSection = mainEl.querySelector('section.bg-gradient-to-br')
+    // Remove all children except the CTA banner
+    Array.from(mainEl.children).forEach(function (child) {
+      if (child !== ctaSection) mainEl.removeChild(child)
+    })
+    // Insert error card before the CTA banner (or append if banner not found)
+    if (ctaSection) {
+      mainEl.insertBefore(card, ctaSection)
+    } else {
+      mainEl.appendChild(card)
+    }
+  }
 
+  function showExpiryCard () {
     const card = document.createElement('div')
     card.className = 'py-24 flex flex-col items-center text-center gap-6 max-w-lg mx-auto'
 
@@ -354,14 +370,10 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     card.appendChild(body)
     card.appendChild(ctaBtn)
 
-    mainEl.innerHTML = ''
-    mainEl.appendChild(card)
+    replaceMainContentWith(card)
   }
 
   function showFetchErrorCard () {
-    const mainEl = document.querySelector('main')
-    if (!mainEl) return
-
     const card = document.createElement('div')
     card.className = 'py-24 flex flex-col items-center text-center gap-6 max-w-lg mx-auto'
 
@@ -394,8 +406,7 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     card.appendChild(reloadBtn)
     card.appendChild(contactLink)
 
-    mainEl.innerHTML = ''
-    mainEl.appendChild(card)
+    replaceMainContentWith(card)
   }
 
   // Hoist scaffold references so they are not tree-shaken by future bundlers

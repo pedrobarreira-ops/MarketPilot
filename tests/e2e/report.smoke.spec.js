@@ -199,10 +199,14 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await page.goto(`/report/${SAMPLE_ID}`)
 
     await expect(page.getByText(/Este relat.*j.*n.*dispon/i).first()).toBeVisible()
-    await expect(page.getByText(/Gerar um novo relat/i).first()).toBeVisible()
+    const ctaLink = page.getByText(/Gerar um novo relat/i).first()
+    await expect(ctaLink).toBeVisible()
+    // CTA must link back to the form page (AC-1)
+    await expect(ctaLink).toHaveAttribute('href', '/')
 
-    // Header still visible (AC-5)
+    // Header and CTA banner still visible (AC-5)
     await expect(page.locator('header')).toBeVisible()
+    await expect(page.locator('section.bg-gradient-to-br')).toBeVisible()
   })
 
   test('6.5 — generic fetch error (500) shows Portuguese "not available" error card with Reload button', async ({ page }) => {
@@ -212,8 +216,9 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.getByText(/N.*o foi poss.*vel carregar/i).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /Recarregar/i })).toBeVisible()
 
-    // Header still visible (AC-5)
+    // Header and CTA banner still visible (AC-5)
     await expect(page.locator('header')).toBeVisible()
+    await expect(page.locator('section.bg-gradient-to-br')).toBeVisible()
   })
 
   // ── UNSKIP when Story 6.6 lands (a11y baseline) ───────────────────────────
