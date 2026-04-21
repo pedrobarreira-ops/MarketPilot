@@ -102,7 +102,7 @@ development_status:
   6-2-biggest-opportunities-and-quick-wins-tables: atdd-done
   6-3-csv-download-and-cta: atdd-done
   6-4-mobile-and-screen-share-layout-verification: backlog
-  6-5-expired-report-and-fetch-error-states: ready-for-dev
+  6-5-expired-report-and-fetch-error-states: atdd-done
   6-6-accessibility-baseline: backlog
   epic-6-retrospective: optional
 
