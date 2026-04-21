@@ -40,7 +40,7 @@ Run these in parallel — all `gh` CLI, no subagent needed:
 2. `gh pr diff <N> --name-only`
 3. Locate the story spec file: look in `_bmad-output/implementation-artifacts/` for a filename matching the story number (e.g. `3-4-*.md` for Story 3.4). Parse from PR title (typical format: `story-3.4-<slug> - fixes #N`).
 4. Locate the ATDD test file + any `.additional.test.js` / `.unit.test.js` supplements in `tests/`.
-5. Check `gh pr checks <N>` — CI state.
+5. Check `gh pr checks <N>` — CI state. **If CI is not clearly green, run `npm test` locally as an authoritative fallback** (see "CI-pending guard" below).
 6. **Cross-reference prior deferred items for this story-family.** Extract the story prefix from the PR title (e.g., `5-1` from `story-5.1-form-js-...`) and grep the deferred-work backlog for any entries that reference it or the same story slug:
    ```bash
    grep -nE "Story {story-id}|{story-prefix}-[a-z-]+\.md|code review of {story-prefix}-|PR #[0-9]+ review.*{story-prefix}" \
@@ -51,6 +51,25 @@ Run these in parallel — all `gh` CLI, no subagent needed:
 Save the results as variables for the audit phase: `PR_NUMBER`, `PR_TITLE`, `STORY_FILE`, `CODE_FILES` (list), `TEST_FILES` (list), `PR_BODY`, `PRIOR_DEFERRED_ITEMS` (may be empty — that's fine).
 
 **If PR state is not OPEN or mergeable is CONFLICTING:** stop. Report to user — "PR is <state>, cannot audit in this session." This skill does not resolve PR-branch conflicts.
+
+### CI-pending guard (Phase 1 step 5 — authoritative local test run)
+
+Background: BAD's Step 5/7 reviewer can land revert commits after Step 6 writes the PR body. The body's "X/Y passed" claim reflects pre-revert state. When GitHub Actions is paused (billing limits, rate limits) or the check is still running, the green-light on the PR does not exist yet — trusting the body here is how broken tests ship to main (observed on PR #53, 2026-04-21).
+
+**Trigger this guard when `gh pr checks <N>` shows any of:**
+- `mergeStateStatus: UNSTABLE` (CI still pending or a required check not yet completed)
+- `status: pending` or `status: queued` on any required check
+- Zero checks reported (Actions disabled/paused — common when billing caps trip)
+- The PR body contains a "GitHub Actions skipped" / "billing limit" disclaimer
+
+**What to do:**
+1. Locate the PR's worktree at `.worktrees/<headRefName>` (BAD convention). Get `headRefName` from the Phase 1 step 1 JSON.
+2. Run `npm test` there — treat its output as authoritative, not the PR body's claim.
+3. **If red:** promote to the same handling as "CI failing" (Rule 6) — report the failing tests and stop. Do not proceed to Phase 2.
+4. **If green:** proceed to Phase 2 and note in the Phase 3 synthesis that the green-light came from a local run, not from GitHub Actions.
+5. **If worktree missing** (unusual — only happens for externally-contributed PRs or after manual cleanup): halt and ask the user to check out the branch or wait for GitHub Actions. Do not skip the check.
+
+This guard is cheap (~2 minutes of local test time) and closes the hole where a post-body revert breaks CI without anyone noticing.
 
 **Purpose of `PRIOR_DEFERRED_ITEMS`:** used in Phase 3 to (a) deduplicate observations — if an audit subagent surfaces a finding that's already recorded in deferred-work, label it as "previously deferred" rather than a new finding; (b) flag patterns — if the same kind of observation appears across two or more PRs in the same story-family, that's signal for a retro discussion. Without this step, fresh `/bad-review` sessions would re-log the same observation on every PR.
 
@@ -475,6 +494,7 @@ Main is clean. Ready for next batch.
 4. **If the rebase conflict is ambiguous** (not just the known "[ ] vs [x]" or "Status: ready-for-dev vs done" patterns) — HALT and ask the user to choose. Don't guess.
 5. **If any subagent reports an issue rated "blocking"** — do not offer the Merge option. Present only [F] Fix first and [S] Stop.
 6. **If CI is failing on the PR** at Phase 1 — report it and stop. The skill does not fix CI failures.
+7. **If CI is pending / UNSTABLE / paused (including GitHub Actions disabled by billing limits)** — do not trust the PR body's test-count claim. Run the CI-pending guard in Phase 1 (local `npm test` in the PR worktree). Block the audit if it fails; proceed only if green, and note the source in the Phase 3 synthesis.
 
 ## Repo-specific context (edit when things change)
 
