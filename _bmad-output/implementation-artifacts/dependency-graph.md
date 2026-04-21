@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-21T12:00:00Z (phase0 reconciliation: PR#53 merged, 6.1=done; 6.2, 6.3, 6.5 unblocked)_
+_Last updated: 2026-04-21T18:00:00Z (phase0 reconciliation: PRs #54, #55, #56 merged; 6.2=done, 6.3=done, 6.5=done; 6.4 now unblocked; stale worktrees and remote branches cleaned)_
 
 ## Stories
 
@@ -27,11 +27,11 @@ _Last updated: 2026-04-21T12:00:00Z (phase0 reconciliation: PR#53 merged, 6.1=do
 | 5.1   | 5    | form.js — Validation, Loading & Submission | done | #19 | #51 | merged | 4.1 | ✅ Yes (done) |
 | 5.2   | 5    | progress.js — Progress Bar, Copy & Redirect | done | #20 | #52 | merged | 5.1 | ✅ Yes (done) |
 | 6.1   | 6    | report.js — Data Fetch, Skeleton & Your Position | done | #21 | #53 | merged | 4.3 | ✅ Yes (done) |
-| 6.2   | 6    | Biggest Opportunities & Quick Wins Tables | backlog | #22 | — | — | 6.1 | ✅ Yes |
-| 6.3   | 6    | CSV Download & CTA | backlog | #23 | — | — | 6.1 | ✅ Yes |
-| 6.4   | 6    | Mobile & Screen-Share Layout Verification | backlog | #24 | — | — | 6.2, 6.3 | ❌ No (6.2, 6.3 not merged) |
-| 6.5   | 6    | Expired Report & Fetch Error States | backlog | #25 | — | — | 6.1 | ✅ Yes |
-| 6.6   | 6    | Accessibility Baseline | backlog | #26 | — | — | 6.4, 6.5 | ❌ No (6.4, 6.5 not merged) |
+| 6.2   | 6    | Biggest Opportunities & Quick Wins Tables | done | #22 | #54 | merged | 6.1 | ✅ Yes (done) |
+| 6.3   | 6    | CSV Download & CTA | done | #23 | #55 | merged | 6.1 | ✅ Yes (done) |
+| 6.4   | 6    | Mobile & Screen-Share Layout Verification | backlog | #24 | — | — | 6.2, 6.3 | ✅ Yes |
+| 6.5   | 6    | Expired Report & Fetch Error States | done | #25 | #56 | merged | 6.1 | ✅ Yes (done) |
+| 6.6   | 6    | Accessibility Baseline | backlog | #26 | — | — | 6.4, 6.5 | ❌ No (6.4 not merged) |
 | 7.1   | 7    | Empty Catalog & Auth Failure Path | backlog | #27 | — | — | 3.2, 3.3 | ❌ No (epics 4, 5, 6 not complete) |
 | 7.2   | 7    | total_count Mismatch Handling | backlog | #28 | — | — | 3.2 | ❌ No (epics 4, 5, 6 not complete) |
 | 7.3   | 7    | P11 Rate Limit & Partial Data Recovery | backlog | #29 | — | — | 3.3 | ❌ No (epics 4, 5, 6 not complete) |
@@ -78,6 +78,9 @@ _Last updated: 2026-04-21T12:00:00Z (phase0 reconciliation: PR#53 merged, 6.1=do
 - **Story 5.2 done** (2026-04-20): PR #52 merged. progress.js progress bar, copy & redirect complete.
 - **Epic 5 closed** (2026-04-20): All stories (5.1, 5.2) merged. Epic 5 retrospective already done.
 - **Story 6.1 done** (2026-04-21): PR #53 merged. report.js data fetch, skeleton & your position complete.
-- **Epic 6 is the current epic** — stories 6.2, 6.3, and 6.5 are now unblocked and ready to work.
-- **Stale worktrees cleaned** (2026-04-21): `.worktrees/story-5.2-progress-js-progress-bar-copy-redirect` removed; remote branch deleted.
+- **Story 6.2 done** (2026-04-21): PR #54 merged. Biggest Opportunities & Quick Wins Tables complete.
+- **Story 6.3 done** (2026-04-21): PR #55 merged. CSV Download & CTA complete.
+- **Story 6.5 done** (2026-04-21): PR #56 merged. Expired Report & Fetch Error States complete.
+- **Epic 6 is the current epic** — story 6.4 (Mobile & Screen-Share Layout Verification) is now unblocked (6.2 and 6.3 merged). Story 6.6 blocked on 6.4.
+- **Stale worktrees cleaned** (2026-04-21): worktrees for 6.2, 6.3, 6.5 pruned; remote branches deleted.
 - **Pending open PRs:** none
