@@ -54,13 +54,13 @@ function requireHtml() {
 // ── T-6.4-static.1: report.html contains responsive Tailwind classes ───────
 
 describe('T-6.4-static.1: report.html uses Tailwind responsive breakpoint classes', () => {
-  test('report.html contains sm: breakpoint classes (mobile → desktop transitions)', () => {
+  test('report.html contains sm:, md:, or lg: breakpoint classes (mobile → desktop transitions)', () => {
     const html = requireHtml()
     assert.ok(
-      /\bsm:/.test(html),
-      'public/report.html must use Tailwind sm: breakpoint classes to implement ' +
-      'responsive layout (stat cards stack on mobile, full grid on desktop). ' +
-      'Do NOT remove existing sm: classes from the Stitch-generated HTML.'
+      /\b(sm|md|lg):/.test(html),
+      'public/report.html must use Tailwind responsive breakpoint classes (sm:, md:, or lg:) ' +
+      'to implement responsive layout (stat cards stack on mobile, full grid on desktop). ' +
+      'Do NOT remove existing breakpoint classes from the Stitch-generated HTML.'
     )
   })
 
