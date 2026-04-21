@@ -168,6 +168,12 @@
 </div>
 </div>
 </footer>
+<!-- Tailwind CDN JIT safelist: classes referenced only dynamically by progress.js.
+     Belt-and-suspenders alongside the inline style.backgroundColor fallback in
+     progress.js — if someone ever drops the inline-style belt, the safelist still
+     keeps bg-red-600 available for the error state. See feedback_tailwind_dynamic_classes.md. -->
+<div class="hidden bg-red-600" aria-hidden="true"></div>
+
 <script src="/js/progress.js"></script>
 </body>
 </html>
