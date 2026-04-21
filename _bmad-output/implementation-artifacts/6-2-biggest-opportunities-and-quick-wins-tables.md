@@ -5,7 +5,7 @@ This story does NOT call Mirakl endpoints directly. It renders data already fetc
 **Epic:** 6 — Frontend Report Page
 **Story:** 6.2
 **Story Key:** 6-2-biggest-opportunities-and-quick-wins-tables
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-21
 
 ---
