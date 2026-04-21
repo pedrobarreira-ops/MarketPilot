@@ -169,22 +169,58 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     // ... similar fixture + table assertion ...
   })
 
-  // ── UNSKIP when Story 6.3 ships report.js (CSV download) ──────────────────
-  // AC: CSV link hidden until data loaded; href = /api/reports/:id/csv
-  test.skip('6.3 — CSV download link has correct href and becomes visible after data loads', async ({ page }) => {
+  // ── Story 6.3: CSV download button ──────────────────────────────────────
+  // AC: CSV link hidden until data loaded; data-csv-url confirms URL shape
+  test('6.3 — CSV download link has correct href and becomes visible after data loads', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({ data: SAMPLE_REPORT }),
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: SAMPLE_REPORT }),
     }))
     await page.goto(`/report/${SAMPLE_ID}`)
-    // ... assert link href = `/api/reports/${SAMPLE_ID}/csv`, link visible ...
+
+    // Wait for data to load (skeleton removed)
+    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+
+    // CSV button visible after data loads (was hidden during skeleton)
+    const csvBtn = page.locator('button').filter({ has: page.locator('.material-symbols-outlined') })
+    await expect(csvBtn).toBeVisible()
+
+    // The data-csv-url attribute (set by getCsvDownloadUrl scaffold) confirms URL shape
+    const csvUrl = await csvBtn.getAttribute('data-csv-url')
+    expect(csvUrl).toContain(`/api/reports/${SAMPLE_ID}/csv`)
   })
 
-  // ── UNSKIP when Story 6.3 ships CTA banner ────────────────────────────────
-  // AC: CTA banner visible independently of data-fetch state; button has correct href and opens in new tab
-  test.skip('6.3 — CTA banner renders immediately with correct href and target=_blank', async ({ page }) => {
-    // CTA banner has no data dependency — renders even when fetch is in flight
-    // await page.route(...) // keep fetch pending
-    // assert CTA button href matches CTA_URL constant, target=_blank, rel="noopener noreferrer"
+  // ── Story 6.3: CTA banner ─────────────────────────────────────────────────
+  // AC: CTA banner visible independently of data-fetch state; clicking opens new tab at CTA_URL
+  test('6.3 — CTA banner renders immediately with correct href and target=_blank', async ({ page }) => {
+    // Keep the report fetch pending so we verify CTA renders without waiting for data
+    let resolveFetch
+    const fetchGate = new Promise(r => { resolveFetch = r })
+    await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => {
+      fetchGate.then(() => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: SAMPLE_REPORT }),
+      }))
+    })
+
+    await page.goto(`/report/${SAMPLE_ID}`)
+
+    // CTA button should be visible even while fetch is in flight (no data dependency)
+    const ctaBtn = page.locator('.bg-gradient-to-br button').first()
+    await expect(ctaBtn).toBeVisible()
+
+    // Clicking CTA should open a new tab/popup (window.open with _blank)
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      ctaBtn.click()
+    ])
+    // CTA_URL is a wa.me WhatsApp URL; browser may redirect to api.whatsapp.com
+    expect(newPage.url()).toMatch(/wa\.me|whatsapp\.com/)  // CTA_URL is a WhatsApp URL
+
+    await newPage.close()
+    resolveFetch()
   })
 
   // ── UNSKIP when Story 6.4 lands (mobile layout) ───────────────────────────

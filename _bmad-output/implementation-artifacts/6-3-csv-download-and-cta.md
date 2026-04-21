@@ -5,7 +5,7 @@ This story does NOT call Mirakl endpoints directly. No Mirakl MCP check required
 **Epic:** 6 — Frontend Report Page
 **Story:** 6.3
 **Story Key:** 6-3-csv-download-and-cta
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-21
 
 ---
@@ -72,29 +72,29 @@ So that I can download the full product dataset for offline analysis and learn a
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Wire CSV button click handler** (AC: 1, 2, 3)
-  - [ ] Locate `csvBtn` using the existing selector in report.js (Story 6.1 already found it: `const allButtons = document.querySelectorAll('button'); for btn where icon.textContent.trim() === 'download'`)
-  - [ ] Add click event listener to `csvBtn` that:
+- [x] **Task 1: Wire CSV button click handler** (AC: 1, 2, 3)
+  - [x] Locate `csvBtn` using the existing selector in report.js (Story 6.1 already found it: `const allButtons = document.querySelectorAll('button'); for btn where icon.textContent.trim() === 'download'`)
+  - [x] Add click event listener to `csvBtn` that:
     - Creates `<a href="/api/reports/${reportId}/csv" download="marketpilot-report-${reportId.substring(0,8)}.csv">`, appends to body, clicks, removes
     - Sets a `setTimeout` for 1s to show `"A preparar..."` text on the button
     - Clears the timeout and restores button text after download completes
-  - [ ] Do NOT re-implement skeleton hide/show logic — that is already handled by `applySkeleton()` / `removeSkeletonState()` from Story 6.1
+  - [x] Do NOT re-implement skeleton hide/show logic — that is already handled by `applySkeleton()` / `removeSkeletonState()` from Story 6.1
 
-- [ ] **Task 2: Wire CTA button** (AC: 4, 5)
-  - [ ] CRITICAL: The CTA in `report.html` is a `<button>`, NOT an `<a>` tag — report.html is locked, cannot be changed
-  - [ ] Query the CTA button: `document.querySelector('.bg-gradient-to-br button')`
-  - [ ] Add click listener: `ctaBtn.addEventListener('click', function() { window.open(CTA_URL, '_blank', 'noopener,noreferrer') })`
-  - [ ] This wiring happens unconditionally on init (not inside the fetch `.then()`) — CTA has no data dependency
-  - [ ] Do NOT set `href`, `target`, or `rel` on a `<button>` element — buttons do not support those attributes
+- [x] **Task 2: Wire CTA button** (AC: 4, 5)
+  - [x] CRITICAL: The CTA in `report.html` is a `<button>`, NOT an `<a>` tag — report.html is locked, cannot be changed
+  - [x] Query the CTA button: `document.querySelector('.bg-gradient-to-br button')`
+  - [x] Add click listener: `ctaBtn.addEventListener('click', function() { window.open(CTA_URL, '_blank', 'noopener,noreferrer') })`
+  - [x] This wiring happens unconditionally on init (not inside the fetch `.then()`) — CTA has no data dependency
+  - [x] Do NOT set `href`, `target`, or `rel` on a `<button>` element — buttons do not support those attributes
 
-- [ ] **Task 3: Run static ATDD tests** (AC: 6, 7)
-  - [ ] All 4 static ATDD tests pass: `node --test tests/epic6-6.3-csv-download-and-cta.atdd.test.js`
-  - [ ] Frontend architecture invariants still pass: `node --test tests/frontend-architecture-invariants.test.js`
+- [x] **Task 3: Run static ATDD tests** (AC: 6, 7)
+  - [x] All 4 static ATDD tests pass: `node --test tests/epic6-6.3-csv-download-and-cta.atdd.test.js`
+  - [x] Frontend architecture invariants still pass: `node --test tests/frontend-architecture-invariants.test.js`
 
-- [ ] **Task 4: Unskip Playwright E2E tests** (AC: 8)
-  - [ ] Implement assertions in the two 6.3 skipped test bodies (see Dev Notes for assertion details)
-  - [ ] Change `test.skip(` → `test(` for both 6.3 tests
-  - [ ] All tests pass: `npx playwright test tests/e2e/report.smoke.spec.js`
+- [x] **Task 4: Unskip Playwright E2E tests** (AC: 8)
+  - [x] Implement assertions in the two 6.3 skipped test bodies (see Dev Notes for assertion details)
+  - [x] Change `test.skip(` → `test(` for both 6.3 tests
+  - [x] All tests pass: `npx playwright test tests/e2e/report.smoke.spec.js`
 
 ---
 
@@ -387,10 +387,24 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
+None.
+
 ### Completion Notes List
 
+- Implemented `downloadCsv()` function in `public/js/report.js` using the hidden `<a>` element technique for programmatic file download with custom filename (`marketpilot-report-{first8}.csv`).
+- Implemented 1s latency indicator: `setTimeout` sets "A preparar..." on the button; a 3s restore timeout clears the preparing timeout and restores original `innerHTML` (safe — `originalContent` is captured from static developer HTML, not API data).
+- CTA wiring: queried `section.bg-gradient-to-br button`, added `click` listener calling `window.open(CTA_URL, '_blank', 'noopener,noreferrer')` unconditionally on init (no data dependency).
+- All 5 ATDD static tests pass (T-6.3-static.1, .2, .3, external link security). All 13 frontend architecture invariants pass.
+- Unskipped and implemented 2 Playwright E2E tests: CSV button visibility + `data-csv-url` attribute check; CTA button visible immediately + click opens WhatsApp new tab.
+- Fixed CTA E2E assertion to match `wa.me|whatsapp.com` regex (WhatsApp redirects `wa.me/...` to `api.whatsapp.com/...` in browser).
+- Full regression suite: 557 tests, 0 failures. Playwright: 7 active pass, 6 skipped (future stories).
+
 ### File List
+
+- `public/js/report.js` — added `downloadCsv()` function, CSV button click handler, CTA button click handler
+- `tests/e2e/report.smoke.spec.js` — unskipped 2 Story 6.3 tests, implemented assertion bodies
 
 ### Change Log
 
 - 2026-04-21: Story 6.3 spec created — create-story workflow, comprehensive developer guide.
+- 2026-04-21: Story 6.3 implemented — CSV download button handler + CTA button wiring + E2E tests unskipped; all tests green.

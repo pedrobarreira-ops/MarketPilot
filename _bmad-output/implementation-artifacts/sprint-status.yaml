@@ -100,7 +100,7 @@ development_status:
   epic-6: in-progress
   6-1-report-js-data-fetch-skeleton-and-your-position: done
   6-2-biggest-opportunities-and-quick-wins-tables: backlog
-  6-3-csv-download-and-cta: atdd-done
+  6-3-csv-download-and-cta: review
   6-4-mobile-and-screen-share-layout-verification: backlog
   6-5-expired-report-and-fetch-error-states: backlog
   6-6-accessibility-baseline: backlog
