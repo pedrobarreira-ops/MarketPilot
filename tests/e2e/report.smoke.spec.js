@@ -157,7 +157,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
   })
 
   // ── Story 6.2: Opportunities table (unskipped) ───────────────────────────
-  // AC: Maiores Oportunidades table renders with first-row highlight + pt-PT money formatting
+  // AC-1,2,3: rows render in order, first-row #EFF6FF highlight, pt-PT price + WOW score formatting
   test('6.2 — Maiores Oportunidades table renders sorted opportunities with first-row highlight', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
       status: 200, contentType: 'application/json',
@@ -174,14 +174,22 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     // Second row visible
     await expect(page.getByText('Canon EOS R6')).toBeVisible()
 
-    // Price formatted in pt-PT locale: "€799,00"
+    // AC-3: Price formatted in pt-PT locale: "€799,00"
     await expect(page.getByText('€799,00')).toBeVisible()
 
-    // WOW score rendered as number in first row area
+    // AC-3: WOW score rendered as right-aligned integer in first row area
     await expect(page.getByText('974')).toBeVisible()
+
+    // AC-2: first row has #EFF6FF tint applied as inline background-color style
+    // (bg-blue-50 = rgb(239, 246, 255) = #EFF6FF — applied inline to avoid JIT purge)
+    const firstRow = page.locator('tbody').nth(0).locator('tr').first()
+    const bgColor = await firstRow.evaluate((el) => el.style.backgroundColor)
+    const isBlue50 = bgColor === 'rgb(239, 246, 255)' || bgColor === '#EFF6FF' || bgColor === '#eff6ff'
+    expect(isBlue50).toBe(true)
   })
 
   // ── Story 6.2: Quick Wins table (unskipped) ───────────────────────────────
+  // AC-4,7: rows render; score column shows a horizontal bar div, NOT raw number text
   test('6.2 — Vitórias Rápidas table renders score bar graphics (not raw numbers)', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
       status: 200, contentType: 'application/json',
@@ -195,13 +203,38 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     // Quick wins product visible
     await expect(page.getByText('Apple AirPods Pro 2')).toBeVisible()
 
-    // Score bar rendered as a div (bg-primary fill), not as raw text "920"
-    const scoreBar = page.locator('tbody').nth(1).locator('.bg-primary')
-    await expect(scoreBar).toBeVisible()
-
-    // The raw wow_score number "920" should NOT appear as standalone text in the score cell
+    // AC-7: Score bar inner fill div (bg-primary) is present inside the last cell of the first row
     const scoreCell = page.locator('tbody').nth(1).locator('tr').first().locator('td').last()
     await expect(scoreCell.locator('div.bg-primary')).toBeVisible()
+
+    // AC-7: Score bar outer container has overflow-hidden (prevents fill from escaping)
+    const barOuter = scoreCell.locator('div.rounded-full.overflow-hidden')
+    await expect(barOuter).toBeVisible()
+
+    // AC-7: The raw wow_score number "920" must NOT appear as text content in the score cell
+    await expect(scoreCell).not.toHaveText('920')
+  })
+
+  // ── Story 6.2: PT/ES toggle re-renders Quick Wins for ES (empty array) ────
+  // AC-10: switching channel calls renderQuickWins with new data; empty ES quickwins shows empty state
+  test('6.2 — PT/ES toggle re-renders Quick Wins table with ES channel data (empty state)', async ({ page }) => {
+    await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ data: SAMPLE_REPORT }),
+    }))
+    await page.goto(`/report/${SAMPLE_ID}`)
+
+    // Wait for PT quick wins row to appear
+    await expect(page.getByText('Apple AirPods Pro 2')).toBeVisible()
+
+    // Switch to ES channel (quickwins_es: [] in SAMPLE_REPORT)
+    await page.getByRole('button', { name: 'ES', exact: true }).click()
+
+    // AC-10: PT quick wins row must no longer be present after channel switch
+    await expect(page.getByText('Apple AirPods Pro 2')).not.toBeVisible()
+
+    // AC-6: Quick Wins empty state message shown for empty quickwins_es
+    await expect(page.getByText('Não há vitórias rápidas disponíveis neste canal.')).toBeVisible()
   })
 
   // ── UNSKIP when Story 6.3 ships report.js (CSV download) ──────────────────
