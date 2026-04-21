@@ -408,3 +408,30 @@ None.
 
 - 2026-04-21: Story 6.3 spec created — create-story workflow, comprehensive developer guide.
 - 2026-04-21: Story 6.3 implemented — CSV download button handler + CTA button wiring + E2E tests unskipped; all tests green.
+- 2026-04-21: Story 6.3 code review complete — 1 patch applied (CSV re-entrancy guard), 4 dismissed as noise, 0 deferred.
+
+---
+
+## Review Findings
+
+Code review performed on 2026-04-21 via `bmad-code-review` (adversarial + edge-case + acceptance-auditor layers).
+
+- [x] [Review][Patch] CSV re-entrancy bug: rapid re-click mid-restore permanently strands button on "A preparar..." text [public/js/report.js:316] — FIXED. Moved `originalContent` capture to module scope and added `csvDownloadInFlight` guard so the second click within the 3s restore window is ignored (previously it would capture `originalContent = "A preparar..."` and later restore to that stale value).
+
+### Dismissed (noise)
+
+- `preparingTimeout = null` initial assignment was dead code (immediately reassigned). Removed as a side effect of the re-entrancy patch above.
+- `var` vs `const`/`let` in new code — existing file uses both styles; kept consistent with surrounding code.
+- `clearTimeout(preparingTimeout)` inside the 3s restore is effectively a no-op (1s timer has always fired by then) — but matches spec's explicit guidance for defensive cleanup. Retained.
+- No download-failure handling — inherent to the hidden-anchor download technique and acknowledged in both spec and code comment.
+
+### Acceptance Auditor
+
+All 8 ACs verified: AC-1 (hidden-anchor download with correct URL + filename), AC-2 ("A preparar..." at 1s), AC-3 (skeleton hide already handled by Story 6.1), AC-4 (`window.open(CTA_URL, '_blank', 'noopener,noreferrer')`), AC-5 (`CTA_URL` const untouched), AC-6/AC-7 (4 static ATDD + noopener/noreferrer invariant green), AC-8 (two 6.3 E2E tests unskipped, all assertions pass).
+
+### Test Run Evidence
+
+- `node --test tests/epic6-6.3-csv-download-and-cta.atdd.test.js` — 5 pass / 0 fail
+- `node --test tests/frontend-architecture-invariants.test.js` — 13 pass / 0 fail
+- `npm test` — 557 pass / 0 fail
+- `npx playwright test tests/e2e/report.smoke.spec.js` — 7 pass / 6 skipped (future stories)

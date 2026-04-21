@@ -313,14 +313,20 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
 
   // ── Story 6.3: CSV download button click handler ──────────────────────────
 
+  // Re-entrancy guards: a rapid re-click mid-restore would capture the "A preparar..."
+  // text as originalContent and later restore the button to that stale value
+  // permanently. We capture the authentic original HTML once (at module scope)
+  // and ignore clicks while a download is already in flight.
+  var csvOriginalContent = csvBtn ? csvBtn.innerHTML : ''
+  var csvDownloadInFlight = false
+
   function downloadCsv () {
     if (!csvBtn) return
+    if (csvDownloadInFlight) return
+    csvDownloadInFlight = true
 
     // Latency indicator: show "A preparar..." if response takes > 1s
-    var preparingTimeout = null
-    var originalContent = csvBtn.innerHTML
-
-    preparingTimeout = setTimeout(function () {
+    var preparingTimeout = setTimeout(function () {
       csvBtn.textContent = 'A preparar...'
     }, 1000)
 
@@ -336,7 +342,8 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     // detect completion, so restore after a reasonable window)
     setTimeout(function () {
       clearTimeout(preparingTimeout)
-      csvBtn.innerHTML = originalContent
+      csvBtn.innerHTML = csvOriginalContent
+      csvDownloadInFlight = false
     }, 3000)
   }
 
