@@ -534,6 +534,33 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     })
   }
 
+  // ── Story 6.4: "Desliza para ver mais →" scroll hint (mobile only) ────────
+  // Injected once at init — structural, not data-dependent.
+  // Uses matchMedia + inline style instead of md:hidden (Tailwind JIT CDN purge rule).
+
+  function createScrollHint () {
+    const p = document.createElement('p')
+    p.textContent = '← desliza para ver mais →'
+    p.style.cssText = 'text-align:center;font-size:0.75rem;color:#444650;margin-top:0.5rem;'
+    return p
+  }
+
+  function applyScrollHintVisibility (hint, mq) {
+    hint.style.display = mq.matches ? '' : 'none'
+  }
+
+  var scrollHintMq = window.matchMedia('(max-width: 639px)')
+  var tableWrappers = document.querySelectorAll('div.overflow-x-auto')
+
+  tableWrappers.forEach(function (wrapper) {
+    var hint = createScrollHint()
+    applyScrollHintVisibility(hint, scrollHintMq)
+    wrapper.parentNode.insertBefore(hint, wrapper.nextSibling)
+    scrollHintMq.addEventListener('change', function () {
+      applyScrollHintVisibility(hint, scrollHintMq)
+    })
+  })
+
   // ── Story 6.5 scaffold: Expired / fetch-error states ─────────────────────
   // Full error-card rendering wired in Story 6.5.
 
