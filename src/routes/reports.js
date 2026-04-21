@@ -34,6 +34,7 @@ export default async function reportsRoute(fastify) {
 
     return reply.send({
       data: {
+        generated_at:     row.generated_at,
         summary:          JSON.parse(row.summary_json),
         opportunities_pt: JSON.parse(row.opportunities_pt_json),
         opportunities_es: JSON.parse(row.opportunities_es_json),

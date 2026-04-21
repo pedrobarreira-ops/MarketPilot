@@ -195,8 +195,8 @@ describe('Story 4.3 — GET /api/reports/:id + CSV routes', async () => {
       const keys = Object.keys(data).sort()
       assert.deepEqual(
         keys,
-        ['opportunities_es', 'opportunities_pt', 'quickwins_es', 'quickwins_pt', 'summary'],
-        'data must contain exactly {summary, opportunities_pt, opportunities_es, quickwins_pt, quickwins_es}'
+        ['generated_at', 'opportunities_es', 'opportunities_pt', 'quickwins_es', 'quickwins_pt', 'summary'],
+        'data must contain exactly {generated_at, summary, opportunities_pt, opportunities_es, quickwins_pt, quickwins_es}'
       )
     })
 
