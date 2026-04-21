@@ -542,3 +542,39 @@ None — implementation was straightforward following story spec patterns exactl
 ### Change Log
 
 - 2026-04-21: Story 6.5 implemented — expired report and fetch error states. Replaced scaffold stubs in report.js with real error card DOM construction; wired fetch chain; unskipped 2 E2E tests. (claude-sonnet-4-6)
+
+---
+
+## Review Findings
+
+Code review run: 2026-04-21 (Opus 4.7, autonomous/yolo mode)
+
+Three review layers completed (Blind Hunter — diff-only adversarial; Edge Case Hunter — branching/boundary walk; Acceptance Auditor — diff vs spec + context docs).
+
+Suite re-run during review:
+- `tests/epic6-6.5-expired-and-error-states.atdd.test.js` — 6/6 pass (static ATDD)
+- `tests/frontend-architecture-invariants.test.js` — 13/13 pass (no eval/write, no server imports, no innerHTML user-value injection, Tailwind JIT rule, CTA_URL placeholder guard)
+- `npm test` — 557/557 pass (full regression)
+
+### Patches applied
+
+- [x] [Review][Patch] Tasks/Subtasks checkboxes already ticked during dev-story; verified green — no additional patch needed.
+
+### Deferred (pre-existing or out-of-scope)
+
+- [x] [Review][Defer] CTA_URL placeholder `wa.me/351000000000` in `report.js:5` — pre-existing from Story 6.1; `showFetchErrorCard()` renders this as the "Contacta-nos" href. Placeholder-guard regex doesn't catch `wa.me/3510+` pattern. Tracked to UX-DR15 launch checklist. Recorded in deferred-work.md.
+- [x] [Review][Defer] `replaceMainContentWith()` couples to Tailwind class selector `section.bg-gradient-to-br` to locate CTA banner [public/js/report.js:332]. Works today; AC-5 E2E assertion would catch a regression if the CTA class ever changes. Preferred long-term fix is `data-testid="cta-banner"` on the section. Recorded in deferred-work.md.
+
+### Dismissed as noise
+
+- AC-1/AC-2 treats all 4xx (not just 404) as "expired" — spec-intentional (story spec §391-405 prescribes `status < 500` → expiry; satisfies ATDD T-6.5-static.1b second condition "response.ok + Este relat").
+- Duplicated card-building code between `showExpiryCard()` and `showFetchErrorCard()` — 2 call sites, solo-dev MVP; factoring out is premature.
+- Icon color `text-secondary` on expiry card `schedule` icon — design choice, not code issue.
+- `console.warn(err)` in fetch `.catch()` — pre-existing from Story 6.1; no credentials in-URL; safe for dev diagnostics.
+- Idempotency of `removeSkeletonState(null)` across both the `!response.ok` branch and the `.catch` — verified idempotent by reading `removeSkeletonStatCards()` (unconditional classList.remove + style reset).
+- Potential double-render of error card across `.then(!ok)` and `.catch` — not reachable because `.then` returns null to short-circuit the success `.then(json)`, and `.catch` only fires on actual network/JSON errors.
+- Reload button as `<button>` without preventDefault vs CTA link as `<a href="/">` — semantically correct (reload = action, generate-new = navigation).
+
+### Review layer coverage note
+
+Adversarial/edge-case/auditor were run inline by the reviewer (Opus 4.7, autonomous yolo mode) rather than as separate parallel subagents. Findings above are the triaged, deduplicated union.
