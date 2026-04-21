@@ -5,7 +5,7 @@ Endpoints verified against MCP-Verified Endpoint Reference (epics-distillate.md,
 **Epic:** 6 — Frontend Report Page
 **Story:** 6.1
 **Story Key:** 6-1-report-js-data-fetch-skeleton-and-your-position
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-21
 
 This story does NOT call Mirakl endpoints directly. It consumes `GET /api/reports/:report_id` (Story 4.3). No Mirakl MCP check required for direct endpoint usage; endpoint reference note added for completeness.
@@ -118,14 +118,14 @@ So that I get immediate visual feedback on load and can quickly switch between P
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0: Add `<script>` tag to `report.html`** (AC: 13)
-  - [ ] Add `<script src="/js/report.js"></script>` immediately before `</body>` in `public/report.html`
-  - [ ] Verify the DOM smoke test still passes: `npx playwright test tests/e2e/report.smoke.spec.js --grep "DOM smoke"`
+- [x] **Task 0: Add `<script>` tag to `report.html`** (AC: 13)
+  - [x] Add `<script src="/js/report.js"></script>` immediately before `</body>` in `public/report.html`
+  - [x] Verify the DOM smoke test still passes: `npx playwright test tests/e2e/report.smoke.spec.js --grep "DOM smoke"`
 
-- [ ] **Task 1: Wire report.js — DOM references and initialisation** (AC: 2, 3, 5, 6, 10)
-  - [ ] Extract `reportId` from `window.location.pathname.split('/').pop()`
-  - [ ] Guard: if `!reportId` log warning and return early
-  - [ ] Get DOM references:
+- [x] **Task 1: Wire report.js — DOM references and initialisation** (AC: 2, 3, 5, 6, 10)
+  - [x] Extract `reportId` from `window.location.pathname.split('/').pop()`
+  - [x] Guard: if `!reportId` log warning and return early
+  - [x] Get DOM references:
     - Header date `<span>` (currently `"Relatório gerado em 14 Abril 2026"`)
     - Stat card number `<span>` elements (three large number spans inside `.text-6xl`)
     - Opportunities table `<tbody>`
@@ -134,53 +134,40 @@ So that I get immediate visual feedback on load and can quickly switch between P
     - PT button (first child button of toggle)
     - ES button (second child button of toggle)
     - CSV download button/link
-  - [ ] Set toggle ARIA: `role="group"`, `aria-label="Canal"` on container; `aria-pressed="true"` on PT button, `aria-pressed="false"` on ES button
+  - [x] Set toggle ARIA: `role="group"`, `aria-label="Canal"` on container; `aria-pressed="true"` on PT button, `aria-pressed="false"` on ES button
 
-- [ ] **Task 2: Apply skeleton state** (AC: 1, 5)
-  - [ ] Apply shimmer placeholders to stat card number `<span>` elements: replace text with `&nbsp;`, add `animate-pulse bg-surface-container rounded w-16 h-12 inline-block` (or similar shimmer class set)
-  - [ ] Replace opportunities `<tbody>` content with 4 shimmer rows
-  - [ ] Replace quick wins `<tbody>` content with 4 shimmer rows
-  - [ ] Disable toggle: `toggleContainer.style.pointerEvents = 'none'; toggleContainer.style.opacity = '0.5'`
-  - [ ] Hide CSV link: `csvLink.style.display = 'none'`
-  - [ ] Set header date to `"—"`: update the date portion of the header span
-  - [ ] **Tailwind JIT note:** Any class added dynamically (e.g. `animate-pulse`, `bg-surface-container`) must already appear in `public/report.html` (it does — these are Tailwind classes already in the HTML) OR must have an `element.style.*` inline fallback. The shimmer pattern uses classes already present in report.html so JIT will not purge them.
+- [x] **Task 2: Apply skeleton state** (AC: 1, 5)
+  - [x] Apply shimmer placeholders to stat card number `<span>` elements: replace text with `&nbsp;`, add `animate-pulse bg-surface-container rounded w-16 h-12 inline-block` (or similar shimmer class set)
+  - [x] Replace opportunities `<tbody>` content with 4 shimmer rows
+  - [x] Replace quick wins `<tbody>` content with 4 shimmer rows
+  - [x] Disable toggle: `toggleContainer.style.pointerEvents = 'none'; toggleContainer.style.opacity = '0.5'`
+  - [x] Hide CSV link: `csvLink.style.display = 'none'`
+  - [x] Set header date to `"—"`: update the date portion of the header span
+  - [x] **Tailwind JIT note:** Added `<div class="hidden animate-pulse" aria-hidden="true">` to `report.html` as JIT safelist (same pattern as progress.html/bg-red-600). `bg-surface-container` already in HTML.
 
-- [ ] **Task 3: Fetch and data storage** (AC: 3, 9)
-  - [ ] Call `fetch('/api/reports/' + reportId)` on init (after skeleton applied)
-  - [ ] On 200 response: parse `{ data }` from JSON; store in closure variables:
-    ```js
-    let reportData = null   // full data object
-    let activeChannel = 'pt'
-    ```
-  - [ ] Store both channels on first fetch: `reportData = data` (contains `summary`, `opportunities_pt`, `opportunities_es`, `quickwins_pt`, `quickwins_es`, `generated_at`)
-  - [ ] Call `renderChannel('pt')` after data is stored
+- [x] **Task 3: Fetch and data storage** (AC: 3, 9)
+  - [x] Call `fetch('/api/reports/' + reportId)` on init (after skeleton applied)
+  - [x] On 200 response: parse `{ data }` from JSON; store in closure variables
+  - [x] Store both channels on first fetch: `reportData = data`
+  - [x] Call `renderChannel('pt')` after data is stored
 
-- [ ] **Task 4: Remove skeleton, render populated state** (AC: 4, 5, 6, 11, 12)
-  - [ ] Implement `renderChannel(channel)`:
-    - Get `summary[channel]` values: `in_first` (or `winning`), `losing`, `uncontested`
-    - Update three stat card number `<span>` elements with pt-PT formatted numbers
-    - Check ES no-data condition: if `channel === 'es'` and all summary values are 0, show no-data message in tables
-    - Otherwise populate tables (table row rendering handled by Stories 6.2+ — for Story 6.1 just clear shimmer and show empty state if data arrays are empty)
-    - Update toggle `aria-pressed` attributes
-  - [ ] Implement `removeSkeletonState()`:
-    - Enable toggle: restore `pointerEvents` and `opacity`
-    - Show CSV link: restore `display`
-    - Set header date: `"Relatório gerado em " + formattedDate`
-  - [ ] Call `removeSkeletonState()` before `renderChannel(activeChannel)`
+- [x] **Task 4: Remove skeleton, render populated state** (AC: 4, 5, 6, 11, 12)
+  - [x] Implement `renderChannel(channel)` with defensive `winning ?? in_first` read
+  - [x] Implement `removeSkeletonState()` — restores toggle, CSV, sets header date
+  - [x] Call `removeSkeletonState()` before `renderChannel(activeChannel)`
 
-- [ ] **Task 5: PT/ES toggle handler** (AC: 9, 10, 11)
-  - [ ] Attach click listener to PT button: on click, if `activeChannel !== 'pt'` → `activeChannel = 'pt'`, update `aria-pressed` on both buttons, call `renderChannel('pt')`
-  - [ ] Attach click listener to ES button: on click, if `activeChannel !== 'es'` → `activeChannel = 'es'`, update `aria-pressed` on both buttons, call `renderChannel('es')`
-  - [ ] No additional `fetch()` in either handler — data already in `reportData`
+- [x] **Task 5: PT/ES toggle handler** (AC: 9, 10, 11)
+  - [x] Attach click listener to PT button — no re-fetch
+  - [x] Attach click listener to ES button — no re-fetch
+  - [x] No additional `fetch()` in either handler
 
-- [ ] **Task 6: Unskip Playwright E2E tests** (AC: 14)
-  - [ ] Complete the implementation comments in `tests/e2e/report.smoke.spec.js` for the 3 skeleton/populated/toggle tests (see Dev Notes — the test bodies have `// await` comments that need to be uncommented/implemented)
-  - [ ] Change `test.skip(` → `test(` for the three 6.1-labelled tests
-  - [ ] Run `npx playwright test tests/e2e/report.smoke.spec.js` — all tests must pass (1 DOM smoke + 3 unskipped = 4 total)
+- [x] **Task 6: Unskip Playwright E2E tests** (AC: 14)
+  - [x] Complete implementation for 3 skeleton/populated/toggle tests
+  - [x] Changed `test.skip(` → `test(` for the three 6.1-labelled tests
+  - [x] All 4 tests pass (1 DOM smoke + 3 unskipped): `npx playwright test tests/e2e/report.smoke.spec.js`
 
-- [ ] **Task 7: Run static ATDD tests** (AC: 7, 8)
-  - [ ] Run: `node --test tests/epic6-6.1-report-js-fetch-skeleton.atdd.test.js` — all 5 tests must pass
-  - [ ] These tests are pre-scaffolded and already exist — they test T-6.1-static.1a, 1b, 2a, 2b, 2c, 2d
+- [x] **Task 7: Run static ATDD tests** (AC: 7, 8)
+  - [x] All 6 ATDD static tests pass: `node --test tests/epic6-6.1-report-js-fetch-skeleton.atdd.test.js`
 
 ---
 
@@ -629,23 +616,37 @@ This story is 100% frontend (`public/js/report.js`). The only backend it calls i
 
 ### Agent Model Used
 
-_To be filled by dev agent_
+claude-sonnet-4-6
 
 ### Debug Log References
 
-_To be filled by dev agent_
+- Tailwind JIT: `animate-pulse` not present in report.html — added hidden safelist div (same pattern as progress.html/bg-red-600)
+- pt-PT locale: `toLocaleString('pt-PT')` returns unseparated value in Playwright Chromium (no full ICU) — added `formatPtPT()` helper with regex fallback for dot-separator
+- Playwright strict mode: `getByRole('button', { name: 'ES' })` resolved to 2 elements — used `{ exact: true }` to disambiguate ES toggle pill from CSV button
+- Story 4.3 ATDD test: `data object has exactly the required fields` was strict — updated to include `generated_at` as required field
 
 ### Completion Notes List
 
-_To be filled by dev agent_
+- Implemented `public/js/report.js` as a plain IIFE browser script (no import/export)
+- Fetches `GET /api/reports/:reportId` once on load, stores all channel data in closure
+- Skeleton: shimmer stat cards + 4 shimmer rows per table, toggle disabled, CSV hidden, date "—"
+- Instant swap on 200: removes skeleton, populates stat cards with pt-PT formatted numbers, sets header date
+- PT/ES toggle: ARIA role/label/pressed managed by JS; click handlers use in-memory data (no re-fetch)
+- ES no-data edge case: safe DOM construction (no innerHTML interpolation) per architecture invariant
+- Added `generated_at: row.generated_at` to `src/routes/reports.js` response (Unix timestamp)
+- Date formatting handles both Unix timestamp (number) and ISO string for test fixture compatibility
+- All 6 ATDD static tests pass; all 4 Playwright E2E tests pass (DOM smoke + 3 story 6.1 tests); all 13 frontend architecture invariants pass
 
 ### File List
 
-- `public/js/report.js` — implement Story 6.1 behaviour (fetch, skeleton, stat cards, toggle)
-- `public/report.html` — add `<script src="/js/report.js"></script>` before `</body>` (Task 0 only)
-- `src/routes/reports.js` — add `generated_at: row.generated_at` to GET /api/reports/:report_id response
-- `tests/e2e/report.smoke.spec.js` — unskip 3 Story 6.1 tests + fill in assertions
+- `public/js/report.js` — full Story 6.1 implementation (fetch, skeleton, stat cards, toggle)
+- `public/report.html` — added `<script src="/js/report.js"></script>` + Tailwind JIT safelist div
+- `src/routes/reports.js` — added `generated_at: row.generated_at` to GET /api/reports/:report_id response
+- `tests/e2e/report.smoke.spec.js` — unskipped + implemented 3 Story 6.1 tests; added exact:true to ES button selectors
+- `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js` — updated strict field list to include `generated_at`
+- `_bmad-output/implementation-artifacts/6-1-report-js-data-fetch-skeleton-and-your-position.md` — story file updated
 
 ### Change Log
 
 - 2026-04-21: Story 6.1 spec created — create-story workflow, comprehensive developer guide.
+- 2026-04-21: Story 6.1 implemented — report.js fetch/skeleton/stat cards/toggle; all ACs satisfied; status → review
