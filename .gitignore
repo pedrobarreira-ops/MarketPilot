@@ -29,3 +29,7 @@ _bmad/module-help.csv
 playwright-report/
 test-results/
 playwright/.cache/
+
+# Local preview/export artifacts — not served by the app
+_artifacts/
+public/*-standalone.html
