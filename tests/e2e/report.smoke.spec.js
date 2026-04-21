@@ -386,14 +386,22 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.locator('section.bg-gradient-to-br')).toBeVisible()
   })
 
-  // ── UNSKIP when Story 6.6 lands (a11y baseline) ───────────────────────────
-  test.skip('6.6 — all form elements have associated labels; PT/ES toggle uses role=group + aria-pressed', async ({ page }) => {
+  // ── Story 6.6: a11y baseline (unskipped) ─────────────────────────────────
+  test('6.6 — all form elements have associated labels; PT/ES toggle uses role=group + aria-pressed', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify({ data: SAMPLE_REPORT }),
     }))
     await page.goto(`/report/${SAMPLE_ID}`)
-    // Assert: PT/ES toggle container has role=group, aria-label=Canal
-    // Assert: each toggle pill has aria-pressed="true" or "false"
-    // Optionally: run @axe-core/playwright scan for WCAG AA violations
+
+    // AC-3: PT/ES toggle container has role="group" and aria-label="Canal"
+    // (set synchronously by report.js init, before fetch resolves)
+    const toggleContainer = page.locator('[role="group"][aria-label="Canal"]')
+    await expect(toggleContainer).toBeVisible()
+
+    // AC-3: PT pill starts with aria-pressed="true", ES with aria-pressed="false"
+    const ptBtn = page.locator('button[aria-pressed="true"]').first()
+    const esBtn = page.locator('button[aria-pressed="false"]').first()
+    await expect(ptBtn).toHaveAttribute('aria-pressed', 'true')
+    await expect(esBtn).toHaveAttribute('aria-pressed', 'false')
   })
 })
