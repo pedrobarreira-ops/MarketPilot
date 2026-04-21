@@ -99,10 +99,10 @@ development_status:
   # ── Epic 6: Frontend — Report Page ───────────────────────────────────────
   epic-6: in-progress
   6-1-report-js-data-fetch-skeleton-and-your-position: done
-  6-2-biggest-opportunities-and-quick-wins-tables: backlog
+  6-2-biggest-opportunities-and-quick-wins-tables: done
   6-3-csv-download-and-cta: done
   6-4-mobile-and-screen-share-layout-verification: backlog
-  6-5-expired-report-and-fetch-error-states: backlog
+  6-5-expired-report-and-fetch-error-states: done
   6-6-accessibility-baseline: backlog
   epic-6-retrospective: optional
 

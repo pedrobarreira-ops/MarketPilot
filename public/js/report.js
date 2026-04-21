@@ -179,7 +179,193 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     }
   }
 
-  // AC-12: Render channel stat cards and tables
+  // ── Story 6.2: Price/gap formatting helpers ──────────────────────────────
+
+  // pt-PT price: "€799,00" (comma decimal, dot thousands, always 2 decimal places)
+  function formatPrice (val) {
+    const n = Number(val) || 0
+    try {
+      return '€' + n.toLocaleString('pt-PT', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+    } catch (_) {
+      return '€' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    }
+  }
+
+  // Gap EUR: U+2212 MINUS SIGN prefix, absolute value in pt-PT format
+  // gapEur is negative for opportunities (my_price > first_price)
+  function formatGapEur (gapEur) {
+    const absVal = Math.abs(Number(gapEur) || 0)
+    try {
+      return '\u2212\u20AC' + absVal.toLocaleString('pt-PT', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+    } catch (_) {
+      return '\u2212\u20AC' + absVal.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    }
+  }
+
+  // Gap pct: "0.8%" from 0.008. Guard against null/undefined/NaN to avoid "NaN%" output.
+  function formatGapPct (gapPct) {
+    const n = Number(gapPct) || 0
+    return (n * 100).toFixed(1) + '%'
+  }
+
+  // ── Story 6.2: Opportunities table renderer ───────────────────────────────
+
+  function renderOpportunities (opportunities) {
+    const oppTbody = document.querySelectorAll('tbody')[0]
+    if (!oppTbody) return
+    oppTbody.innerHTML = ''
+
+    if (!opportunities || opportunities.length === 0) {
+      const td = document.createElement('td')
+      td.colSpan = 6
+      td.className = 'px-6 py-8 text-on-surface-variant text-center'
+      td.style.padding = '2rem 1.5rem'  // inline fallback for py-8 (Tailwind JIT safety)
+      td.textContent = 'Estás em 1.º lugar em todos os produtos neste canal.'
+      const tr = document.createElement('tr')
+      tr.appendChild(td)
+      oppTbody.appendChild(tr)
+      return
+    }
+
+    opportunities.forEach(function (item, idx) {
+      const tr = document.createElement('tr')
+      tr.className = 'bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors shadow-sm rounded-lg'
+      if (idx === 0) {
+        // First-row #EFF6FF tint — inline style to avoid JIT purge of bg-blue-50
+        tr.style.backgroundColor = '#EFF6FF'
+      }
+
+      // Column 1: Product title
+      const tdProduct = document.createElement('td')
+      tdProduct.className = 'px-6 py-6 rounded-l-lg'
+      tdProduct.textContent = item.product_title || item.ean || ''
+      if (idx === 0) tdProduct.classList.add('border-l-4', 'border-primary')
+
+      // Column 2: My price
+      const tdMyPrice = document.createElement('td')
+      tdMyPrice.className = 'px-6 py-6'
+      tdMyPrice.textContent = formatPrice(item.my_price)
+
+      // Column 3: First price
+      const tdFirstPrice = document.createElement('td')
+      tdFirstPrice.className = 'px-6 py-6 font-bold'
+      tdFirstPrice.textContent = formatPrice(item.first_price)
+
+      // Column 4: Gap EUR (negative, red)
+      const gapEur = (item.my_price || 0) - (item.first_price || 0)
+      const tdGapEur = document.createElement('td')
+      tdGapEur.className = 'px-6 py-6'
+      tdGapEur.style.color = '#DC2626'
+      tdGapEur.textContent = formatGapEur(gapEur)
+
+      // Column 5: Gap pct — red pill
+      const tdGapPct = document.createElement('td')
+      tdGapPct.className = 'px-6 py-6'
+      const pill = document.createElement('span')
+      pill.className = 'bg-error-container text-on-error-container px-2 py-0.5 rounded text-xs'
+      pill.textContent = formatGapPct(item.gap_pct)
+      tdGapPct.appendChild(pill)
+
+      // Column 6: WOW score — right-aligned integer
+      const tdWow = document.createElement('td')
+      tdWow.className = 'px-6 py-6 rounded-r-lg font-black text-primary text-lg tracking-tighter text-right'
+      tdWow.textContent = Math.round(Number(item.wow_score) || 0).toString()
+
+      tr.appendChild(tdProduct)
+      tr.appendChild(tdMyPrice)
+      tr.appendChild(tdFirstPrice)
+      tr.appendChild(tdGapEur)
+      tr.appendChild(tdGapPct)
+      tr.appendChild(tdWow)
+      oppTbody.appendChild(tr)
+    })
+  }
+
+  // ── Story 6.2: Quick Wins table renderer ──────────────────────────────────
+
+  function renderQuickWins (quickwins) {
+    const qwTbody = document.querySelectorAll('tbody')[1]
+    if (!qwTbody) return
+    qwTbody.innerHTML = ''
+
+    if (!quickwins || quickwins.length === 0) {
+      const td = document.createElement('td')
+      td.colSpan = 6
+      td.className = 'px-6 py-8 text-on-surface-variant text-center'
+      td.style.padding = '2rem 1.5rem'  // inline fallback for py-8 (Tailwind JIT safety)
+      td.textContent = 'Não há vitórias rápidas disponíveis neste canal.'
+      const tr = document.createElement('tr')
+      tr.appendChild(td)
+      qwTbody.appendChild(tr)
+      return
+    }
+
+    const maxScore = Math.max.apply(null, quickwins.map(function (q) { return q.wow_score || 0 })) || 1
+
+    quickwins.forEach(function (item) {
+      const tr = document.createElement('tr')
+      tr.className = 'hover:bg-surface-container transition-colors'
+
+      // Column 1: Product title
+      const tdProduct = document.createElement('td')
+      tdProduct.className = 'px-6 py-5 border-b border-outline-variant/10 font-bold text-primary'
+      tdProduct.textContent = item.product_title || item.ean || ''
+
+      // Column 2: My price
+      const tdMyPrice = document.createElement('td')
+      tdMyPrice.className = 'px-6 py-5 border-b border-outline-variant/10 text-on-surface-variant'
+      tdMyPrice.textContent = formatPrice(item.my_price)
+
+      // Column 3: First price
+      const tdFirstPrice = document.createElement('td')
+      tdFirstPrice.className = 'px-6 py-5 border-b border-outline-variant/10 font-bold'
+      tdFirstPrice.textContent = formatPrice(item.first_price)
+
+      // Column 4: Gap EUR
+      const gapEur = (item.my_price || 0) - (item.first_price || 0)
+      const tdGapEur = document.createElement('td')
+      tdGapEur.className = 'px-6 py-5 border-b border-outline-variant/10 font-medium text-on-tertiary-fixed-variant'
+      tdGapEur.textContent = formatGapEur(gapEur)
+
+      // Column 5: Gap pct pill
+      const tdGapPct = document.createElement('td')
+      tdGapPct.className = 'px-6 py-5 border-b border-outline-variant/10'
+      const pill = document.createElement('span')
+      pill.className = 'bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded text-xs'
+      pill.textContent = formatGapPct(item.gap_pct)
+      tdGapPct.appendChild(pill)
+
+      // Column 6: Score bar (not a number — horizontal navy bar relative to maxScore).
+      // Coerce wow_score defensively — undefined / maxScore yields NaN and makes the bar invisible.
+      const itemScore = Number(item.wow_score) || 0
+      const pct = Math.max(2, Math.round((itemScore / maxScore) * 100))
+      const tdScore = document.createElement('td')
+      tdScore.className = 'px-6 py-5 border-b border-outline-variant/10'
+      const barOuter = document.createElement('div')
+      barOuter.className = 'w-24 h-1 bg-surface-variant rounded-full overflow-hidden'
+      const barInner = document.createElement('div')
+      barInner.className = 'h-full bg-primary'
+      barInner.style.width = pct + '%'
+      barOuter.appendChild(barInner)
+      tdScore.appendChild(barOuter)
+
+      tr.appendChild(tdProduct)
+      tr.appendChild(tdMyPrice)
+      tr.appendChild(tdFirstPrice)
+      tr.appendChild(tdGapEur)
+      tr.appendChild(tdGapPct)
+      tr.appendChild(tdScore)
+      qwTbody.appendChild(tr)
+    })
+  }
+
+  // ── AC-12: Render channel stat cards and tables ───────────────────────────
   function renderChannel (channel) {
     // Defensive: if reportData hasn't loaded yet (e.g. toggle clicked via keyboard
     // while skeleton's pointer-events:none is active), bail out silently. The
@@ -211,9 +397,11 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
       return
     }
 
-    // Story 6.1: clear skeleton from tables — Story 6.2 will populate rows
-    tbodies[0].innerHTML = ''
-    tbodies[1].innerHTML = ''
+    // Story 6.2: Render opportunities and quick wins rows for the active channel (AC-10)
+    const opps = reportData['opportunities_' + channel] || []
+    const qws  = reportData['quickwins_' + channel]     || []
+    renderOpportunities(opps)
+    renderQuickWins(qws)
   }
 
   // ── Task 5: PT/ES toggle handlers ─────────────────────────────────────────
@@ -271,33 +459,6 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
       .catch(function (err) {
         console.warn('[report.js] Fetch error:', err)
       })
-  }
-
-  // ── Story 6.2 scaffold: Opportunities & Quick Wins table rendering ───────────
-  // renderChannel already references opportunities_pt / opportunities_es and
-  // quickwins_pt / quickwins_es via the reportData shape.  The full row-building
-  // logic (wow_score, gap_pct formatting) will be wired here in Story 6.2.
-
-  function buildOpportunitiesRows (opportunities) {
-    // Story 6.2 will populate this.  Access the key fields here so static
-    // source scans see the references: wow_score, gap_pct.
-    if (!opportunities || !opportunities.length) return
-    opportunities.forEach(function (item) {
-      const _wowScore = item.wow_score
-      const _gapPct   = item.gap_pct
-      // row DOM construction deferred to Story 6.2
-      void _wowScore; void _gapPct
-    })
-  }
-
-  function renderOpportunitiesAndQuickWins (channel) {
-    if (!reportData) return
-    const opKey  = 'opportunities_' + channel
-    const qwKey  = 'quickwins_'     + channel
-    const opportunities = reportData[opKey]  || []
-    const quickwins     = reportData[qwKey]  || []
-    buildOpportunitiesRows(opportunities)
-    buildOpportunitiesRows(quickwins)
   }
 
   // ── Story 6.3 scaffold: CSV download URL ─────────────────────────────────
@@ -385,7 +546,6 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
   }
 
   // Hoist scaffold references so they are not tree-shaken by future bundlers
-  void renderOpportunitiesAndQuickWins
   void showExpiryCard
   void showFetchErrorCard
 
