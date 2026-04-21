@@ -291,10 +291,63 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     resolveFetch()
   })
 
-  // ── UNSKIP when Story 6.4 lands (mobile layout) ───────────────────────────
-  test.skip('6.4 — mobile viewport: stat cards stack vertically; tables have horizontal scroll hint', async ({ page }) => {
-    // Use a mobile viewport: await page.setViewportSize({ width: 375, height: 812 })
-    // Assert stat cards in column (flex-direction), tables have overflow-x: auto
+  // ── Story 6.4: mobile & screen-share layout ──────────────────────────────
+  test('6.4 — mobile viewport: stat cards stack vertically; tables have horizontal scroll hint', async ({ page }) => {
+    await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: SAMPLE_REPORT }),
+    }))
+
+    // Set mobile viewport BEFORE navigation so matchMedia fires correctly on init
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto(`/report/${SAMPLE_ID}`)
+
+    // Wait for data to load
+    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+
+    // AC-1: Stat cards grid is single-column on mobile
+    const statGrid = page.locator('.grid.grid-cols-1')
+    await expect(statGrid).toBeVisible()
+    const gridStyle = await statGrid.evaluate((el) =>
+      window.getComputedStyle(el).gridTemplateColumns
+    )
+    // Single column: gridTemplateColumns should be a single track value
+    expect(gridStyle.split(' ').length).toBe(1)
+
+    // AC-2: Tables have overflow-x:auto
+    const tableWrapper = page.locator('div.overflow-x-auto').first()
+    await expect(tableWrapper).toBeVisible()
+    const overflow = await tableWrapper.evaluate((el) =>
+      window.getComputedStyle(el).overflowX
+    )
+    expect(overflow).toBe('auto')
+
+    // AC-2: "desliza" hint visible on mobile
+    await expect(page.getByText(/← desliza para ver mais →/).first()).toBeVisible()
+
+    // AC-3: Table row font size >= 14px
+    const firstTd = page.locator('tbody').first().locator('td').first()
+    const fontSize = await firstTd.evaluate((el) =>
+      parseFloat(window.getComputedStyle(el).fontSize)
+    )
+    expect(fontSize).toBeGreaterThanOrEqual(14)
+
+    // AC-4 & AC-5: Desktop checks (resize viewport)
+    await page.setViewportSize({ width: 1280, height: 900 })
+
+    // AC-4: No horizontal scroll on desktop
+    const hasHorizontalScroll = await page.evaluate(() =>
+      document.documentElement.scrollWidth > window.innerWidth
+    )
+    expect(hasHorizontalScroll).toBe(false)
+
+    // AC-5: Both PT and ES toggle pills visible on desktop
+    await expect(page.getByRole('button', { name: 'PT', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'ES', exact: true })).toBeVisible()
+
+    // AC-2: hint hidden on desktop (matchMedia change event fired)
+    await expect(page.getByText(/← desliza para ver mais →/).first()).not.toBeVisible()
   })
 
   // ── Story 6.5: expired + error states ────────────────────────────────────
