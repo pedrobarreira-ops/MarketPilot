@@ -4,7 +4,7 @@
  *
  * Acceptance criteria verified (static-only, no browser, no server):
  *
- * AC-5 (static): report.html uses responsive Tailwind breakpoint classes (`sm:` or `lg:`)
+ * AC-6 (static): report.html uses responsive Tailwind breakpoint classes (`sm:` or `lg:`)
  *   for stat cards and tables, confirming responsive layout is declared in the markup.
  *   The Playwright E2E tests (viewport-based) remain the primary verification layer for
  *   layout behaviour; this scan is a defence-in-depth check that the HTML was not
