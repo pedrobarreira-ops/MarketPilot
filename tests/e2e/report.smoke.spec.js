@@ -121,6 +121,36 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.locator('.text-6xl').nth(2)).toHaveText('312')
   })
 
+  // ── Story 6.1: ES no-data edge case ──────────────────────────────────────
+  // AC-11: When ES summary values are all 0, show Portuguese no-data message
+  test('6.1 — ES no-data edge case shows Portuguese message when ES summary is empty', async ({ page }) => {
+    const esNoDataFixture = {
+      ...SAMPLE_REPORT,
+      summary: {
+        pt: { in_first: 4821, losing: 1340, uncontested: 756 },
+        es: { in_first: 0, losing: 0, uncontested: 0 },
+      },
+      opportunities_es: [],
+      quickwins_es: [],
+    }
+    await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: esNoDataFixture }),
+    }))
+
+    await page.goto(`/report/${SAMPLE_ID}`)
+
+    // Wait for PT data to load first
+    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+
+    // Click ES toggle
+    await page.getByRole('button', { name: 'ES', exact: true }).click()
+
+    // ES no-data message should appear in the table area
+    await expect(page.getByText(/sem dados para Worten ES/i).first()).toBeVisible()
+  })
+
   // ── UNSKIP when Story 6.2 ships report.js (opportunities table) ──────────
   // AC: Maiores Oportunidades table renders with first-row highlight + pt-PT money formatting
   test.skip('6.2 — Maiores Oportunidades table renders sorted opportunities with first-row highlight', async ({ page }) => {
