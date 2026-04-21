@@ -193,17 +193,27 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     // Assert stat cards in column (flex-direction), tables have overflow-x: auto
   })
 
-  // ── UNSKIP when Story 6.5 ships (expired + error states) ──────────────────
-  test.skip('6.5 — 410/expired report shows Portuguese expired-state card with "Gerar novo" CTA', async ({ page }) => {
+  // ── Story 6.5: expired + error states ────────────────────────────────────
+  test('6.5 — 410/expired report shows Portuguese expired-state card with "Gerar novo" CTA', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({ status: 410 }))
     await page.goto(`/report/${SAMPLE_ID}`)
-    // Assert: "Este relatório já não está disponível" visible; "Gerar um novo relatório" button visible → links to /
+
+    await expect(page.getByText(/Este relat.*j.*n.*dispon/i).first()).toBeVisible()
+    await expect(page.getByText(/Gerar um novo relat/i).first()).toBeVisible()
+
+    // Header still visible (AC-5)
+    await expect(page.locator('header')).toBeVisible()
   })
 
-  test.skip('6.5 — generic fetch error (500) shows Portuguese "not available" error card with Reload button', async ({ page }) => {
+  test('6.5 — generic fetch error (500) shows Portuguese "not available" error card with Reload button', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({ status: 500 }))
     await page.goto(`/report/${SAMPLE_ID}`)
-    // Assert: "Não foi possível carregar o relatório" visible; "Recarregar" button visible
+
+    await expect(page.getByText(/N.*o foi poss.*vel carregar/i).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Recarregar/i })).toBeVisible()
+
+    // Header still visible (AC-5)
+    await expect(page.locator('header')).toBeVisible()
   })
 
   // ── UNSKIP when Story 6.6 lands (a11y baseline) ───────────────────────────
