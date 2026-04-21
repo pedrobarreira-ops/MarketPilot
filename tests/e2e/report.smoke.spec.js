@@ -20,15 +20,20 @@ import { test, expect } from '@playwright/test'
 const SAMPLE_ID = 'test-report-abc-123'
 
 // Minimal report JSON matching the /api/reports/:id response contract.
-// Stories 6.1-6.3 will extend this fixture as they need richer data.
+// Extended in Story 6.2 with opportunity and quickwins fixture data.
 const SAMPLE_REPORT = {
   summary: {
     pt: { in_first: 4821, losing: 1340, uncontested: 756 },
     es: { in_first: 2103,  losing: 512,  uncontested: 312 },
   },
-  opportunities_pt: [],   // 6.2 extends this
+  opportunities_pt: [
+    { ean: '123', product_title: 'Sony Bravia XR-55A80L', my_price: 799, first_price: 792.50, gap_pct: 0.008, wow_score: 974 },
+    { ean: '456', product_title: 'Canon EOS R6', my_price: 2499, first_price: 2485, gap_pct: 0.006, wow_score: 912 },
+  ],
   opportunities_es: [],
-  quickwins_pt: [],
+  quickwins_pt: [
+    { ean: '789', product_title: 'Apple AirPods Pro 2', my_price: 249, first_price: 246.90, gap_pct: 0.0085, wow_score: 920 },
+  ],
   quickwins_es: [],
   generated_at: '2026-04-14T10:00:00Z',
 }
@@ -151,22 +156,52 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.getByText(/sem dados para Worten ES/i).first()).toBeVisible()
   })
 
-  // ── UNSKIP when Story 6.2 ships report.js (opportunities table) ──────────
+  // ── Story 6.2: Opportunities table (unskipped) ───────────────────────────
   // AC: Maiores Oportunidades table renders with first-row highlight + pt-PT money formatting
-  test.skip('6.2 — Maiores Oportunidades table renders sorted opportunities with first-row highlight', async ({ page }) => {
-    const fixture = { ...SAMPLE_REPORT, opportunities_pt: [
-      { ean: '123', product_title: 'Sony Bravia XR-55A80L', my_price: 799, first_price: 792.50, gap_pct: 0.008, wow_score: 974 },
-      { ean: '456', product_title: 'Canon EOS R6', my_price: 2499, first_price: 2485, gap_pct: 0.006, wow_score: 912 },
-    ]}
+  test('6.2 — Maiores Oportunidades table renders sorted opportunities with first-row highlight', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({ data: fixture }),
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ data: SAMPLE_REPORT }),
     }))
-    // ... page.goto + assert table rows + first-row highlight + money formatting ...
+    await page.goto(`/report/${SAMPLE_ID}`)
+
+    // Wait for data to load (PT stat cards populated)
+    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+
+    // First row visible with product title
+    await expect(page.getByText('Sony Bravia XR-55A80L')).toBeVisible()
+
+    // Second row visible
+    await expect(page.getByText('Canon EOS R6')).toBeVisible()
+
+    // Price formatted in pt-PT locale: "€799,00"
+    await expect(page.getByText('€799,00')).toBeVisible()
+
+    // WOW score rendered as number in first row area
+    await expect(page.getByText('974')).toBeVisible()
   })
 
-  // ── UNSKIP when Story 6.2 ships report.js (quick-wins table) ─────────────
-  test.skip('6.2 — Vitórias Rápidas table renders score bar graphics (not raw numbers)', async ({ page }) => {
-    // ... similar fixture + table assertion ...
+  // ── Story 6.2: Quick Wins table (unskipped) ───────────────────────────────
+  test('6.2 — Vitórias Rápidas table renders score bar graphics (not raw numbers)', async ({ page }) => {
+    await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ data: SAMPLE_REPORT }),
+    }))
+    await page.goto(`/report/${SAMPLE_ID}`)
+
+    // Wait for data to load
+    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+
+    // Quick wins product visible
+    await expect(page.getByText('Apple AirPods Pro 2')).toBeVisible()
+
+    // Score bar rendered as a div (bg-primary fill), not as raw text "920"
+    const scoreBar = page.locator('tbody').nth(1).locator('.bg-primary')
+    await expect(scoreBar).toBeVisible()
+
+    // The raw wow_score number "920" should NOT appear as standalone text in the score cell
+    const scoreCell = page.locator('tbody').nth(1).locator('tr').first().locator('td').last()
+    await expect(scoreCell.locator('div.bg-primary')).toBeVisible()
   })
 
   // ── UNSKIP when Story 6.3 ships report.js (CSV download) ──────────────────

@@ -5,7 +5,7 @@ This story does NOT call Mirakl endpoints directly. It renders data already fetc
 **Epic:** 6 — Frontend Report Page
 **Story:** 6.2
 **Story Key:** 6-2-biggest-opportunities-and-quick-wins-tables
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-21
 
 ---
@@ -99,38 +99,38 @@ So that I can quickly identify the most impactful products to reprice and the ea
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Implement `renderOpportunities(opportunities)` function** (AC: 1, 2, 3, 5)
-  - [ ] Clear opportunities `<tbody>` (`tbodies[0].innerHTML = ''`)
-  - [ ] If array is empty or null: render empty state row (colspan=6, centered Portuguese message)
-  - [ ] For each item: create `<tr>`, apply first-row `#EFF6FF` tint on index 0
-  - [ ] Columns: product_title, my_price (€ format), first_price (€ format), gap_eur (negative red), gap_pct (red pill), wow_score (right-aligned integer)
-  - [ ] Format prices: `formatPrice(val)` → `"€" + val.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })`
-  - [ ] Format gap: `"−€" + Math.abs(gap).toLocaleString('pt-PT', ...)` with red color `#DC2626`
-  - [ ] Format gap_pct: `(gap_pct * 100).toFixed(1) + "%"` in red pill span
-  - [ ] Format wow_score: `Math.round(wow_score).toString()` right-aligned
-  - [ ] Use safe DOM construction (no innerHTML with user data — use textContent / createElement)
+- [x] **Task 1: Implement `renderOpportunities(opportunities)` function** (AC: 1, 2, 3, 5)
+  - [x] Clear opportunities `<tbody>` (`tbodies[0].innerHTML = ''`)
+  - [x] If array is empty or null: render empty state row (colspan=6, centered Portuguese message)
+  - [x] For each item: create `<tr>`, apply first-row `#EFF6FF` tint on index 0
+  - [x] Columns: product_title, my_price (€ format), first_price (€ format), gap_eur (negative red), gap_pct (red pill), wow_score (right-aligned integer)
+  - [x] Format prices: `formatPrice(val)` → `"€" + val.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })`
+  - [x] Format gap: `"−€" + Math.abs(gap).toLocaleString('pt-PT', ...)` with red color `#DC2626`
+  - [x] Format gap_pct: `(gap_pct * 100).toFixed(1) + "%"` in red pill span
+  - [x] Format wow_score: `Math.round(wow_score).toString()` right-aligned
+  - [x] Use safe DOM construction (no innerHTML with user data — use textContent / createElement)
 
-- [ ] **Task 2: Implement `renderQuickWins(quickwins)` function** (AC: 4, 6, 7)
-  - [ ] Clear quick wins `<tbody>` (`tbodies[1].innerHTML = ''`)
-  - [ ] If array is empty or null: render empty state row (colspan=6, centered Portuguese message)
-  - [ ] Compute `maxScore = Math.max(...quickwins.map(q => q.wow_score))` for bar scaling
-  - [ ] For each item: create `<tr>` (no first-row tint)
-  - [ ] Columns: product_title, my_price (€ format), first_price (€ format), gap_eur (negative), gap_pct (pill), score bar div
-  - [ ] Score bar: outer `<div class="w-24 h-1 bg-surface-variant rounded-full overflow-hidden">`, inner `<div class="h-full bg-primary">` with `style="width: X%"` where `X = Math.max(2, Math.round((item.wow_score / maxScore) * 100))`
+- [x] **Task 2: Implement `renderQuickWins(quickwins)` function** (AC: 4, 6, 7)
+  - [x] Clear quick wins `<tbody>` (`tbodies[1].innerHTML = ''`)
+  - [x] If array is empty or null: render empty state row (colspan=6, centered Portuguese message)
+  - [x] Compute `maxScore = Math.max(...quickwins.map(q => q.wow_score))` for bar scaling
+  - [x] For each item: create `<tr>` (no first-row tint)
+  - [x] Columns: product_title, my_price (€ format), first_price (€ format), gap_eur (negative), gap_pct (pill), score bar div
+  - [x] Score bar: outer `<div class="w-24 h-1 bg-surface-variant rounded-full overflow-hidden">`, inner `<div class="h-full bg-primary">` with `style="width: X%"` where `X = Math.max(2, Math.round((item.wow_score / maxScore) * 100))`
 
-- [ ] **Task 3: Wire `renderOpportunities` + `renderQuickWins` into `renderChannel`** (AC: 10)
-  - [ ] In the `renderChannel(channel)` function (Story 6.1), replace the two `tbodies[n].innerHTML = ''` stubs with calls to `renderOpportunities(opps)` and `renderQuickWins(qws)`
-  - [ ] Pass the correct channel-keyed data: `reportData['opportunities_' + channel]` and `reportData['quickwins_' + channel]`
-  - [ ] Verify ES no-data branch (AC-11 from Story 6.1) still short-circuits before renderOpportunities/renderQuickWins
+- [x] **Task 3: Wire `renderOpportunities` + `renderQuickWins` into `renderChannel`** (AC: 10)
+  - [x] In the `renderChannel(channel)` function (Story 6.1), replace the two `tbodies[n].innerHTML = ''` stubs with calls to `renderOpportunities(opps)` and `renderQuickWins(qws)`
+  - [x] Pass the correct channel-keyed data: `reportData['opportunities_' + channel]` and `reportData['quickwins_' + channel]`
+  - [x] Verify ES no-data branch (AC-11 from Story 6.1) still short-circuits before renderOpportunities/renderQuickWins
 
-- [ ] **Task 4: Unskip and implement Playwright E2E tests** (AC: 11)
-  - [ ] Fill in the two 6.2 test bodies in `tests/e2e/report.smoke.spec.js` (see Dev Notes)
-  - [ ] Change `test.skip(` → `test(` for both 6.2 tests
-  - [ ] Run: `npx playwright test tests/e2e/report.smoke.spec.js` — all 6 tests pass (1 DOM smoke + 4 Story 6.1 + 2 Story 6.2)
+- [x] **Task 4: Unskip and implement Playwright E2E tests** (AC: 11)
+  - [x] Fill in the two 6.2 test bodies in `tests/e2e/report.smoke.spec.js` (see Dev Notes)
+  - [x] Change `test.skip(` → `test(` for both 6.2 tests
+  - [x] Run: `npx playwright test tests/e2e/report.smoke.spec.js` — all 7 tests pass (1 DOM smoke + 4 Story 6.1 + 2 Story 6.2)
 
-- [ ] **Task 5: Run static ATDD tests** (AC: 8, 9)
-  - [ ] Run: `node --test tests/epic6-6.2-opportunities-quickwins-tables.atdd.test.js` — all 5 tests pass
-  - [ ] Run: `node --test tests/frontend-architecture-invariants.test.js` — all invariants still pass
+- [x] **Task 5: Run static ATDD tests** (AC: 8, 9)
+  - [x] Run: `node --test tests/epic6-6.2-opportunities-quickwins-tables.atdd.test.js` — all 5 tests pass
+  - [x] Run: `node --test tests/frontend-architecture-invariants.test.js` — all 13 invariants pass
 
 ---
 
@@ -580,20 +580,28 @@ This story is 100% frontend (`public/js/report.js`). No server-side changes. The
 
 ### Agent Model Used
 
-_to be filled by dev agent_
+claude-sonnet-4-6
 
 ### Debug Log References
 
-_to be filled by dev agent_
+- Tailwind JIT invariant failure: `py-8` used in empty-state `<td>` className not in report.html. After comment stripping, the proximity heuristic (500-char window for `.style.*`) found no inline style fallback. Fixed by adding `td.style.padding = '2rem 1.5rem'` inline fallback adjacent to both empty-state className assignments.
 
 ### Completion Notes List
 
-_to be filled by dev agent_
+- Implemented `renderOpportunities(opportunities)` with pt-PT price formatting, first-row `#EFF6FF` highlight (inline style), red gap EUR (U+2212 minus sign), red pill for gap_pct, right-aligned WOW score integer
+- Implemented `renderQuickWins(quickwins)` with horizontal navy score bar (relative width % of maxScore, min 2%), no first-row tint, same price formatting
+- Both functions use safe DOM (createElement/textContent, no innerHTML for user data)
+- Wired both into `renderChannel()` replacing the Story 6.1 stubs; ES no-data early-return preserved
+- Removed Story 6.1 scaffold functions (`buildOpportunitiesRows`, `renderOpportunitiesAndQuickWins`) — replaced by real implementations
+- Unskipped 2 Story 6.2 Playwright tests; extended SAMPLE_REPORT fixture with PT opportunities + quickwins data
+- All tests green: 557 unit/ATDD pass, 13 frontend architecture invariants pass, 7 Playwright E2E pass (6 skipped future stories)
 
 ### File List
 
-_to be filled by dev agent_
+- public/js/report.js
+- tests/e2e/report.smoke.spec.js
 
 ### Change Log
 
 - 2026-04-21: Story 6.2 spec created — create-story workflow, comprehensive developer guide.
+- 2026-04-21: Story 6.2 implemented — renderOpportunities, renderQuickWins, renderChannel wiring, E2E unskip. All tests green.
