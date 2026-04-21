@@ -5,7 +5,7 @@ This story does NOT call Mirakl endpoints directly. No Mirakl MCP check required
 **Epic:** 6 — Frontend Report Page
 **Story:** 6.3
 **Story Key:** 6-3-csv-download-and-cta
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-21
 
 ---
