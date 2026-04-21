@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-21  (story 6.6 atdd-done → review)
+last_updated: 2026-04-21  (story 6.6 review → done)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -103,7 +103,7 @@ development_status:
   6-3-csv-download-and-cta: done
   6-4-mobile-and-screen-share-layout-verification: done
   6-5-expired-report-and-fetch-error-states: done
-  6-6-accessibility-baseline: review
+  6-6-accessibility-baseline: done
   epic-6-retrospective: optional
 
   # ── Epic 7: Error Handling & Edge Cases ──────────────────────────────────
