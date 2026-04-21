@@ -387,7 +387,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
   })
 
   // ── Story 6.6: a11y baseline (unskipped) ─────────────────────────────────
-  test('6.6 — all form elements have associated labels; PT/ES toggle uses role=group + aria-pressed', async ({ page }) => {
+  test('6.6 — PT/ES toggle container has role=group + aria-label=Canal; pills have correct initial aria-pressed', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify({ data: SAMPLE_REPORT }),
     }))
