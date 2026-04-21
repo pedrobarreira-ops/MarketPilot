@@ -441,7 +441,14 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     fetch('/api/reports/' + reportId)
       .then(function (response) {
         if (!response.ok) {
-          console.warn('[report.js] Fetch failed with status:', response.status)
+          removeSkeletonState(null)
+          if (response.status < 500) {
+            // 4xx (404, 410, etc.) — expired or not found
+            showExpiryCard()
+          } else {
+            // 5xx — server error
+            showFetchErrorCard()
+          }
           return null
         }
         return response.json()
@@ -458,6 +465,8 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
       })
       .catch(function (err) {
         console.warn('[report.js] Fetch error:', err)
+        removeSkeletonState(null)
+        showFetchErrorCard()
       })
   }
 
@@ -528,21 +537,90 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
   // ── Story 6.5 scaffold: Expired / fetch-error states ─────────────────────
   // Full error-card rendering wired in Story 6.5.
 
+  // Replaces main content with an error card while preserving the CTA banner (AC-5).
+  // The CTA section lives inside <main> — using mainEl.innerHTML = '' would wipe it.
+  // Instead: remove all children except the CTA section, then insert the card before it.
+  function replaceMainContentWith (card) {
+    const mainEl = document.querySelector('main')
+    if (!mainEl) return
+    const ctaSection = mainEl.querySelector('section.bg-gradient-to-br')
+    // Remove all children except the CTA banner
+    Array.from(mainEl.children).forEach(function (child) {
+      if (child !== ctaSection) mainEl.removeChild(child)
+    })
+    // Insert error card before the CTA banner (or append if banner not found)
+    if (ctaSection) {
+      mainEl.insertBefore(card, ctaSection)
+    } else {
+      mainEl.appendChild(card)
+    }
+  }
+
   function showExpiryCard () {
+    const card = document.createElement('div')
+    card.className = 'py-24 flex flex-col items-center text-center gap-6 max-w-lg mx-auto'
+
+    const icon = document.createElement('span')
+    icon.className = 'material-symbols-outlined text-6xl text-secondary'
+    icon.textContent = 'schedule'
+
+    const heading = document.createElement('h2')
+    heading.className = 'text-3xl font-extrabold text-primary tracking-tight'
     // AC-1: expiry message — "Este relatório já não está disponível"
-    const expiryMsg = 'Este relatório já não está disponível'
+    heading.textContent = 'Este relatório já não está disponível'
+
+    const body = document.createElement('p')
+    body.className = 'text-on-surface-variant font-medium'
+    body.textContent = 'Os relatórios expiram ao fim de 48 horas. Gera um novo relatório para obteres dados actualizados.'
+
     // AC-1: CTA button — "Gerar um novo relatório →"
-    const ctaLabel  = 'Gerar um novo relatório'
-    console.info('[report.js] Report expired:', expiryMsg, ctaLabel)
+    const ctaBtn = document.createElement('a')
+    ctaBtn.href = '/'
+    ctaBtn.className = 'mt-4 px-8 py-4 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity'
+    ctaBtn.textContent = 'Gerar um novo relatório →'
+
+    card.appendChild(icon)
+    card.appendChild(heading)
+    card.appendChild(body)
+    card.appendChild(ctaBtn)
+
+    replaceMainContentWith(card)
   }
 
   function showFetchErrorCard () {
+    const card = document.createElement('div')
+    card.className = 'py-24 flex flex-col items-center text-center gap-6 max-w-lg mx-auto'
+
+    const icon = document.createElement('span')
+    icon.className = 'material-symbols-outlined text-6xl text-error'
+    icon.textContent = 'warning'
+
+    const heading = document.createElement('h2')
+    heading.className = 'text-3xl font-extrabold text-primary tracking-tight'
     // AC-2: error message — "Não foi possível carregar o relatório"
-    const errorMsg = 'Não foi possível carregar o relatório'
-    console.info('[report.js] Fetch error state:', errorMsg)
+    heading.textContent = 'Não foi possível carregar o relatório'
+
     // AC-2: Recarregar button calls window.location.reload()
-    // Full button wiring in Story 6.5; reload reference satisfies static scan.
-    void function () { window.location.reload() }
+    const reloadBtn = document.createElement('button')
+    reloadBtn.className = 'mt-4 px-8 py-4 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity'
+    reloadBtn.textContent = 'Recarregar'
+    reloadBtn.addEventListener('click', function () {
+      window.location.reload()
+    })
+
+    const contactLink = document.createElement('a')
+    contactLink.href = CTA_URL
+    contactLink.target = '_blank'
+    contactLink.rel = 'noopener noreferrer'
+    contactLink.className = 'text-primary font-medium underline'
+    contactLink.textContent = 'Contacta-nos'
+
+    card.appendChild(icon)
+    card.appendChild(heading)
+    card.appendChild(reloadBtn)
+    card.appendChild(contactLink)
+
+    replaceMainContentWith(card)
   }
 
   // Hoist scaffold references so they are not tree-shaken by future bundlers
