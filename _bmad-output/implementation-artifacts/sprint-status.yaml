@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-21  (phase0 reconciliation: PR#52 merged → 5.2=done; epic-5=done; stale 5.2 worktree removed)
+last_updated: 2026-04-21  (story 6.1 review complete → done)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -98,7 +98,7 @@ development_status:
 
   # ── Epic 6: Frontend — Report Page ───────────────────────────────────────
   epic-6: in-progress
-  6-1-report-js-data-fetch-skeleton-and-your-position: atdd-done
+  6-1-report-js-data-fetch-skeleton-and-your-position: done
   6-2-biggest-opportunities-and-quick-wins-tables: backlog
   6-3-csv-download-and-cta: backlog
   6-4-mobile-and-screen-share-layout-verification: backlog
