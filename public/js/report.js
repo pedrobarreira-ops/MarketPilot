@@ -208,9 +208,10 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     }
   }
 
-  // Gap pct: "0.8%" from 0.008
+  // Gap pct: "0.8%" from 0.008. Guard against null/undefined/NaN to avoid "NaN%" output.
   function formatGapPct (gapPct) {
-    return (Number(gapPct) * 100).toFixed(1) + '%'
+    const n = Number(gapPct) || 0
+    return (n * 100).toFixed(1) + '%'
   }
 
   // ── Story 6.2: Opportunities table renderer ───────────────────────────────
@@ -340,8 +341,10 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
       pill.textContent = formatGapPct(item.gap_pct)
       tdGapPct.appendChild(pill)
 
-      // Column 6: Score bar (not a number — horizontal navy bar relative to maxScore)
-      const pct = Math.max(2, Math.round((item.wow_score / maxScore) * 100))
+      // Column 6: Score bar (not a number — horizontal navy bar relative to maxScore).
+      // Coerce wow_score defensively — undefined / maxScore yields NaN and makes the bar invisible.
+      const itemScore = Number(item.wow_score) || 0
+      const pct = Math.max(2, Math.round((itemScore / maxScore) * 100))
       const tdScore = document.createElement('td')
       tdScore.className = 'px-6 py-5 border-b border-outline-variant/10'
       const barOuter = document.createElement('div')

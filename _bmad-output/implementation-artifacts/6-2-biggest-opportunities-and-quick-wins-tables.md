@@ -132,6 +132,15 @@ So that I can quickly identify the most impactful products to reprice and the ea
   - [x] Run: `node --test tests/epic6-6.2-opportunities-quickwins-tables.atdd.test.js` — all 5 tests pass
   - [x] Run: `node --test tests/frontend-architecture-invariants.test.js` — all 13 invariants pass
 
+### Review Findings
+
+Code review performed 2026-04-21 via `/bmad-code-review`. Three adversarial layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor against spec). No blocking issues; all ACs satisfied. Two should-fix robustness patches auto-applied:
+
+- [x] [Review][Patch] `formatGapPct` returned `"NaN%"` when `gap_pct` missing/undefined — inconsistent with `formatPrice`/`formatGapEur` which coerce via `|| 0`. Added `Number(gapPct) || 0` guard. [public/js/report.js:212-215]
+- [x] [Review][Patch] `renderQuickWins` score bar width became `NaN%` (invisible bar) when `item.wow_score` was `undefined` — `undefined / maxScore = NaN`. Added `Number(item.wow_score) || 0` coercion before division. [public/js/report.js:344-346]
+
+All 557 unit/ATDD tests pass after patches; 13 frontend architecture invariants pass; 5 static ATDD for 6.2 pass.
+
 ---
 
 ## Dev Notes
