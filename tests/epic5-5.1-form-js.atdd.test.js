@@ -147,39 +147,7 @@ describe('AC-13 (static): outbound POST body must contain api_key and email — 
   })
 })
 
-// ── Architecture invariants (defence-in-depth) ────────────────────────────
-
-describe('Architecture invariants: form.js must not reach outside its scope', () => {
-  test('form.js does not import or require server-side modules', () => {
-    const src = requireSource()
-    // No require() or import of src/ modules — this is a pure browser file
-    assert.ok(
-      !/require\s*\(\s*['"]\.\.?\/src/.test(src),
-      'form.js must not require() any src/ module'
-    )
-    assert.ok(
-      !/import\s+.*from\s+['"]\.\.?\/src/.test(src),
-      'form.js must not import from any src/ module'
-    )
-  })
-
-  test('form.js does not use eval() or document.write()', () => {
-    const src = requireSource()
-    assert.ok(!/\beval\s*\(/.test(src), 'form.js must not use eval()')
-    assert.ok(!/document\.write\s*\(/.test(src), 'form.js must not use document.write()')
-  })
-
-  test('form.js does not use innerHTML to inject user-supplied content unsanitised', () => {
-    const src = requireSource()
-    // innerHTML is allowed for static error message strings (author-controlled),
-    // but must not be assigned with template literals containing user input
-    // (api_key or email values interpolated directly).
-    // Heuristic: flag if innerHTML assignment includes the api_key or email variable
-    // being interpolated. This is a best-effort static guard, not exhaustive.
-    const innerHTMLWithInput = /innerHTML\s*[+]?=\s*`[^`]*\$\{[^}]*(apiKey|api_key|emailVal|emailValue)\b/.test(src)
-    assert.ok(
-      !innerHTMLWithInput,
-      'form.js must not inject user-supplied api_key or email values via innerHTML template literals'
-    )
-  })
-})
+// Cross-cutting architecture invariants (no eval, no server imports, no innerHTML+user-input)
+// now live in tests/frontend-architecture-invariants.test.js — one file, one grep, applies to
+// every file under public/js/. Story ATDDs stay AC-mapped. See
+// feedback_frontend_architecture_invariants.md (Epic 5 retro, 2026-04-20).

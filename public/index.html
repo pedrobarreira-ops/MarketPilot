@@ -189,5 +189,10 @@
 </div>
 </footer>
 
+<!-- Tailwind CDN JIT safelist: classes referenced only dynamically by form.js.
+     Without this hidden occurrence, the Play CDN purges them and validation
+     errors render unstyled. See feedback_tailwind_dynamic_classes.md. -->
+<div class="hidden border-red-600 text-red-600 text-sm mt-1 mb-2" aria-hidden="true"></div>
+
 <script src="/js/form.js"></script>
 </body></html>

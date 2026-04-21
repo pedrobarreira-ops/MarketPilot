@@ -287,52 +287,26 @@ describe('AC-9 (static): copy button aria-label set during initialisation', () =
   })
 })
 
-// ── Architecture invariants (defence-in-depth) ────────────────────────────
+// Cross-cutting architecture invariants (no eval, no server imports, no innerHTML+user-input)
+// now live in tests/frontend-architecture-invariants.test.js — one file, one grep, applies to
+// every file under public/js/. See feedback_frontend_architecture_invariants.md
+// (Epic 5 retro, 2026-04-20).
+//
+// The progress-specific contract check (polling hits /api/jobs/ + no api_key reference)
+// stays here because the /api/jobs/ endpoint and the no-api_key invariant are specific to
+// progress.js's role in the system, not general public/js rules.
 
-describe('Architecture invariants: progress.js must not reach outside its scope', () => {
-  test('progress.js does not import or require server-side modules', () => {
-    const src = requireSource()
-    assert.ok(
-      !/require\s*\(\s*['"]\.\.?\/src/.test(src),
-      'progress.js must not require() any src/ module'
-    )
-    assert.ok(
-      !/import\s+.*from\s+['"]\.\.?\/src/.test(src),
-      'progress.js must not import from any src/ module'
-    )
-  })
-
-  test('progress.js does not use eval() or document.write()', () => {
-    const src = requireSource()
-    assert.ok(!/\beval\s*\(/.test(src), 'progress.js must not use eval()')
-    assert.ok(!/document\.write\s*\(/.test(src), 'progress.js must not use document.write()')
-  })
-
+describe('Progress.js contract: polling endpoint + no api_key', () => {
   test('progress.js polling fetch only calls /api/jobs/ — no auth headers with api_key', () => {
     const src = requireSource()
-    // The polling GET must target /api/jobs/... — verify the endpoint is present.
     assert.ok(
       /\/api\/jobs\//.test(src),
       'progress.js must contain a fetch call to /api/jobs/ for polling (AC-3)'
     )
-    // api_key must never appear in progress.js — it lives server-side in keyStore only.
     assert.ok(
       !/api_key/.test(src),
       'progress.js must NOT reference api_key — the key is held server-side in keyStore. ' +
       'The polling endpoint does not require client-side authentication.'
-    )
-  })
-
-  test('progress.js does not inject user-supplied content into innerHTML unsanitised', () => {
-    const src = requireSource()
-    // innerHTML is acceptable for static author-controlled strings (e.g. error action buttons),
-    // but must not interpolate server-returned phase_message or URL values directly.
-    // Heuristic: flag if innerHTML assignment interpolates phase_message or reportUrl/reportId.
-    const dangerousInnerHTML = /innerHTML\s*[+]?=\s*`[^`]*\$\{[^}]*(phase_message|reportUrl|reportId|report_id)\b/.test(src)
-    assert.ok(
-      !dangerousInnerHTML,
-      'progress.js must not inject server-returned values (phase_message, reportUrl, reportId) ' +
-      'via innerHTML template literals — use textContent/setAttribute instead'
     )
   })
 })

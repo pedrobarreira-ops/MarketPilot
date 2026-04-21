@@ -376,6 +376,16 @@ Auto-approve all tool calls (yolo mode).
    values, and "enforces X" claims that the diff does not support. Do not
    continue the pattern.
 
+   COUNT-CATEGORY LABELLING — when citing counts in the PR body (tests, ACs,
+   assertions, changed files, findings), explicitly label what's being counted.
+   Do NOT conflate categories. Examples of imprecise phrasing that has slipped
+   past this guard: "the test file covers 10 acceptance criteria" when it
+   actually covers 2 ACs in 10 scan assertions; "8 tests added" when 8 includes
+   both test cases and sub-assertions. Correct form: "X test cases", "Y ACs
+   covered", "Z scan assertions across N ACs", "K files changed". Added at
+   Epic 5 retro (2026-04-20) because the specifics-only rule above doesn't
+   catch counting semantics.
+
 5. CI:
    - If RUN_CI_LOCALLY is true → skip GitHub Actions and run the Local CI Fallback below.
    - Otherwise, if MONITOR_SUPPORT is true → use the Monitor tool to watch CI status:
