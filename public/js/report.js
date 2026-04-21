@@ -140,6 +140,8 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     const dateVal = typeof generatedAt === 'number'
       ? new Date(generatedAt * 1000)
       : new Date(generatedAt)
+    // Guard against malformed input (NaN Date) — fall back to literal dash
+    if (isNaN(dateVal.getTime())) return '—'
     return dateVal.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })
   }
 
@@ -179,6 +181,17 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
 
   // AC-12: Render channel stat cards and tables
   function renderChannel (channel) {
+    // Defensive: if reportData hasn't loaded yet (e.g. toggle clicked via keyboard
+    // while skeleton's pointer-events:none is active), bail out silently. The
+    // fetch .then() will call renderChannel again once data is ready.
+    if (!reportData) return
+
+    // Always sync toggle ARIA-pressed state to the requested channel — this must
+    // run regardless of no-data / tbody-missing branches below so aria stays in
+    // sync with the active channel.
+    if (ptBtn) ptBtn.setAttribute('aria-pressed', channel === 'pt' ? 'true' : 'false')
+    if (esBtn) esBtn.setAttribute('aria-pressed', channel === 'es' ? 'true' : 'false')
+
     const summary = (reportData.summary && reportData.summary[channel]) ? reportData.summary[channel] : {}
     const winning = summary.winning != null ? summary.winning : (summary.in_first != null ? summary.in_first : 0)
     const losing = summary.losing != null ? summary.losing : 0
@@ -201,10 +214,6 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     // Story 6.1: clear skeleton from tables — Story 6.2 will populate rows
     tbodies[0].innerHTML = ''
     tbodies[1].innerHTML = ''
-
-    // Update toggle ARIA pressed state
-    if (ptBtn) ptBtn.setAttribute('aria-pressed', channel === 'pt' ? 'true' : 'false')
-    if (esBtn) esBtn.setAttribute('aria-pressed', channel === 'es' ? 'true' : 'false')
   }
 
   // ── Task 5: PT/ES toggle handlers ─────────────────────────────────────────
