@@ -5,7 +5,7 @@ Endpoints verified against MCP-Verified Endpoint Reference (epics-distillate.md,
 **Epic:** 6 — Frontend Report Page
 **Story:** 6.1
 **Story Key:** 6-1-report-js-data-fetch-skeleton-and-your-position
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-21
 
 This story does NOT call Mirakl endpoints directly. It consumes `GET /api/reports/:report_id` (Story 4.3). No Mirakl MCP check required for direct endpoint usage; endpoint reference note added for completeness.
@@ -646,7 +646,12 @@ claude-sonnet-4-6
 - `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js` — updated strict field list to include `generated_at`
 - `_bmad-output/implementation-artifacts/6-1-report-js-data-fetch-skeleton-and-your-position.md` — story file updated
 
+### Review Findings
+
+- [x] [Review][Patch] Unauthorized HTML class change — `sm:grid-cols-2` added to stat cards grid in `public/report.html`, violating AC-13 ("the ONLY permitted HTML change" is the `<script>` tag). Reverted to `grid-cols-1 md:grid-cols-3`. [public/report.html:112] — fixed in review
+
 ### Change Log
 
 - 2026-04-21: Story 6.1 spec created — create-story workflow, comprehensive developer guide.
 - 2026-04-21: Story 6.1 implemented — report.js fetch/skeleton/stat cards/toggle; all ACs satisfied; status → review
+- 2026-04-21: Story 6.1 review complete — 1 patch fixed (sm:grid-cols-2 reverted); status → done
