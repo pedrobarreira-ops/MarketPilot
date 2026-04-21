@@ -472,6 +472,59 @@ const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — s
     csvBtn.setAttribute('data-csv-url', getCsvDownloadUrl())
   }
 
+  // ── Story 6.3: CSV download button click handler ──────────────────────────
+
+  // Re-entrancy guards: a rapid re-click mid-restore would capture the "A preparar..."
+  // text as originalContent and later restore the button to that stale value
+  // permanently. We capture the authentic original HTML once (at module scope)
+  // and ignore clicks while a download is already in flight.
+  var csvOriginalContent = csvBtn ? csvBtn.innerHTML : ''
+  var csvDownloadInFlight = false
+
+  function downloadCsv () {
+    if (!csvBtn) return
+    if (csvDownloadInFlight) return
+    csvDownloadInFlight = true
+
+    // Latency indicator: show "A preparar..." if response takes > 1s
+    var preparingTimeout = setTimeout(function () {
+      csvBtn.textContent = 'A preparar...'
+    }, 1000)
+
+    // Use hidden anchor for programmatic download with custom filename
+    var a = document.createElement('a')
+    a.href = '/api/reports/' + reportId + '/csv'
+    a.download = 'marketpilot-report-' + reportId.substring(0, 8) + '.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+
+    // Restore button after a short delay (browser download is async — we cannot
+    // detect completion, so restore after a reasonable window)
+    setTimeout(function () {
+      clearTimeout(preparingTimeout)
+      csvBtn.innerHTML = csvOriginalContent
+      csvDownloadInFlight = false
+    }, 3000)
+  }
+
+  if (csvBtn) {
+    csvBtn.addEventListener('click', downloadCsv)
+  }
+
+  // ── Story 6.3: CTA button wiring ─────────────────────────────────────────
+  // CTA is a <button> in report.html (locked, cannot change to <a>). Use window.open().
+  // Runs unconditionally on init — CTA has no data dependency.
+
+  var ctaSection = document.querySelector('section.bg-gradient-to-br')
+  var ctaBtn = ctaSection ? ctaSection.querySelector('button') : null
+
+  if (ctaBtn) {
+    ctaBtn.addEventListener('click', function () {
+      window.open(CTA_URL, '_blank', 'noopener,noreferrer')
+    })
+  }
+
   // ── Story 6.5 scaffold: Expired / fetch-error states ─────────────────────
   // Full error-card rendering wired in Story 6.5.
 
