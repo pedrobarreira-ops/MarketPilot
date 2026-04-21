@@ -211,7 +211,52 @@ describe('Frontend invariants: Tailwind dynamic classes have static reference or
   }
 })
 
-// ── 5. CTA_URL placeholder guard (Story 6.3 onward) ──────────────────────
+// ── 5. HTML a11y baseline invariants (Story 6.6 onward) ──────────────────
+
+describe('Frontend invariants: every public/*.html has lang and <title>', () => {
+  /**
+   * Cross-cutting a11y baseline established at Story 6.6 code review:
+   *   - WCAG 2.1 SC 3.1.1 (Language of Page, Level A) — <html> must have lang attribute
+   *   - WCAG 2.1 SC 2.4.2 (Page Titled, Level A) — every page must have a <title>
+   *
+   * Story 6.6 added missing <title> to index.html and report.html; this invariant
+   * ensures neither is removed or introduced on a new page without one.
+   */
+  for (const file of loadPublicHtmlFiles()) {
+    test(`${file.name} — <html> has lang attribute`, () => {
+      assert.ok(
+        /<html\s[^>]*\blang\s*=\s*["'][a-z]{2}(?:-[A-Z]{2})?["']/.test(file.raw),
+        `${file.name} must have <html lang="pt"> (or equivalent language code). ` +
+        'WCAG 2.1 SC 3.1.1 — Language of Page.',
+      )
+    })
+
+    test(`${file.name} — has <title> element`, () => {
+      assert.ok(
+        /<title>[^<]+<\/title>/.test(file.raw),
+        `${file.name} must have a non-empty <title> element. ` +
+        'WCAG 2.1 SC 2.4.2 — Page Titled.',
+      )
+    })
+
+    test(`${file.name} — every <img> has alt attribute (empty allowed for decorative)`, () => {
+      // Find every <img ...> tag and verify it has alt="..." (empty string allowed
+      // for decorative images). This prevents regressing the Story 6.6 fix that
+      // added alt="" to the seed-data product thumbnail in report.html.
+      const imgTags = file.raw.match(/<img\s[^>]*>/g) || []
+      const missing = imgTags.filter(tag => !/\balt\s*=\s*["'][^"']*["']/.test(tag))
+      assert.deepEqual(
+        missing,
+        [],
+        `${file.name} has <img> tag(s) without alt attribute. ` +
+        'Decorative images must use alt="" — never omit the attribute. WCAG 2.1 SC 1.1.1. ' +
+        `Missing alt on: ${missing.map(t => t.slice(0, 80)).join(' | ')}`,
+      )
+    })
+  }
+})
+
+// ── 6. CTA_URL placeholder guard (Story 6.3 onward) ──────────────────────
 
 describe('Frontend invariants: CTA_URL must not ship with placeholder values', () => {
   /**
