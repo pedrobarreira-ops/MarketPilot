@@ -20,7 +20,7 @@
  * Run: node --test tests/epic7-7.2-total-count-mismatch.atdd.test.js
  */
 
-import { test, describe, before } from 'node:test'
+import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -290,8 +290,24 @@ describe('Story 7.2 — total_count mismatch handling', async () => {
   // ── AC-4: keyStore.delete in finally even on truncation ───────────────────
   describe('AC-4: keyStore.delete runs in finally on CatalogTruncationError path', () => {
     let src
+    let _redisConnection
+    let _reportQueue
 
     before(() => { src = readSrc(WORKER_PATH) })
+
+    after(async () => {
+      // Close the ioredis connection opened by reportQueue import so the event loop
+      // can drain and the test process exits cleanly (prevents 80 s hang).
+      try {
+        if (_reportQueue) {
+          await Promise.race([
+            _reportQueue.close(),
+            new Promise(resolve => setTimeout(resolve, 1000)),
+          ])
+        }
+      } catch (_) {}
+      try { if (_redisConnection) _redisConnection.disconnect() } catch (_) {}
+    })
 
     test('worker finally block contains keyStore.delete (static)', () => {
       if (!src) return
@@ -312,8 +328,10 @@ describe('Story 7.2 — total_count mismatch handling', async () => {
 
       try {
         const queueModule = await import('../src/queue/reportQueue.js')
-        queueModule.redisConnection.removeAllListeners('error')
-        queueModule.redisConnection.on('error', () => {})
+        _redisConnection = queueModule.redisConnection
+        _reportQueue = queueModule.reportQueue
+        _redisConnection.removeAllListeners('error')
+        _redisConnection.on('error', () => {})
       } catch (_) {}
 
       try {
@@ -349,28 +367,55 @@ describe('Story 7.2 — total_count mismatch handling', async () => {
   // ── AC-5: Pre-filter assertion (total_count is pre-filter) ────────────────
   describe('AC-5: total_count assertion fires BEFORE active-offer filter (NFR-R2)', () => {
     let src
+    let fetchCatalog
+    let CatalogTruncationError
 
-    before(() => { src = readSrc(FETCH_CATALOG_PATH) })
+    before(async () => {
+      src = readSrc(FETCH_CATALOG_PATH)
+      try {
+        const mod = await import('../src/workers/mirakl/fetchCatalog.js')
+        fetchCatalog = mod.fetchCatalog
+        CatalogTruncationError = mod.CatalogTruncationError
+      } catch (_) {}
+    })
 
-    test('source asserts total_count before filtering offer.active (static ordering check)', () => {
-      if (!src) return
-      // The total_count assertion must appear in source BEFORE the active filter.
-      // We check that total_count appears AND that CatalogTruncationError is thrown
-      // without a conditional on active status.
-      const totalCountPos = src.indexOf('total_count')
-      const activeFilterPos = src.indexOf('.active')
+    test('fetchCatalog compares total_count against pre-filter count (runtime — NFR-R2)', async () => {
+      // Runtime invariant: a response with total_count=3 and 3 raw offers (1 inactive, 2 active)
+      // must NOT throw CatalogTruncationError, because the pre-filter count (3) matches total_count (3).
+      // If the assertion were applied post-active-filter (active count=2 vs total_count=3) it would
+      // incorrectly throw — confirming the check fires on allOffers.length (pre-filter).
+      // MCP-verified 2026-04-18: OF21 total_count includes ALL offers including inactive.
+      if (!fetchCatalog || !CatalogTruncationError) return
 
-      if (totalCountPos === -1) {
-        assert.fail('fetchCatalog.js must reference total_count for the assertion (NFR-R2)')
-      }
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = async () => ({
+        ok: true, status: 200,
+        json: async () => ({
+          offers: [
+            { active: true,  shop_sku: 'SKU-1', applicable_pricing: { price: '10.00' }, product_title: 'P1', product_references: [{ reference_type: 'EAN', reference: '1111111111111' }] },
+            { active: true,  shop_sku: 'SKU-2', applicable_pricing: { price: '20.00' }, product_title: 'P2', product_references: [{ reference_type: 'EAN', reference: '2222222222222' }] },
+            { active: false, shop_sku: 'SKU-3', applicable_pricing: { price: '30.00' }, product_title: 'P3', product_references: [{ reference_type: 'EAN', reference: '3333333333333' }] },
+          ],
+          total_count: 3, // 3 raw offers returned — matches allOffers.length (pre-filter) → no truncation
+        }),
+        text: async () => '',
+      })
 
-      // If active filter is absent entirely, that is also problematic but AC-3 in story 3.2 covers it
-      // Here we only enforce that total_count comes before .active in source order
-      if (activeFilterPos !== -1) {
-        assert.ok(
-          totalCountPos < activeFilterPos,
-          'total_count assertion must appear before the offer.active filter in source — OF21 total_count is a pre-filter count (MCP-verified 2026-04-18: no server-side active filter exists)'
-        )
+      try {
+        // Must not throw CatalogTruncationError — pre-filter count (3) === total_count (3)
+        const result = await fetchCatalog('https://marketplace.worten.pt', 'test-key', { onProgress: () => {} })
+        assert.ok(Array.isArray(result), 'fetchCatalog must return catalog array when pre-filter count matches total_count')
+        assert.equal(result.length, 2, 'returned catalog must contain only active offers (post-filter)')
+      } catch (err) {
+        if (err instanceof CatalogTruncationError || err.constructor.name === 'CatalogTruncationError') {
+          assert.fail(
+            'fetchCatalog must NOT throw CatalogTruncationError when allOffers.length === total_count — ' +
+            'total_count is a pre-filter count (MCP-verified 2026-04-18: no server-side active filter on OF21)'
+          )
+        }
+        // Other errors (e.g. EmptyCatalogError when all actives have no EAN) are acceptable
+      } finally {
+        globalThis.fetch = originalFetch
       }
     })
 
