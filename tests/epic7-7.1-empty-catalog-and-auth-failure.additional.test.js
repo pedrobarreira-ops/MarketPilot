@@ -223,12 +223,14 @@ describe('Story 7.1 Additional — functional empty-catalog paths', async () => 
       const RAW_API_ERROR_BODY = 'Shop API key is invalid or has been revoked'
 
       // Stub fetch: always 401 with a message body that would leak if ever logged.
+      // Capture the headers from the outgoing request so the Authorization-header
+      // sanity check can be asserted OUTSIDE the stub (inside the stub it would be
+      // swallowed by the outer try/catch around mirAklGet, silently passing even
+      // if the header were missing).
+      let capturedRequestHeaders
       const origFetch = globalThis.fetch
       globalThis.fetch = async (_url, opts) => {
-        // Sanity: the Authorization header must contain the raw key — confirm so
-        // the assertion below is meaningful (if header name ever changes, this
-        // test would silently always pass).
-        assert.ok(opts?.headers?.Authorization, 'Expected Authorization header to be set')
+        capturedRequestHeaders = opts?.headers
         return {
           ok: false,
           status: 401,
@@ -266,6 +268,14 @@ describe('Story 7.1 Additional — functional empty-catalog paths', async () => 
 
       process.stdout.write = origWrite
       globalThis.fetch = origFetch
+
+      // Sanity: the Authorization header must have been set on the outgoing request.
+      // Asserted here (not inside the fetch stub) so a failure propagates as a real
+      // test failure rather than being swallowed by the mirAklGet try/catch above.
+      assert.ok(
+        capturedRequestHeaders?.Authorization,
+        'Expected Authorization header to be set on the fetch call'
+      )
 
       const all = captured.join('')
 
