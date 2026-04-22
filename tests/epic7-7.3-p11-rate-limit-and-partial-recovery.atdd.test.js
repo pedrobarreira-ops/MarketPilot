@@ -80,13 +80,11 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
 
       test('source implements exponential backoff (static)', () => {
         if (!src) return
-        // Checks for a pre-built delay schedule (RETRY_DELAYS_MS) or computed backoff.
-        // codeLines() strips comments, so only code identifiers/literals are checked here.
         const hasBackoff =
           src.includes('exponential') ||
           src.includes('* 2') || src.includes('** ') ||
-          src.includes('DELAY') || src.includes('delay') || src.includes('backoff') ||
-          src.includes('Math.pow') || src.includes('RETRY_DELAYS')
+          src.includes('delay') || src.includes('backoff') ||
+          src.includes('Math.pow')
         assert.ok(
           hasBackoff,
           'apiClient.js must implement exponential backoff for 429/5xx retries'
@@ -208,15 +206,8 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
 
       test('source includes the rate-limit wait phase message (static)', () => {
         if (!src) return
-        // Story 7.3 AC-2 — rate-limit phase message is emitted during 429 retries.
-        // This is a scaffold assertion: when 7.3 is implemented, scanCompetitors must
-        // call onProgress (or a phase-update callback) with this specific Portuguese string.
-        // Pre-implementation: skip gracefully so the suite does not fail before Story 7.3.
-        const hasRateLimitMsg =
-          src.includes('aguardar limite') || src.includes('aguardar') || src.includes('limite de pedidos')
-        if (!hasRateLimitMsg) return // scaffold: feature not yet implemented (Story 7.3 backlog)
         assert.ok(
-          hasRateLimitMsg,
+          src.includes('aguardar limite') || src.includes('aguardar') || src.includes('limite de pedidos'),
           'scanCompetitors.js must emit the rate-limit wait phase message per spec: "A verificar concorrentes — a aguardar limite de pedidos…"'
         )
       })
@@ -377,12 +368,11 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
         const sampleEans = ['1111111111111', '2222222222222', '3333333333333']
 
         try {
-          // Signature: scanCompetitors(eans, baseUrl, apiKey, onProgress)
           const result = await scanCompetitors(
-            sampleEans,
             'https://marketplace.worten.pt',
             'test-key',
-            () => {}
+            sampleEans,
+            { onProgress: () => {} }
           )
           // Must return an object (even if all EANs are uncontested / empty)
           assert.ok(
@@ -430,12 +420,11 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
         const sampleEans = ['1111111111111', '2222222222222']
 
         try {
-          // Signature: scanCompetitors(eans, baseUrl, apiKey, onProgress)
           const result = await scanCompetitors(
-            sampleEans,
             'https://marketplace.worten.pt',
             'test-key',
-            () => {}
+            sampleEans,
+            { onProgress: () => {} }
           )
           assert.ok(
             result !== null && typeof result === 'object',
