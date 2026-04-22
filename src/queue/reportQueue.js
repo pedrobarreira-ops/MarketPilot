@@ -12,8 +12,27 @@ import { config } from '../config.js'
 // Without it BullMQ throws a deprecation error at Queue construction time.
 // Do NOT use lazyConnect — we want the connection to be established on import
 // so a dead Redis fails the process at startup rather than silently at first enqueue.
+//
+// In test mode ONLY: retryStrategy returns null so ioredis never schedules a
+// reconnect timer after a connection failure. This prevents test files that
+// import this module (without an explicit after() teardown) from keeping the
+// Node event loop alive indefinitely. The instanceof Redis check in
+// queue.atdd.test.js is unaffected — a real Redis instance is still created;
+// retries are just disabled.
+//
+// PRODUCTION safety: in any non-test env (development/staging/production),
+// the retryStrategy option is omitted entirely so ioredis uses its default
+// exponential-backoff reconnect behaviour. Disabling retries in prod would
+// be catastrophic (a transient network blip would permanently break the queue)
+// — the `isTestEnv` guard ensures that never happens. See .env.example line 4:
+// "Coolify deployment: set NODE_ENV=production in Coolify's env UI".
+//
+// This mirrors the identical `NODE_ENV === 'test'` guard in reportWorker.js
+// (which skips BullMQ Worker instantiation in tests for the same reason).
+const isTestEnv = process.env.NODE_ENV === 'test'
 export const redisConnection = new Redis(config.REDIS_URL, {
   maxRetriesPerRequest: null,
+  ...(isTestEnv ? { retryStrategy: () => null } : {}),
 })
 
 // Fail fast if Redis is unreachable at startup.
