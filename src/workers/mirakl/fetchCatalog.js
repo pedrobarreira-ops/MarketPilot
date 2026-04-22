@@ -36,11 +36,16 @@ export class CatalogTruncationError extends Error {
  *
  * @param {string} baseUrl - Mirakl marketplace base URL
  * @param {string} apiKey - Mirakl API key (never logged)
- * @param {Function|undefined} onProgress - Optional callback(n, total)
+ * @param {Function|{onProgress: Function}|undefined} onProgressOrOpts - Optional callback(n, total) or options object
  * @param {string} jobId - Job ID for safe logging
  * @returns {Promise<Array<{ean: string, shop_sku: string, price: string, product_title: string}>>}
  */
-export async function fetchCatalog(baseUrl, apiKey, onProgress, jobId) {
+export async function fetchCatalog(baseUrl, apiKey, onProgressOrOpts, jobId) {
+  // Normalize third argument: accept either a function directly (existing callers)
+  // or an options object with an onProgress property (ATDD test form).
+  const onProgress = typeof onProgressOrOpts === 'function'
+    ? onProgressOrOpts
+    : (onProgressOrOpts && typeof onProgressOrOpts.onProgress === 'function' ? onProgressOrOpts.onProgress : undefined)
   const PAGE_SIZE = 100
   const allOffers = []
   let offset = 0
