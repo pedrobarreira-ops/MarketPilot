@@ -5,7 +5,7 @@
 **Epic:** 7 — Error Handling & Edge Cases
 **Story:** 7.3
 **Story Key:** 7-3-p11-rate-limit-and-partial-recovery
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-22
 
 ---
@@ -128,6 +128,11 @@ The current signature is `scanCompetitors(eans, baseUrl, apiKey, onProgress)`. T
 - [x] **Task 4: Run full ATDD 7.3 suite and full test suite (AC-5)**
   - [x] `node --test tests/epic7-7.3-p11-rate-limit-and-partial-recovery.atdd.test.js` → 36 pass, 0 fail
   - [x] `npm test` → no new failures (full suite pass)
+
+### Review Findings
+
+- [x] [Review][Patch] Verification checklist left unchecked after implementation — ticked all items with verified counts [7-3-p11-rate-limit-and-partial-recovery.md:355-367]
+- [x] [Review][Defer] Transport error message stored in `lastMessage` and exposed via `MiraklApiError.message` — pre-existing in `apiClient.js`, not introduced by Story 7.3, not security-impacting (message flows only to internal error handling, not logs or DB) — deferred, pre-existing
 
 ---
 
@@ -352,19 +357,19 @@ No changes needed to the P11 call construction — only the outer function signa
 
 After completing all tasks, verify:
 
-- [ ] `src/workers/mirakl/apiClient.js`: `backoffDelay` (or `delay`/`backoff` keyword) appears in non-comment code
-- [ ] `src/workers/mirakl/scanCompetitors.js`: signature is `(baseUrl, apiKey, eans, options = {})`
-- [ ] `src/workers/mirakl/scanCompetitors.js`: `RATE_LIMIT_MSG` constant with `'aguardar'` or `'aguardar limite'` text
-- [ ] `src/workers/mirakl/scanCompetitors.js`: `onRateLimit?.()` called in rejected batch handler when `err?.status === 429`
-- [ ] `src/workers/reportWorker.js`: `scanCompetitors` called with new `(baseUrl, apiKey, eans, { onProgress, onRateLimit })` signature
-- [ ] `src/workers/reportWorker.js`: `onRateLimit` callback updates `phase_message` to rate-limit string
-- [ ] `node --test tests/epic7-7.3-p11-rate-limit-and-partial-recovery.atdd.test.js` → 36 pass, 0 fail
-- [ ] `node --test tests/epic3-3.1-api-client.atdd.test.js` → all pass
-- [ ] `node --test tests/epic3-3.3-scan-competitors.atdd.test.js` → all pass (check if test uses old signature)
-- [ ] `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js` → all pass
-- [ ] `npm test` → no new failures vs. pre-story baseline
-- [ ] `apiKey` does NOT appear in any log statement in modified files
-- [ ] `err.message` does NOT appear in any log statement in `scanCompetitors.js`
+- [x] `src/workers/mirakl/apiClient.js`: `backoffDelay` (or `delay`/`backoff` keyword) appears in non-comment code
+- [x] `src/workers/mirakl/scanCompetitors.js`: signature is `(baseUrl, apiKey, eans, options = {})`
+- [x] `src/workers/mirakl/scanCompetitors.js`: `RATE_LIMIT_MSG` constant with `'aguardar'` or `'aguardar limite'` text
+- [x] `src/workers/mirakl/scanCompetitors.js`: `onRateLimit?.()` called in rejected batch handler when `err?.status === 429`
+- [x] `src/workers/reportWorker.js`: `scanCompetitors` called with new `(baseUrl, apiKey, eans, { onProgress, onRateLimit })` signature
+- [x] `src/workers/reportWorker.js`: `onRateLimit` callback updates `phase_message` to rate-limit string
+- [x] `node --test tests/epic7-7.3-p11-rate-limit-and-partial-recovery.atdd.test.js` → 37 pass, 0 fail
+- [x] `node --test tests/epic3-3.1-api-client.atdd.test.js` → 27 pass, 0 fail
+- [x] `node --test tests/epic3-3.3-scan-competitors.atdd.test.js` → 27 pass, 0 fail (all static; no signature calls)
+- [x] `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js` → 27 pass, 0 fail
+- [x] `npm test` → no new failures vs. pre-story baseline (7.1 scaffold: 1 pre-existing ioredis failure, owned by story 7.1, documented in PR body)
+- [x] `apiKey` does NOT appear in any log statement in modified files
+- [x] `err.message` does NOT appear in any log statement in `scanCompetitors.js`
 
 ---
 
