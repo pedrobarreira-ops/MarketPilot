@@ -150,9 +150,11 @@ export async function scanCompetitors(baseUrl, apiKey, eans, options) {
         const err = results[j].reason
         const isRateLimit = err?.status === 429
         log.warn({ error_type: err?.constructor?.name ?? 'UnknownError', batch_size: batchEans.length })
-        // AC-2: emit rate-limit wait message so worker can update phase_message
+        // AC-2: emit rate-limit wait message so worker can update phase_message.
+        // Wrap in try/catch so a caller-supplied callback that throws synchronously
+        // cannot abort the scan — partial-recovery resilience (AC-3/AC-7).
         if (isRateLimit) {
-          onRateLimit?.(RATE_LIMIT_WAIT_MSG)
+          try { onRateLimit?.(RATE_LIMIT_WAIT_MSG) } catch (_) { /* callback errors swallowed */ }
         }
         processed += batchEans.length
         // EANs from failed batch are absent from resultMap → treated as uncontested downstream
@@ -177,7 +179,9 @@ export async function scanCompetitors(baseUrl, apiKey, eans, options) {
     }
 
     if (processed - lastProgressAt >= PROGRESS_INTERVAL) {
-      onProgress?.(processed, total)
+      // Wrap in try/catch so a caller-supplied callback that throws synchronously
+      // cannot abort the scan — partial-recovery resilience (AC-3/AC-7).
+      try { onProgress?.(processed, total) } catch (_) { /* callback errors swallowed */ }
       lastProgressAt = processed
     }
   }
@@ -185,7 +189,7 @@ export async function scanCompetitors(baseUrl, apiKey, eans, options) {
   // Final progress emit: ensure caller observes completion when the trailing
   // remainder (< PROGRESS_INTERVAL EANs) never crossed the interval threshold.
   if (total > 0 && processed > lastProgressAt) {
-    onProgress?.(processed, total)
+    try { onProgress?.(processed, total) } catch (_) { /* callback errors swallowed */ }
   }
 
   return resultMap
