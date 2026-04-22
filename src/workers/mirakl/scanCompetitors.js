@@ -28,6 +28,9 @@ const CONCURRENCY = 10
 const PROGRESS_INTERVAL = 500
 const CHANNELS = ['WRT_PT_ONLINE', 'WRT_ES_ONLINE']
 
+// Phase message emitted during P11 429 backoff (AC-2)
+const RATE_LIMIT_WAIT_MSG = 'A verificar concorrentes — a aguardar limite de pedidos…'
+
 /**
  * Resolve EAN for a product using 3-strategy approach (from scale_test.js).
  *
@@ -82,13 +85,16 @@ function extractPricesForChannel(products, batchEans) {
  * - Handles failed batches gracefully: EANs absent from result → uncontested
  * - Calls onProgress every PROGRESS_INTERVAL (500) EANs processed
  *
- * @param {string[]} eans - Array of EANs to scan
  * @param {string} baseUrl - Mirakl base URL
  * @param {string} apiKey - Mirakl API key (function param only — never stored at module scope)
- * @param {function} [onProgress] - Optional progress callback: (processed, total) => void
+ * @param {string[]} eans - Array of EANs to scan
+ * @param {object} [options] - Optional options object
+ * @param {function} [options.onProgress] - Optional progress callback: (processed, total) => void
+ * @param {function} [options.onRateLimit] - Optional rate-limit callback: called when a 429 is retried
  * @returns {Promise<Map<string, {pt:{first:number|null,second:number|null},es:{first:number|null,second:number|null}}>>}
  */
-export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
+export async function scanCompetitors(baseUrl, apiKey, eans, options) {
+  const { onProgress, onRateLimit } = options ?? {}
   const total = eans.length
 
   const batches = []
@@ -142,7 +148,12 @@ export async function scanCompetitors(eans, baseUrl, apiKey, onProgress) {
       if (results[j].status === 'rejected') {
         // Log only error type — never err.message (may contain API response details)
         const err = results[j].reason
+        const isRateLimit = err?.status === 429
         log.warn({ error_type: err?.constructor?.name ?? 'UnknownError', batch_size: batchEans.length })
+        // AC-2: emit rate-limit wait message so worker can update phase_message
+        if (isRateLimit) {
+          onRateLimit?.(RATE_LIMIT_WAIT_MSG)
+        }
         processed += batchEans.length
         // EANs from failed batch are absent from resultMap → treated as uncontested downstream
         continue

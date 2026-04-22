@@ -20,7 +20,7 @@ function isRetryable(status) {
   return status === 429 || status >= 500
 }
 
-function sleep(ms) {
+function backoffDelay(ms) {
   return new Promise(r => setTimeout(r, Math.min(ms, 30000)))
 }
 
@@ -50,7 +50,7 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
       lastStatus = 0
       lastMessage = err && err.message ? err.message : 'network error'
       if (attempt < MAX_RETRIES) {
-        await sleep(RETRY_DELAYS_MS[attempt])
+        await backoffDelay(RETRY_DELAYS_MS[attempt])
         continue
       }
       break
@@ -69,7 +69,7 @@ export async function mirAklGet(baseUrl, endpoint, params, apiKey) {
     }
 
     if (attempt < MAX_RETRIES) {
-      await sleep(RETRY_DELAYS_MS[attempt])
+      await backoffDelay(RETRY_DELAYS_MS[attempt])
     }
   }
 

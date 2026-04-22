@@ -57,12 +57,18 @@ export async function processJob(job) {
     // Explicit null, null clear prevents stale fetching_catalog counts from being visible.
     db.updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes…', null, null)
     const competitors = await scanCompetitors(
-      catalog.map(o => o.ean),
       marketplace_url,
       apiKey,
-      (n, total) => {
-        const msg = `A verificar concorrentes (${n.toLocaleString('pt-PT')} de ${total.toLocaleString('pt-PT')} produtos)…`
-        db.updateJobStatus(job_id, 'scanning_competitors', msg, n, total)
+      catalog.map(o => o.ean),
+      {
+        onProgress: (n, total) => {
+          const msg = `A verificar concorrentes (${n.toLocaleString('pt-PT')} de ${total.toLocaleString('pt-PT')} produtos)…`
+          db.updateJobStatus(job_id, 'scanning_competitors', msg, n, total)
+        },
+        onRateLimit: (msg) => {
+          // AC-2: update phase_message during 429 backoff so progress.js shows rate-limit wait
+          db.updateJobStatus(job_id, 'scanning_competitors', msg, null, null)
+        },
       }
     )
 
