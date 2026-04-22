@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-21  (epic-6 retrospective → done; epic-6 → done)
+last_updated: 2026-04-22  (story 7.1 → review; epic-7 → in-progress)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -108,8 +108,8 @@ development_status:
   epic-6-retrospective: done
 
   # ── Epic 7: Error Handling & Edge Cases ──────────────────────────────────
-  epic-7: backlog
-  7-1-empty-catalog-and-auth-failure-path: backlog
+  epic-7: in-progress
+  7-1-empty-catalog-and-auth-failure-path: review
   7-2-total-count-mismatch-handling: backlog
   7-3-p11-rate-limit-and-partial-data-recovery: backlog
   epic-7-retrospective: optional
