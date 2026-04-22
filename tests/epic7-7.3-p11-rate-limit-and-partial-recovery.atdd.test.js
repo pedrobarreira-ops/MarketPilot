@@ -24,7 +24,7 @@
  * Run: node --test tests/epic7-7.3-p11-rate-limit-and-partial-recovery.atdd.test.js
  */
 
-import { test, describe, before } from 'node:test'
+import { test, describe, before, mock } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -63,6 +63,21 @@ function readSrc(filePath) {
     return codeLines(readFileSync(filePath, 'utf8'))
   } catch (_) {
     return null
+  }
+}
+
+/**
+ * Drain fake timers and microtask queue N rounds.
+ * Needed because mirAklGet's retry loop awaits sequential setTimeout calls;
+ * each tick resolves one layer, then the next setTimeout is registered by the
+ * next loop iteration — requiring another tick + microtask flush cycle.
+ * Must be called after mock.timers.enable() and before awaiting the promise.
+ */
+async function drainTimers(rounds = 20) {
+  for (let i = 0; i < rounds; i++) {
+    mock.timers.runAll()
+    await Promise.resolve()
+    await Promise.resolve()
   }
 }
 
@@ -134,7 +149,9 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
       })
     })
 
-    describe('apiClient.js — retry functional tests (fetch-stubbed)', () => {
+    describe('apiClient.js — retry functional tests (fetch-stubbed, fake timers)', () => {
+      // Modules are imported once at suite level. Fake timers patch the global
+      // setTimeout that backoffDelay closes over — import order does not matter.
       let mirAklGet
       let MiraklApiError
 
@@ -149,36 +166,43 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
         globalThis.fetch = saved
       })
 
-      test('mirAklGet retries on P11 429 and continues on success', async () => {
+      test('mirAklGet retries on P11 429 and continues on success (fake timers)', async () => {
         if (!mirAklGet) return
+        mock.timers.enable({ apis: ['setTimeout'], now: 0 })
         let calls = 0
         globalThis.fetch = async () => {
           calls++
           if (calls < 3) return { ok: false, status: 429, json: async () => ({}), text: async () => '' }
           return { ok: true, status: 200, json: async () => ({ products: [], total_count: 0 }) }
         }
-        await mirAklGet('https://marketplace.worten.pt', '/api/products/offers', { product_references: 'EAN|1111111111111' }, 'test-key')
+        const prom = mirAklGet('https://marketplace.worten.pt', '/api/products/offers', { product_references: 'EAN|1111111111111' }, 'test-key')
+          .then(r => r)
+          .catch(e => { throw e })
+        await drainTimers(10)
+        await prom
+        mock.timers.reset()
         assert.ok(calls >= 3, `Expected ≥ 3 calls (2 retries + 1 success), got ${calls}`)
       })
 
-      test('mirAklGet exhausts 5 retries on persistent 429 and throws MiraklApiError', async () => {
+      test('mirAklGet exhausts 5 retries on persistent 429 and throws MiraklApiError (fake timers)', async () => {
         if (!mirAklGet || !MiraklApiError) return
+        mock.timers.enable({ apis: ['setTimeout'], now: 0 })
         let calls = 0
         globalThis.fetch = async () => {
           calls++
           return { ok: false, status: 429, json: async () => ({}), text: async () => 'rate limited' }
         }
-        await assert.rejects(
-          () => mirAklGet('https://marketplace.worten.pt', '/api/products/offers', {}, 'test-key'),
-          err => {
-            assert.ok(
-              err instanceof MiraklApiError || err.constructor.name === 'MiraklApiError',
-              `Expected MiraklApiError after 5 exhausted retries, got ${err.constructor.name}`
-            )
-            assert.ok(calls >= 5, `Expected ≥ 5 retry attempts before throwing, got ${calls}`)
-            return true
-          }
+        const prom = mirAklGet('https://marketplace.worten.pt', '/api/products/offers', {}, 'test-key')
+          .then(() => null)
+          .catch(e => e)
+        await drainTimers(12)
+        const err = await prom
+        mock.timers.reset()
+        assert.ok(
+          err instanceof MiraklApiError || err?.constructor?.name === 'MiraklApiError',
+          `Expected MiraklApiError after 5 exhausted retries, got ${err?.constructor?.name}`
         )
+        assert.ok(calls >= 5, `Expected ≥ 5 retry attempts before throwing, got ${calls}`)
       })
 
       test('mirAklGet does NOT retry 401 on P11 endpoint', async () => {
@@ -338,7 +362,7 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
       })
     })
 
-    describe('scanCompetitors.js — partial recovery functional (fetch-stubbed)', () => {
+    describe('scanCompetitors.js — partial recovery functional (fetch-stubbed, fake timers)', () => {
       let scanCompetitors
 
       before(async () => {
@@ -352,13 +376,10 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
         assert.ok(typeof scanCompetitors === 'function', 'scanCompetitors must be an exported function')
       })
 
-      test('scanCompetitors completes and returns a result even when all P11 calls return 429', async () => {
+      test('scanCompetitors completes and returns a Map even when all P11 calls return 429 (fake timers)', async () => {
         if (!scanCompetitors) return
-
+        mock.timers.enable({ apis: ['setTimeout'], now: 0 })
         const originalFetch = globalThis.fetch
-        // Stub: always return 429 to simulate persistent rate-limiting
-        // After 5 retries per call, mirAklGet throws MiraklApiError.
-        // scanCompetitors must catch these and return partial (empty) results.
         globalThis.fetch = async () => ({
           ok: false, status: 429,
           json: async () => ({}),
@@ -366,47 +387,69 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
         })
 
         const sampleEans = ['1111111111111', '2222222222222', '3333333333333']
+        const prom = scanCompetitors(
+          'https://marketplace.worten.pt',
+          'test-key',
+          sampleEans,
+          { onProgress: () => {} }
+        ).then(r => r).catch(e => { throw e })
 
+        await drainTimers(30)
+        let result
         try {
-          const result = await scanCompetitors(
-            'https://marketplace.worten.pt',
-            'test-key',
-            sampleEans,
-            { onProgress: () => {} }
-          )
-          // Must return an object (even if all EANs are uncontested / empty)
-          assert.ok(
-            result !== null && typeof result === 'object',
-            'scanCompetitors must return a result object even when all P11 calls fail with 429'
-          )
+          result = await prom
         } catch (err) {
-          // If scanCompetitors itself throws (not per-batch), that is a contract violation
+          mock.timers.reset()
+          globalThis.fetch = originalFetch
           assert.fail(
             `scanCompetitors must not throw when individual P11 batches fail — use allSettled. Got: ${err.constructor.name}: ${err.message}`
           )
-        } finally {
-          globalThis.fetch = originalFetch
+        }
+        mock.timers.reset()
+        globalThis.fetch = originalFetch
+
+        // Must return a Map (even if all EANs are uncontested / empty)
+        assert.ok(result instanceof Map, 'scanCompetitors must return a Map even when all P11 calls fail with 429')
+        // AC-3: all 3 EANs must be ABSENT from the result Map — absent = uncontested downstream
+        for (const ean of sampleEans) {
+          assert.ok(
+            !result.has(ean),
+            `EAN ${ean} from a failed batch must be absent from the result Map (treated as uncontested) — found in Map`
+          )
         }
       })
 
-      test('scanCompetitors completes when some batches succeed and some fail', async () => {
+      test('scanCompetitors completes when some batches succeed and some fail — succeeded EANs in Map (fake timers)', async () => {
         if (!scanCompetitors) return
-
+        mock.timers.enable({ apis: ['setTimeout'], now: 0 })
         const originalFetch = globalThis.fetch
+
+        // Both EANs are in one batch (< 100). scanBatch makes 2 P11 calls (one per channel).
+        // Call 1 (PT channel) → success with EAN 1111111111111
+        // Call 2 (ES channel) → always 429 (exhausted after retries)
+        // Promise.all inside scanBatch will reject if either channel call throws.
+        // The whole batch is rejected, so both EANs are absent (uncontested).
+        //
+        // To get a mixed result at the batch level we need 2 batches (> BATCH_SIZE=100 EANs
+        // or chunked differently). Instead: verify the partial-Map contract with 3 separate EANs
+        // in separate single-EAN batches by setting BATCH_SIZE=1 is not possible without
+        // modifying source. Use the documented contract: fetch alternates success/fail on each
+        // *per-channel call*. With 2 EANs in 1 batch, 2 channel calls: if call 1 fails → batch
+        // fails → both EANs absent. A true mixed-batch scenario needs 2 separate batches.
+        //
+        // Use 101 EANs to force 2 batches; batch 1 all succeed, batch 2 all 429.
         let callN = 0
-        globalThis.fetch = async (url) => {
+        globalThis.fetch = async () => {
           callN++
-          // Alternate: even calls succeed, odd calls fail with 429 (after exhausting retries)
-          if (callN % 2 === 0) {
+          // First 2 fetch calls are for batch 1 (2 channels × 1 batch) — succeed
+          if (callN <= 2) {
             return {
               ok: true, status: 200,
               json: async () => ({
                 products: [
                   {
-                    product_references: [{ reference_type: 'EAN', reference: '1111111111111' }],
-                    offers: [
-                      { active: true, total_price: 25.99, shop_sku: 'COMP-1' },
-                    ],
+                    product_references: [{ reference_type: 'EAN', reference: '0000000000001' }],
+                    offers: [{ active: true, total_price: 25.99, shop_sku: 'COMP-1' }],
                   },
                 ],
                 total_count: 1,
@@ -414,29 +457,103 @@ describe('Story 7.3 — P11 rate limit & partial data recovery', async () => {
               text: async () => '',
             }
           }
+          // Remaining fetch calls are for batch 2 — always 429
           return { ok: false, status: 429, json: async () => ({}), text: async () => '' }
         }
 
-        const sampleEans = ['1111111111111', '2222222222222']
+        // Build 101 EANs: first is the "known good" EAN that batch 1 will return
+        const batch1Ean = '0000000000001'
+        const eans = [batch1Ean]
+        for (let i = 2; i <= 101; i++) {
+          eans.push(String(i).padStart(13, '0'))
+        }
 
+        const prom = scanCompetitors(
+          'https://marketplace.worten.pt',
+          'test-key',
+          eans,
+          { onProgress: () => {} }
+        ).then(r => r).catch(e => { throw e })
+
+        await drainTimers(60)
+        let result
         try {
-          const result = await scanCompetitors(
-            'https://marketplace.worten.pt',
-            'test-key',
-            sampleEans,
-            { onProgress: () => {} }
-          )
-          assert.ok(
-            result !== null && typeof result === 'object',
-            'scanCompetitors must return partial results when some batches succeed and some fail'
-          )
+          result = await prom
         } catch (err) {
+          mock.timers.reset()
+          globalThis.fetch = originalFetch
           assert.fail(
             `scanCompetitors must not throw on mixed batch results. Got: ${err.constructor.name}: ${err.message}`
           )
-        } finally {
-          globalThis.fetch = originalFetch
         }
+        mock.timers.reset()
+        globalThis.fetch = originalFetch
+
+        assert.ok(result instanceof Map, 'scanCompetitors must return partial results Map when some batches succeed and some fail')
+        // Batch 1 EAN must be present in the Map (PT channel succeeded)
+        assert.ok(
+          result.has(batch1Ean),
+          `EAN ${batch1Ean} from a succeeded batch must appear in the result Map`
+        )
+        // Batch 2 EANs must be absent from the Map (failed batch → uncontested)
+        const batch2Ean = eans[1]
+        assert.ok(
+          !result.has(batch2Ean),
+          `EAN ${batch2Ean} from the failed batch must be absent from the result Map (uncontested)`
+        )
+      })
+
+      test('onRateLimit callback is called when a 429 exhausts retries on a batch (fake timers)', async () => {
+        if (!scanCompetitors) return
+        // AC-2: onRateLimit is invoked exactly when a batch fails with a 429-exhausted MiraklApiError
+        mock.timers.enable({ apis: ['setTimeout'], now: 0 })
+        const originalFetch = globalThis.fetch
+        globalThis.fetch = async () => ({
+          ok: false, status: 429,
+          json: async () => ({}),
+          text: async () => 'rate limited',
+        })
+
+        let rateLimitCallCount = 0
+        let rateLimitArgs = []
+        function onRateLimit(msg) {
+          rateLimitCallCount++
+          rateLimitArgs.push(msg)
+        }
+
+        const sampleEans = ['1111111111111']
+        const prom = scanCompetitors(
+          'https://marketplace.worten.pt',
+          'test-key',
+          sampleEans,
+          { onProgress: () => {}, onRateLimit }
+        ).then(r => r).catch(e => { throw e })
+
+        await drainTimers(30)
+        try { await prom } catch (_) {}
+
+        mock.timers.reset()
+        globalThis.fetch = originalFetch
+
+        // The batch (1 EAN, 2 channel calls via Promise.all) will throw because Promise.all
+        // rejects when either channel call exhausts retries. The onRateLimit callback is
+        // fired in the rejected-batch handler if err.status === 429.
+        assert.ok(
+          rateLimitCallCount >= 1,
+          `onRateLimit must be called at least once when a 429-exhausted batch fails; called ${rateLimitCallCount} times`
+        )
+        // Verify callback receives the exact rate-limit wait message (AC-2)
+        const EXPECTED_MSG = 'A verificar concorrentes — a aguardar limite de pedidos…'
+        assert.equal(
+          rateLimitArgs[0],
+          EXPECTED_MSG,
+          `onRateLimit must receive the exact rate-limit phase message. Got: "${rateLimitArgs[0]}"`
+        )
+        // Verify no api_key or raw error leaks into the callback argument (security)
+        assert.ok(
+          !String(rateLimitArgs[0]).includes('test-key'),
+          'onRateLimit argument must not contain the api_key'
+        )
       })
     })
   })
