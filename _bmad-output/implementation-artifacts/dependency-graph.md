@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-21T18:30:00Z (phase0 reconciliation: PR #57 merged; 6.4=done; 6.6 now unblocked; stale worktree and remote branch for 6.4 cleaned)_
+_Last updated: 2026-04-22T00:00:00Z (phase0 reconciliation: PR #58 merged; 6.6=done; epic-6 complete; Epic 7 now active; stale worktree and remote branch for 6.6 cleaned)_
 
 ## Stories
 
@@ -31,12 +31,12 @@ _Last updated: 2026-04-21T18:30:00Z (phase0 reconciliation: PR #57 merged; 6.4=d
 | 6.3   | 6    | CSV Download & CTA | done | #23 | #55 | merged | 6.1 | ✅ Yes (done) |
 | 6.4   | 6    | Mobile & Screen-Share Layout Verification | done | #24 | #57 | merged | 6.2, 6.3 | ✅ Yes (done) |
 | 6.5   | 6    | Expired Report & Fetch Error States | done | #25 | #56 | merged | 6.1 | ✅ Yes (done) |
-| 6.6   | 6    | Accessibility Baseline | backlog | #26 | — | — | 6.4, 6.5 | ✅ Yes |
-| 7.1   | 7    | Empty Catalog & Auth Failure Path | backlog | #27 | — | — | 3.2, 3.3 | ❌ No (epics 4, 5, 6 not complete) |
-| 7.2   | 7    | total_count Mismatch Handling | backlog | #28 | — | — | 3.2 | ❌ No (epics 4, 5, 6 not complete) |
-| 7.3   | 7    | P11 Rate Limit & Partial Data Recovery | backlog | #29 | — | — | 3.3 | ❌ No (epics 4, 5, 6 not complete) |
-| 8.1   | 8    | Hourly TTL Deletion Cron | backlog | #30 | — | — | 3.5 | ❌ No (epics 4, 5, 6, 7 not complete) |
-| 8.2   | 8    | No Listing Endpoint & Cross-Seller Isolation | backlog | #31 | — | — | 4.3 | ❌ No (epics 4, 5, 6, 7 not complete) |
+| 6.6   | 6    | Accessibility Baseline | done | #26 | #58 | merged | 6.4, 6.5 | ✅ Yes (done) |
+| 7.1   | 7    | Empty Catalog & Auth Failure Path | backlog | #27 | — | — | 3.2, 3.3 | ✅ Yes |
+| 7.2   | 7    | total_count Mismatch Handling | backlog | #28 | — | — | 3.2 | ✅ Yes |
+| 7.3   | 7    | P11 Rate Limit & Partial Data Recovery | backlog | #29 | — | — | 3.3 | ✅ Yes |
+| 8.1   | 8    | Hourly TTL Deletion Cron | backlog | #30 | — | — | 3.5 | ❌ No (epic 7 not complete) |
+| 8.2   | 8    | No Listing Endpoint & Cross-Seller Isolation | backlog | #31 | — | — | 4.3 | ❌ No (epic 7 not complete) |
 
 ## Dependency Chains
 
@@ -71,18 +71,19 @@ _Last updated: 2026-04-21T18:30:00Z (phase0 reconciliation: PR #57 merged; 6.4=d
 
 ## Notes
 
-- **Epics 1, 2, 3, 4, and 5 are fully complete** — all stories have merged PRs.
+- **Epics 1, 2, 3, 4, 5, and 6 are fully complete** — all stories have merged PRs.
 - **Epic 3 closed** (2026-04-20): PR #49 (story 3.5a, CSV formula injection hardening, CWE-1236) merged. Epic 3 row flipped to done.
 - **Epic 4 closed** (2026-04-20): PR #50 (story 4.2a, polling progress contract — structured counts) merged. Epic 4 row flipped to done. All epic-4 stories done.
 - **Story 5.1 done** (2026-04-20): PR #51 merged. form.js validation, loading & submission complete.
 - **Story 5.2 done** (2026-04-20): PR #52 merged. progress.js progress bar, copy & redirect complete.
-- **Epic 5 closed** (2026-04-20): All stories (5.1, 5.2) merged. Epic 5 retrospective already done.
+- **Epic 5 closed** (2026-04-20): All stories (5.1, 5.2) merged. Epic 5 retrospective done.
 - **Story 6.1 done** (2026-04-21): PR #53 merged. report.js data fetch, skeleton & your position complete.
 - **Story 6.2 done** (2026-04-21): PR #54 merged. Biggest Opportunities & Quick Wins Tables complete.
 - **Story 6.3 done** (2026-04-21): PR #55 merged. CSV Download & CTA complete.
 - **Story 6.5 done** (2026-04-21): PR #56 merged. Expired Report & Fetch Error States complete.
 - **Story 6.4 done** (2026-04-21): PR #57 merged. Mobile & Screen-Share Layout Verification complete. Worktree and remote branch cleaned.
-- **Story 6.6 now unblocked** — both dependencies (6.4 and 6.5) are done. Ready to work.
-- **Epic 6 is the current epic** — only story 6.6 (Accessibility Baseline) remains.
-- **Stale worktrees cleaned** (2026-04-21): worktrees for 6.2, 6.3, 6.4, 6.5 pruned; remote branches deleted.
+- **Story 6.6 done** (2026-04-21): PR #58 merged. Accessibility Baseline complete. Worktree and remote branch cleaned (2026-04-22 phase0).
+- **Epic 6 closed** (2026-04-21): All stories (6.1–6.6) merged. Epic 6 retrospective done.
+- **Epic 7 is the current epic** — stories 7.1, 7.2, 7.3 are all backlog and unblocked (epic 6 complete).
+- **Stale worktrees cleaned** (2026-04-22): worktree for 6.6 pruned; remote branch story-6.6-accessibility-baseline deleted.
 - **Pending open PRs:** none
