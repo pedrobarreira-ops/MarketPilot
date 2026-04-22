@@ -12,8 +12,16 @@ import { config } from '../config.js'
 // Without it BullMQ throws a deprecation error at Queue construction time.
 // Do NOT use lazyConnect — we want the connection to be established on import
 // so a dead Redis fails the process at startup rather than silently at first enqueue.
+//
+// In test mode: retryStrategy returns null so ioredis never schedules a reconnect
+// timer after the first connection failure. This prevents test files that import
+// this module (without an explicit after() teardown) from keeping the Node event
+// loop alive indefinitely. The instanceof Redis check in queue.atdd.test.js is
+// unaffected — a real Redis instance is still created; retries are just disabled.
+const isTestEnv = process.env.NODE_ENV === 'test'
 export const redisConnection = new Redis(config.REDIS_URL, {
   maxRetriesPerRequest: null,
+  ...(isTestEnv ? { retryStrategy: () => null } : {}),
 })
 
 // Fail fast if Redis is unreachable at startup.
