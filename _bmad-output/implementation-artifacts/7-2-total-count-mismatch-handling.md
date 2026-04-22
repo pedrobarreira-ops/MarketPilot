@@ -5,7 +5,7 @@ Endpoints verified against MCP-Verified Endpoint Reference (epics-distillate.md,
 **Epic:** 7 — Error Handling & Edge Cases
 **Story:** 7.2
 **Story Key:** 7-2-total-count-mismatch-handling
-**Status:** ready-for-dev
+**Status:** done
 **Date Created:** 2026-04-22
 
 ---
@@ -100,6 +100,20 @@ Stories 3.2 and 3.7 already implemented the full `CatalogTruncationError` path. 
   - [ ] `npm test` — all previously-passing tests must remain green
   - [ ] Specifically verify: `tests/epic3-3.2-fetch-catalog.atdd.test.js` still passes (Story 3.2 contract)
   - [ ] Specifically verify: `tests/epic3-3.7-worker-orchestration.atdd.test.js` still passes (Story 3.7 contract)
+
+### Review Findings
+
+Code review completed 2026-04-22 (Blind Hunter + Edge Case Hunter + Acceptance Auditor layers).
+Story 7.2 ATDD: 25/25 pass; epic3-3.2 regression: 25/25 pass; epic3-3.7 regression: 27/27 pass.
+
+- [x] [Review][Defer] `total_count === null` path skips truncation assertion [src/workers/mirakl/fetchCatalog.js:94] — MCP-verified OF21 always returns `total_count`; the null-guard is a defensive fallback for an API contract violation. NFR-R2 exposure is theoretical (would require an API spec break). Upgrade to throw-on-null only if a future probe observes this shape in the wild.
+- [x] [Review][Defer] Options-object shim silently ignores unknown keys (e.g. `{onProgres: fn}` typo) [src/workers/mirakl/fetchCatalog.js:46-48] — internal two-caller contract (reportWorker + ATDD tests); strict validation would trade forward-compatibility for minor misuse detection. Revisit if the shim acquires a third caller.
+
+Dismissed as noise (not persisted):
+- Error-type precedence between `EmptyCatalogError` (total_count===0) and `CatalogTruncationError` — current order is author-ratified in dev-notes; end-user outcome is more actionable under the current ordering, and the truncation check still fires for every non-zero `total_count` mismatch. Deterministic.
+- `job_id: undefined` in the 3-arg ATDD call path — `undefined` is the defined behavior when no jobId is passed; not a log-safety leak (the field exists, just no value).
+- Docstring / parameter-rename drift — verified clean; `onProgress` → `onProgressOrOpts` fully propagated, no stale references, JSDoc updated on line 39.
+- Log-safety for AC-3 — verified by inspection: `fetchCatalog.js` has exactly one `log.error` call (line 95) logging only `{job_id, fetched, declared, error_type}`; `reportWorker.js` catch logs `{job_id, status, error_code, error_type}` (no `err.message`, no `api_key`); `apiClient.js` has zero `log.*` calls, and the `Authorization` header stays in the `headers` object passed to `fetch()` — never logged, never attached to `MiraklApiError` (which carries only `HTTP ${status}`).
 
 ---
 
