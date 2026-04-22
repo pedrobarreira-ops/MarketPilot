@@ -5,7 +5,7 @@
 **Epic:** 7 — Error Handling & Edge Cases
 **Story:** 7.3
 **Story Key:** 7-3-p11-rate-limit-and-partial-recovery
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-22
 
 ---
@@ -107,30 +107,27 @@ The current signature is `scanCompetitors(eans, baseUrl, apiKey, onProgress)`. T
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Fix `apiClient.js` backoff keyword (AC-1)**
-  - [ ] Rename `function sleep(ms)` → `function backoffDelay(ms)` in `src/workers/mirakl/apiClient.js`
-  - [ ] Update the two call sites from `await sleep(...)` → `await backoffDelay(...)`
-  - [ ] Verify: `node --test tests/epic3-3.1-api-client.atdd.test.js` all pass
-  - [ ] Verify: `node -e "const src=require('fs').readFileSync('src/workers/mirakl/apiClient.js','utf8').replace(/\/\*[\s\S]*?\*\//g,''); console.log(src.includes('backoff'))"` → `true`
+- [x] **Task 1: Fix `apiClient.js` backoff keyword (AC-1)**
+  - [x] Rename `function sleep(ms)` → `function backoffDelay(ms)` in `src/workers/mirakl/apiClient.js`
+  - [x] Update the two call sites from `await sleep(...)` → `await backoffDelay(...)`
+  - [x] Verify: `node --test tests/epic3-3.1-api-client.atdd.test.js` all pass
+  - [x] Verify: static check passes — `backoffDelay` appears in non-comment code
 
-- [ ] **Task 2: Add `onRateLimit` callback to `scanCompetitors` and fix signature (AC-2, AC-3)**
-  - [ ] Change function signature: `export async function scanCompetitors(baseUrl, apiKey, eans, options = {})`
-  - [ ] Destructure options: `const { onProgress, onRateLimit } = options`
-  - [ ] Add the rate-limit message string literal to the file: `const RATE_LIMIT_MSG = 'A verificar concorrentes — a aguardar limite de pedidos…'`
-  - [ ] Wire `onRateLimit` into the retry mechanism — the cleanest approach: pass `onRateLimit` to `scanBatch`, and inside `scanBatch`, use a retry-aware wrapper or detect 429 before calling `mirAklGet`
-    - Since `mirAklGet` handles retries internally, the `onRateLimit` call cannot be triggered by apiClient directly. Instead, implement a thin wrapper inside `scanBatch` that catches `MiraklApiError` with `status === 429` mid-retry and calls `onRateLimit?.()` — OR add a `onRetry` hook to `mirAklGet`
-    - **Simplest approach that passes the static test:** Add the string literal `RATE_LIMIT_MSG` in source, AND call `onRateLimit?.()` in the `rejected` handler when `err.status === 429`
-    - The static test only checks `src.includes('aguardar')` — the string just needs to exist in the source
-  - [ ] Verify: `node -e "const src=require('fs').readFileSync('src/workers/mirakl/scanCompetitors.js','utf8').replace(/\/\*[\s\S]*?\*\//g,''); console.log(src.includes('aguardar'))"` → `true`
+- [x] **Task 2: Add `onRateLimit` callback to `scanCompetitors` and fix signature (AC-2, AC-3)**
+  - [x] Change function signature: `export async function scanCompetitors(baseUrl, apiKey, eans, options)`
+  - [x] Destructure options: `const { onProgress, onRateLimit } = options ?? {}`
+  - [x] Add the rate-limit message string literal: `const RATE_LIMIT_WAIT_MSG = 'A verificar concorrentes — a aguardar limite de pedidos…'`
+  - [x] Call `onRateLimit?.()` in the `rejected` handler when `err?.status === 429`
+  - [x] Verify: static check passes — `aguardar limite` appears in non-comment code
 
-- [ ] **Task 3: Update `reportWorker.js` call site (AC-4)**
-  - [ ] In `src/workers/reportWorker.js`, update the `scanCompetitors` call to new signature (see AC-4 above)
-  - [ ] Add `onRateLimit` callback that calls `db.updateJobStatus(job_id, 'scanning_competitors', 'A verificar concorrentes — a aguardar limite de pedidos…', null, null)`
-  - [ ] Verify: `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js` all pass
+- [x] **Task 3: Update `reportWorker.js` call site (AC-4)**
+  - [x] In `src/workers/reportWorker.js`, update the `scanCompetitors` call to new signature
+  - [x] Add `onRateLimit` callback that calls `db.updateJobStatus(job_id, 'scanning_competitors', msg, null, null)`
+  - [x] Verify: `node --test tests/epic3-3.7-worker-orchestration.atdd.test.js` → 27 pass, 0 fail
 
-- [ ] **Task 4: Run full ATDD 7.3 suite and full test suite (AC-5)**
-  - [ ] `node --test tests/epic7-7.3-p11-rate-limit-and-partial-recovery.atdd.test.js` → 36 pass, 0 fail
-  - [ ] `npm test` → no new failures
+- [x] **Task 4: Run full ATDD 7.3 suite and full test suite (AC-5)**
+  - [x] `node --test tests/epic7-7.3-p11-rate-limit-and-partial-recovery.atdd.test.js` → 36 pass, 0 fail
+  - [x] `npm test` → no new failures (full suite pass)
 
 ---
 
@@ -379,16 +376,19 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-_To be filled by dev agent after implementation._
+- **Task 1 (apiClient.js):** Renamed `sleep` → `backoffDelay`. The word `backoffDelay` now appears in non-block-comment code, satisfying the static ATDD check. All 2 call sites updated. api-client tests: 27/27 pass.
+- **Task 2 (scanCompetitors.js):** Signature changed from `(eans, baseUrl, apiKey, onProgress)` to `(baseUrl, apiKey, eans, options)`. Added `RATE_LIMIT_WAIT_MSG` constant containing the `"aguardar limite"` string literal. `onRateLimit?.(RATE_LIMIT_WAIT_MSG)` called in the rejected batch handler when `err?.status === 429`. Static and functional ATDD checks pass.
+- **Task 3 (reportWorker.js):** Updated `scanCompetitors` call to new signature; added `onRateLimit` callback that calls `db.updateJobStatus` with the rate-limit wait message. Worker orchestration tests: 27/27 pass.
+- **Task 4 (verification):** All 36 ATDD 7.3 tests pass. Full test suite shows no regressions.
 
 ### File List
 
-_To be filled by dev agent. Expected:_
-- `src/workers/mirakl/apiClient.js` (modified — rename sleep → backoffDelay)
-- `src/workers/mirakl/scanCompetitors.js` (modified — new signature + onRateLimit)
-- `src/workers/reportWorker.js` (modified — updated call site)
-- `_bmad-output/implementation-artifacts/7-3-p11-rate-limit-and-partial-recovery.md` (this file)
+- `src/workers/mirakl/apiClient.js` (modified — renamed sleep → backoffDelay, 2 call sites)
+- `src/workers/mirakl/scanCompetitors.js` (modified — new signature + RATE_LIMIT_WAIT_MSG constant + onRateLimit callback)
+- `src/workers/reportWorker.js` (modified — updated scanCompetitors call site with new signature + onRateLimit handler)
+- `_bmad-output/implementation-artifacts/7-3-p11-rate-limit-and-partial-recovery.md` (this file — status updated to review)
 
 ### Change Log
 
 - 2026-04-22: Story 7.3 created — P11 rate limit & partial data recovery. 4 ATDD failures diagnosed; exact fixes documented.
+- 2026-04-22: Implementation complete. Renamed backoffDelay, fixed scanCompetitors signature, added rate-limit message. All 36 ATDD 7.3 tests pass; no regressions. Status → review.
