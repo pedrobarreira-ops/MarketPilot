@@ -1,5 +1,5 @@
 # generated: 2026-04-16
-# last_updated: 2026-04-23  (phase0 reconciliation: epic-7 complete; epic-8 active)
+# last_updated: 2026-04-23  (phase0 reconciliation: epic-7 complete; epic-8 active; story 8.3 added via sprint-change-proposal-2026-04-23)
 # project: MarketPilot Free Report
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-23  (phase0 reconciliation: epic-7 stories verified merged; epic-8 in-progress; stale worktrees/branches cleaned)
+last_updated: 2026-04-23  (phase0 reconciliation: epic-7 stories verified merged; epic-8 in-progress; stale worktrees/branches cleaned; story 8.3 platform-hardening-mvp-batch added per sprint-change-proposal-2026-04-23)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -116,7 +116,11 @@ development_status:
   epic-7-retrospective: done
 
   # ── Epic 8: Data Governance & Cleanup ────────────────────────────────────
+  # Story 8.3 added 2026-04-23 per Epic 7 retro Action Item T3
+  # (platform-hardening MVP batch: rate-limit + Cache-Control + CSV BOM + :id guards).
+  # Sequenced after 8.2; blocks epic-8-retrospective.
   epic-8: in-progress
   8-1-hourly-ttl-deletion-cron: done
   8-2-no-listing-endpoint-and-cross-seller-isolation: done
+  8-3-platform-hardening-mvp-batch: backlog
   epic-8-retrospective: optional

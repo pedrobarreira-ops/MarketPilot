@@ -210,7 +210,7 @@ parts: 1
 - Epic 5 (Frontend Form+Progress): 5.1 form.js; 5.2 progress.js
 - Epic 6 (Frontend Report): 6.1 Data fetch+skeleton+Your Position+PT/ES toggle; 6.2 Opportunities+Quick Wins tables; 6.3 CSV+CTA; 6.4 Mobile layout verification; 6.5 Expired+error states; 6.6 Accessibility baseline
 - Epic 7 (Error Handling): 7.1 Empty catalog+auth failure; 7.2 total_count mismatch; 7.3 P11 rate limit+partial data recovery
-- Epic 8 (Governance): 8.1 Hourly TTL deletion cron; 8.2 No listing endpoint + cross-seller isolation verification
+- Epic 8 (Governance): 8.1 Hourly TTL deletion cron; 8.2 No listing endpoint + cross-seller isolation verification; 8.3 Platform-hardening MVP batch (rate-limit + Cache-Control + CSV BOM + :id route guards)
 
 ## Story 1.1 Status
 - Implementation complete; code review complete (per sprint-status.yaml)
@@ -222,7 +222,7 @@ parts: 1
 - 4.1 → 5.1 → 5.2 (form before progress)
 - 4.3 → 6.1 → 6.2 → 6.3 → 6.4 → 6.5 → 6.6 (report page after API)
 - 3.2 + 3.3 → 7.1; 3.2 → 7.2; 3.3 → 7.3 (error handling after pipeline stages)
-- 3.5 → 8.1; 4.3 → 8.2 (governance after persistence + routes)
+- 3.5 → 8.1; 4.3 → 8.2; {3.5, 4.1, 4.2, 4.3, 8.2} → 8.3 (governance after persistence + routes; 8.3 Epic-arc-sequenced after 8.2 but technically depends on routes/CSV-gen only)
 
 ## Cross-Seller Isolation Rules
 - Every SQL query on `reports` table uses `WHERE report_id = ?` — no multi-report selects or cross-seller aggregates
@@ -285,3 +285,4 @@ parts: 1
 
 - 8.1 cron every hour: `DELETE FROM reports WHERE expires_at < unixepoch()`; log `[cleanup] Deleted N expired report(s)` only if changes>0; started at server init (not separate process); cron failure caught+logged without crashing; after deletion: expired id → 404
 - 8.2 GET /api/reports (no id) → 404 (not registered); GET /api/jobs (no id) → 404; every queries.js reports read uses WHERE report_id=?; no cross-report JOINs in HTTP-accessible queries; job_id never in final report URL
+- 8.3 platform-hardening MVP batch: @fastify/rate-limit registered in src/server.js; global 60 req/min/IP default; POST /api/generate 5 req/min/IP; GET /api/reports/:id/csv 10 req/min/IP; GET /api/jobs/:id 120 req/min/IP (2s polling × 60 = 30/min base; 4× headroom for multi-tab/mobile-reconnect/retry-loop); GET /health excluded; 429 routed through errorHandler (no raw plugin body, no api_key in logs); Cache-Control: private, no-store on /api/reports/:id and /csv (success AND 404); persisted csv_data does NOT start with ﻿ — byte-level assertion, codifies current src/workers/scoring/buildReport.js behaviour (no BOM emission verified 2026-04-23); :id on /api/reports/:id + /csv + /api/jobs/:id validated via strict regex `^[0-9a-f-]{36}$` before any DB read (one regex, not length+charset pair — collapses guard surface); malformed/oversized/undersized/unknown/expired share one 404 shape (no enumeration oracle); NOT modifying src/workers/**; NOT in scope (post-MVP): axe-core, keyboard-nav E2E, CSV behavioural timing tests, matchMedia, empty-tables scroll-hint

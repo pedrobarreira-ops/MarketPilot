@@ -1220,3 +1220,58 @@ So that one seller cannot discover or access another seller's report.
 **And** the `job_id` is never exposed to the seller in the final report URL — only `report_id` appears in the URL
 
 ---
+
+### Story 8.3: Platform-Hardening MVP Batch
+
+**GH Issue:** _TBD — create at `bmad-create-story` time_
+
+As the operator of MarketPilot,
+I want the HTTP API layer to enforce rate limits, send cache-control headers on report reads, avoid CSV byte-order-mark ambiguity, and reject malformed `:id` path parameters at route-guard time,
+So that the MVP ships with defense-in-depth hardening against abuse, cache-leakage, Excel-locale ambiguity, and cheap scan/enumeration patterns — without deferring a platform-hardening batch into post-MVP.
+
+**Satisfies:** Defense-in-depth MVP hardening — no new FR, implementation of cross-cutting NFR posture (rate-limit resilience, defense-in-depth cache policy, CSV locale-safety, route-input hygiene).
+
+**Origin:** Epic 7 Retrospective (2026-04-22) Action Item T3 — "Platform-hardening scoped-to-MVP batch — ships as dedicated story inside Epic 8, sequenced after 8.1 and 8.2." Formalised via `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-23.md`.
+
+**Dependencies:** Story 8.1 and 8.2 done (Epic-arc sequencing, not strict technical dependency). Technical prerequisites: Story 3.5 (CSV generation — for BOM assertion), Story 4.1/4.2/4.3 (HTTP routes — for rate-limit + Cache-Control + id-format guards). All done.
+
+**Scope (full spec in `_bmad-output/implementation-artifacts/8-3-platform-hardening-mvp-batch.md` when create-story runs):**
+- Install `@fastify/rate-limit` (Fastify-v5-compatible version).
+- Register globally in `src/server.js` with defaults and per-route overrides (see ACs).
+- Add `Cache-Control: private, no-store` response header on `GET /api/reports/:id` and `GET /api/reports/:id/csv`.
+- Add byte-level assertion that persisted `csv_data` does NOT begin with `﻿` (covers Story 3.5 CSV output; codifies current `buildReport.js` behaviour — verified no-BOM 2026-04-23).
+- Add strict-regex validation on `:id` path parameter for `/api/reports/:id`, `/api/reports/:id/csv`, and `/api/jobs/:id`. Malformed / oversized / undersized / control-char → 404 (same shape as unknown/expired — no enumeration oracle).
+- ATDD coverage in `tests/epic8-8.3-platform-hardening.atdd.test.js` — one scenario per AC.
+
+**Explicitly NOT in scope (post-MVP backlog — annotate `-deferred-post-mvp` in deferred-work.md at merge, NOT `-closed-by-8-3`):**
+- axe-core integration.
+- Keyboard-navigation E2E tests.
+- CSV re-entrancy / filename / latency behavioural tests.
+- `matchMedia` boundary test (mobile layout edge-case).
+- Empty-tables scroll-hint edge case.
+
+**Acceptance Criteria:**
+
+**Given** `src/server.js` registers `@fastify/rate-limit` before route registration
+**When** HTTP requests arrive
+**Then** a global default of 60 requests/minute/IP applies to all registered routes by default
+**And** `POST /api/generate` applies a tighter override: 5 requests/minute/IP
+**And** `GET /api/reports/:id/csv` applies an override: 10 requests/minute/IP (legitimate use is one-shot download)
+**And** `GET /api/jobs/:id` has a relaxed override: 120 requests/minute/IP (2s polling base-rate = 30 req/min; 4× headroom comfortably absorbs multi-tab, mobile-reconnect, and retry-loop spikes while staying well below abuse threshold)
+**And** `GET /health` is explicitly excluded from rate-limiting (Coolify health-check must always succeed)
+**And** when a client exceeds any applicable limit, the server responds `429 Too Many Requests` with the `errorHandler`'s standard `{ error, message }` shape (not raw plugin default) and does NOT log `api_key` or request body
+
+**And** `GET /api/reports/:id` on success responds with header `Cache-Control: private, no-store`
+**And** `GET /api/reports/:id/csv` on success responds with header `Cache-Control: private, no-store`
+**And** the 404 responses on both routes also carry `Cache-Control: private, no-store` (defense-in-depth — prevents caching of the "not found" oracle)
+
+**And** persisted `reports.csv_data` for a freshly-generated report does NOT begin with `﻿` — asserted at byte level by reading the first three characters of the stored string (supplements Story 3.5's CSV schema guarantee)
+
+**And** the `:id` path parameter on `GET /api/reports/:id`, `GET /api/reports/:id/csv`, and `GET /api/jobs/:id` is validated against the strict regex `^[0-9a-f-]{36}$` before any DB read — anything failing this (oversized, undersized, non-hex, ASCII control character, whitespace, or uppercase hex) responds 404
+**And** there is ONE regex, not a length-check-plus-charset-check pair — collapses the guard surface and eliminates "right length, wrong charset" / "right charset, wrong length" edge cases into one rejection path
+**And** malformed / oversized / undersized / unknown / expired `:id` values all return the SAME 404 body shape — no enumeration oracle distinguishing the five cases
+
+**And** no test in the existing suite regresses (full test suite green at close)
+**And** `src/workers/**` is NOT modified (scope-discipline assertion — this is a routes-layer-only story)
+
+---
