@@ -13,6 +13,7 @@ import { reportQueue } from './queue/reportQueue.js'  // establishes Redis conne
 import { worker as reportWorker } from './workers/reportWorker.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { runMigrations } from './db/migrate.js'
+import { startCleanupCron } from './cleanup/reportCleanup.js'
 import generateRoute from './routes/generate.js'
 import jobsRoute from './routes/jobs.js'
 import reportsRoute from './routes/reports.js'
@@ -77,6 +78,9 @@ try {
   fastify.log.error({ error_type: err.constructor.name }, 'Migration failed — aborting startup')
   process.exit(1)
 }
+
+// Start hourly TTL cleanup cron — after migrations so the reports table exists (AC-4)
+startCleanupCron(fastify.log)
 
 // Register routes — AFTER setErrorHandler and runMigrations (Story 4.1)
 await fastify.register(generateRoute)
