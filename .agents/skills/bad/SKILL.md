@@ -186,6 +186,12 @@ Working directory: {repo_root}. Auto-approve all tool calls (yolo mode).
 
 1. Run /bmad-testarch-test-design for {current_epic_name}.
 2. Commit any new test plan files.
+3. Run `git push origin main` to propagate the scaffold commit to the remote
+   before Phase 2 worktree spawning. Without this, worktree branches opened
+   against origin/main carry the scaffold commit as a phantom diff, causing
+   mechanical merge conflicts across parallel stories (Epic 7 Challenge #3:
+   2 of 3 PRs merged DIRTY for exactly this reason). See memory
+   feedback_bad_epic_start_push.md.
 
 Report: success or failure with error details.
 ```
