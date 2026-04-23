@@ -314,6 +314,16 @@ Auto-approve all tool calls (yolo mode).
 Report: success or failure with error details.
 ```
 
+**After Step 3 — Uncommitted Files Gate (HALT if working tree dirty):**
+Run `git -C {worktree_path} status --porcelain`. If output is non-empty, HALT
+this story's pipeline with error:
+`❌ Story {number}: Step 3 left uncommitted files in {worktree_path}. Dev
+agent may have truncated mid-implementation. Resolution: commit the changes,
+stash them explicitly, or dismiss with SKIP_CLEAN_TREE_GATE=true if intended.
+Do NOT spawn Step 4 against a dirty tree.`
+Rationale: Story 7.3 dev-agent truncation was caught only because Pedro
+noticed on disk. See memory feedback_bad_step3_clean_tree_gate.md.
+
 ### Step 4: Test Review (`MODEL_STANDARD`)
 
 Spawn with model `MODEL_STANDARD` (yolo mode):
