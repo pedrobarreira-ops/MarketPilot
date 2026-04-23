@@ -3,7 +3,7 @@
 **Epic:** 8 — Data Governance & Cleanup
 **Story:** 8.1
 **Story Key:** 8-1-hourly-ttl-deletion-cron
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-23
 
 ---
@@ -71,37 +71,37 @@ So that the database does not accumulate stale report data past the 48-hour TTL,
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Run ATDD tests first — diagnose current state** (AC: 8)
-  - [ ] Run: `node --test tests/epic8-8.1-hourly-ttl-deletion-cron.atdd.test.js`
-  - [ ] Note which tests pass vs fail — confirms what needs to be built
-  - [ ] Expected result: most/all tests fail because `src/cleanup/reportCleanup.js` does not exist yet
+- [x] **Task 1: Run ATDD tests first — diagnose current state** (AC: 8)
+  - [x] Run: `node --test tests/epic8-8.1-hourly-ttl-deletion-cron.atdd.test.js`
+  - [x] Note which tests pass vs fail — confirms what needs to be built
+  - [x] Expected result: most/all tests fail because `src/cleanup/reportCleanup.js` does not exist yet
 
-- [ ] **Task 2: Create `src/cleanup/reportCleanup.js`** (AC: 1, 2, 3, 4, 5)
-  - [ ] Import `node-cron` and `db` (from `../db/database.js`)
-  - [ ] Export `deleteExpiredReports(log?)` — runs the DELETE, returns `changes` count
-  - [ ] Export `startCleanupCron(log)` — schedules cron with `'0 * * * *'`, wraps callback in try/catch
-  - [ ] Inside cron callback: call `deleteExpiredReports(log)`, log if `changes > 0`
-  - [ ] Verify: no `mirAklGet`, no `apiClient`, no `mirakl` references (epic 8 is backend-only)
-  - [ ] Verify: no `api_key` appears in any log call (NFR-S2)
-  - [ ] Verify: no `setInterval`, no `process.argv[1]`, no `process.on('message')`
+- [x] **Task 2: Create `src/cleanup/reportCleanup.js`** (AC: 1, 2, 3, 4, 5)
+  - [x] Import `node-cron` and `db` (from `../db/database.js`)
+  - [x] Export `deleteExpiredReports(log?)` — runs the DELETE, returns `changes` count
+  - [x] Export `startCleanupCron(log)` — schedules cron with `'0 * * * *'`, wraps callback in try/catch
+  - [x] Inside cron callback: call `deleteExpiredReports(log)`, log if `changes > 0`
+  - [x] Verify: no `mirAklGet`, no `apiClient`, no `mirakl` references (epic 8 is backend-only)
+  - [x] Verify: no `api_key` appears in any log call (NFR-S2)
+  - [x] Verify: no `setInterval`, no `process.argv[1]`, no `process.on('message')`
 
-- [ ] **Task 3: Wire `startCleanupCron` into `src/server.js`** (AC: 4)
-  - [ ] Add import: `import { startCleanupCron } from './cleanup/reportCleanup.js'`
-  - [ ] Call `startCleanupCron(fastify.log)` after `await runMigrations()` and before `await fastify.listen(...)`
-  - [ ] Confirm server still starts cleanly: `npm run dev` (or `node src/server.js`)
+- [x] **Task 3: Wire `startCleanupCron` into `src/server.js`** (AC: 4)
+  - [x] Add import: `import { startCleanupCron } from './cleanup/reportCleanup.js'`
+  - [x] Call `startCleanupCron(fastify.log)` after `await runMigrations()` and before `await fastify.listen(...)`
+  - [x] Confirm server still starts cleanly: `npm run dev` (or `node src/server.js`)
 
-- [ ] **Task 4: Verify AC-6 chain — no code changes expected** (AC: 6)
-  - [ ] Confirm `getReport` in `src/db/queries.js` uses `gt(reports.expiresAt, now)` — already present
-  - [ ] Confirm `GET /api/reports/:id` route returns 404 when `getReport` returns null — already present
-  - [ ] No changes to these files unless ATDD tests explicitly fail on this chain
+- [x] **Task 4: Verify AC-6 chain — no code changes expected** (AC: 6)
+  - [x] Confirm `getReport` in `src/db/queries.js` uses `gt(reports.expiresAt, now)` — already present
+  - [x] Confirm `GET /api/reports/:id` route returns 404 when `getReport` returns null — already present
+  - [x] No changes to these files unless ATDD tests explicitly fail on this chain
 
-- [ ] **Task 5: Re-run ATDD tests — all must pass** (AC: 8)
-  - [ ] Run: `node --test tests/epic8-8.1-hourly-ttl-deletion-cron.atdd.test.js`
-  - [ ] All tests green
+- [x] **Task 5: Re-run ATDD tests — all must pass** (AC: 8)
+  - [x] Run: `node --test tests/epic8-8.1-hourly-ttl-deletion-cron.atdd.test.js`
+  - [x] All tests green
 
-- [ ] **Task 6: Full regression check** (AC: all)
-  - [ ] Run: `npm test`
-  - [ ] All previously passing tests remain passing
+- [x] **Task 6: Full regression check** (AC: all)
+  - [x] Run: `npm test`
+  - [x] All previously passing tests remain passing
 
 ---
 
@@ -276,20 +276,25 @@ npm test
 
 ### Agent Model Used
 
-_To be filled by dev agent_
+claude-sonnet-4-6
 
 ### Debug Log References
 
-_To be filled by dev agent_
+- Module-level `sqlite.prepare()` caused "no such table: reports" on import in test env (SQLITE_PATH=:memory:). Fixed by moving prepare() inside `deleteExpiredReports()` (lazy, per-call). queries.js triggers `runMigrations()` on its own import, but reportCleanup.js bypasses queries.js — migration wasn't guaranteed to have run before the cleanup module loaded.
 
 ### Completion Notes List
 
-_To be filled by dev agent_
+- Created `src/cleanup/reportCleanup.js` with `deleteExpiredReports()` (raw better-sqlite3, lazy prepare) and `startCleanupCron(log)` (node-cron hourly schedule, try/catch, conditional log).
+- Wired `startCleanupCron(fastify.log)` into `src/server.js` after `runMigrations()` and before `fastify.listen()`.
+- No changes needed to `src/db/queries.js` or `src/routes/reports.js` — AC-6 chain already correct.
+- ATDD: 24/24 tests pass. Full regression: 739/739 tests pass (0 failures).
 
 ### File List
 
-_To be filled by dev agent after implementation_
+- src/cleanup/reportCleanup.js (created)
+- src/server.js (modified — added import + startCleanupCron call)
 
 ### Change Log
 
 - 2026-04-23: Story 8.1 spec created — hourly TTL deletion cron. (claude-sonnet-4-6)
+- 2026-04-23: Story 8.1 implemented — reportCleanup.js created, server.js wired. All 24 ATDD tests pass, 739 regression tests pass. (claude-sonnet-4-6)
