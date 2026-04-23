@@ -117,6 +117,6 @@ development_status:
 
   # ── Epic 8: Data Governance & Cleanup ────────────────────────────────────
   epic-8: in-progress
-  8-1-hourly-ttl-deletion-cron: review
+  8-1-hourly-ttl-deletion-cron: done
   8-2-no-listing-endpoint-and-cross-seller-isolation: backlog
   epic-8-retrospective: optional
