@@ -77,9 +77,11 @@ describe('Story 8.1 — Hourly TTL deletion cron', async () => {
 
       test('source uses expires_at < unixepoch() as the expiry condition (static)', () => {
         if (!src) return
+        // Both terms are mandatory — the OR in the original was a quality gap:
+        // unixepoch() alone would satisfy it even without the expires_at column check.
         assert.ok(
-          src.includes('unixepoch()') || src.includes('expires_at'),
-          'reportCleanup.js must use expires_at < unixepoch() to identify expired rows (SQLite native epoch function)'
+          src.includes('unixepoch()'),
+          'reportCleanup.js must call unixepoch() — the SQLite native epoch function (not Date.now or strftime)'
         )
         assert.ok(
           src.includes('expires_at'),
@@ -89,8 +91,14 @@ describe('Story 8.1 — Hourly TTL deletion cron', async () => {
 
       test('source deletes from the reports table (not generation_jobs)', () => {
         if (!src) return
+        // Both DELETE keyword and 'reports' table name must be present.
+        // The original OR was a quality gap — 'DELETE' alone without 'reports' would pass.
         assert.ok(
-          src.includes('reports') || src.includes('DELETE'),
+          src.includes('DELETE'),
+          'reportCleanup.js must contain a DELETE statement for the TTL cleanup'
+        )
+        assert.ok(
+          src.includes('reports'),
           'reportCleanup.js must delete from the reports table (TTL applies to reports, not generation_jobs)'
         )
         // generation_jobs are managed by BullMQ — cron must not touch them
@@ -238,18 +246,15 @@ describe('Story 8.1 — Hourly TTL deletion cron', async () => {
         })
 
         const result = await deleteExpiredReports()
-        // AC-3 depends on the deletion function returning the changes count
-        // (or logging internally — either is acceptable; we check for numeric return)
-        if (result !== undefined && result !== null) {
-          assert.ok(
-            typeof result === 'number' || typeof result === 'object',
-            'deleteExpiredReports should return the number of deleted rows (used for conditional logging in AC-3)'
-          )
-        }
-        // If result is a number, it must be at least 1 (we inserted 1 expired row)
-        if (typeof result === 'number') {
-          assert.ok(result >= 1, `deleteExpiredReports must report ≥ 1 deleted row, got ${result}`)
-        }
+        // AC-3 depends on the deletion function returning the changes count.
+        // The spec explicitly mandates a numeric return — the conditional guard
+        // was a quality gap that allowed undefined to silently skip the assertion.
+        assert.strictEqual(
+          typeof result,
+          'number',
+          `deleteExpiredReports must return a number (the count of deleted rows for AC-3 conditional logging), got ${typeof result}`
+        )
+        assert.ok(result >= 1, `deleteExpiredReports must report ≥ 1 deleted row, got ${result}`)
       })
 
       test('deleteExpiredReports handles empty table without throwing', async () => {
@@ -262,6 +267,61 @@ describe('Story 8.1 — Hourly TTL deletion cron', async () => {
           threw = true
         }
         assert.ok(!threw, 'deleteExpiredReports must not throw when there are no expired rows to delete')
+      })
+
+      test('deleteExpiredReports returns 0 when no rows are expired (zero-change run)', async () => {
+        if (!deleteExpiredReports || !insertReport) return
+        // Insert a live report (expires far in the future)
+        const reportId = 'rpt-8.1-zero-change-' + Date.now()
+        const nowSec   = Math.floor(Date.now() / 1000)
+        insertReport({
+          report_id:             reportId,
+          generated_at:          nowSec,
+          expires_at:            nowSec + 172800,
+          email:                 'test@example.com',
+          summary_json:          '{}',
+          opportunities_pt_json: '[]',
+          opportunities_es_json: '[]',
+          quickwins_pt_json:     '[]',
+          quickwins_es_json:     '[]',
+          csv_data:              '',
+        })
+        const result = await deleteExpiredReports()
+        // AC-3: the cron must NOT log on a zero-change run; the function must return 0
+        // so the caller can gate the log statement on `changes > 0`.
+        assert.strictEqual(
+          result,
+          0,
+          `deleteExpiredReports must return 0 when no rows are expired (AC-3 conditional log gate), got ${result}`
+        )
+      })
+
+      test('deleteExpiredReports returns the correct count when multiple rows are expired', async () => {
+        if (!deleteExpiredReports || !insertReport) return
+        const nowSec  = Math.floor(Date.now() / 1000)
+        const suffix  = Date.now()
+        // Insert 3 expired rows
+        for (let i = 0; i < 3; i++) {
+          insertReport({
+            report_id:             `rpt-8.1-multi-${suffix}-${i}`,
+            generated_at:          nowSec - 7200,
+            expires_at:            nowSec - 3600,
+            email:                 'test@example.com',
+            summary_json:          '{}',
+            opportunities_pt_json: '[]',
+            opportunities_es_json: '[]',
+            quickwins_pt_json:     '[]',
+            quickwins_es_json:     '[]',
+            csv_data:              '',
+          })
+        }
+        const result = await deleteExpiredReports()
+        // AC-3 log says "Deleted N expired report(s)" — N must be the actual count.
+        // With 3 rows inserted, result must be >= 3 (other suites may have left expired rows).
+        assert.ok(
+          typeof result === 'number' && result >= 3,
+          `deleteExpiredReports must return the count of ALL deleted rows; expected ≥ 3, got ${result}`
+        )
       })
     })
   })
@@ -462,6 +522,57 @@ describe('Story 8.1 — Hourly TTL deletion cron', async () => {
           !hasLeq,
           'reportCleanup.js must use expires_at < unixepoch() (strict less-than) — <= would prematurely delete boundary-second reports'
         )
+      })
+    })
+
+    describe('Functional boundary: expires_at = now must NOT be deleted (strict < semantics)', () => {
+      let deleteExpiredReports
+      let insertReport
+      let getReport
+
+      before(async () => {
+        try {
+          const cleanupMod = await import('../src/cleanup/reportCleanup.js')
+          deleteExpiredReports = cleanupMod.deleteExpiredReports
+        } catch (_) {}
+        try {
+          const dbMod = await import('../src/db/queries.js')
+          insertReport = dbMod.insertReport
+          getReport    = dbMod.getReport
+        } catch (_) {}
+      })
+
+      test('report expiring at exactly current second is NOT deleted by deleteExpiredReports', async () => {
+        if (!deleteExpiredReports || !insertReport || !getReport) return
+        // The spec says DELETE WHERE expires_at < unixepoch() — strict less-than.
+        // A row whose expires_at equals the current second must survive this cron run.
+        // We set expires_at to now + 2 to give a safe margin against clock tick during test,
+        // while still verifying the "not yet expired" boundary is respected.
+        const reportId = 'rpt-8.1-boundary-' + Date.now()
+        const nowSec   = Math.floor(Date.now() / 1000)
+        insertReport({
+          report_id:             reportId,
+          generated_at:          nowSec,
+          expires_at:            nowSec + 2,   // expires 2 s from now — boundary row
+          email:                 'test@example.com',
+          summary_json:          '{}',
+          opportunities_pt_json: '[]',
+          opportunities_es_json: '[]',
+          quickwins_pt_json:     '[]',
+          quickwins_es_json:     '[]',
+          csv_data:              '',
+        })
+
+        await deleteExpiredReports()
+
+        // The row must still exist — verify by querying with nowSec (before expiry)
+        const row = getReport(reportId, nowSec)
+        assert.notEqual(
+          row,
+          null,
+          'deleteExpiredReports must NOT delete a report that expires in the near future — strict < boundary'
+        )
+        assert.equal(row.report_id, reportId, 'Boundary-second report must be retrievable after cron run')
       })
     })
   })
