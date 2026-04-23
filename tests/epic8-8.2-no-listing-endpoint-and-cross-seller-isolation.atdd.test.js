@@ -316,10 +316,14 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       // Cover all ESM export forms: `export function`, `export const`, `export let`, `export var`
       // (including async variants). `export function <name>` alone misses arrow-function exports
       // like `export const getAll = () => ...`.
-      const BANNED_NAMES = ['getAll', 'listReports', 'findReports', 'getAllReports', 'selectAll']
-      const badExportPatterns = BANNED_NAMES.map(
-        name => new RegExp(`export\\s+(?:async\\s+)?(?:function|const|let|var)\\s+${name}\\b`)
-      )
+      // Use regex literals (not new RegExp()) to avoid template-literal double-escaping pitfalls.
+      const badExportPatterns = [
+        /export\s+(?:async\s+)?(?:function|const|let|var)\s+getAll\b/,
+        /export\s+(?:async\s+)?(?:function|const|let|var)\s+listReports\b/,
+        /export\s+(?:async\s+)?(?:function|const|let|var)\s+findReports\b/,
+        /export\s+(?:async\s+)?(?:function|const|let|var)\s+getAllReports\b/,
+        /export\s+(?:async\s+)?(?:function|const|let|var)\s+selectAll\b/,
+      ]
       const violates = badExportPatterns.some(p => p.test(src))
       assert.ok(
         !violates,
