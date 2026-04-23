@@ -5,7 +5,7 @@
 **Epic:** 8 — Data Governance & Cleanup
 **Story:** 8.2
 **Story Key:** 8-2-no-listing-endpoint-and-cross-seller-isolation
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-23
 
 ---
@@ -254,16 +254,20 @@ After completing all tasks, verify:
 
 ### Agent Model Used
 
-_to be filled by dev agent_
+claude-sonnet-4-6 (Step 3 developer subagent)
 
 ### Completion Notes List
 
-_to be filled by dev agent_
+- VERIFICATION-ONLY STORY: No source code changes were required or made.
+- All 36 ATDD tests in `tests/epic8-8.2-no-listing-endpoint-and-cross-seller-isolation.atdd.test.js` passed as-is against the existing implementation (36 pass, 0 fail, 0 skip).
+- The existing implementation from Epics 2, 3, and 4 already satisfies all 9 ACs: no bare `/api/reports` or `/api/jobs` routes; `queries.js` uses `eq(reports.reportId, reportId)` with no JOINs; `generate.js` uses `crypto.randomUUID()` for both IDs; `api_key` not leaked in any governance-layer file.
+- Story purpose confirmed: these ATDD tests now lock the invariants so future refactors cannot accidentally introduce a listing endpoint or cross-seller leakage.
 
 ### File List
 
-_to be filled by dev agent — expected: no source files modified (verification-only story)_
+No source files modified (verification-only story). Only the story spec file itself was updated (Status: ready-for-dev → review, Dev Agent Record filled in).
 
 ### Change Log
 
 - 2026-04-23: Story 8.2 created — no listing endpoint + cross-seller isolation verification. All 36 ATDD tests already pass against existing implementation.
+- 2026-04-23: Story 8.2 dev complete — verification confirmed. 36/36 ATDD tests pass. Status set to review. No source code changes made.
