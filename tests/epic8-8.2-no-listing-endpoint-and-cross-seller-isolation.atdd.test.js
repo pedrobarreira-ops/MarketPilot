@@ -75,8 +75,10 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       test('reports.js does NOT register GET /api/reports without :report_id param (static)', () => {
         if (!src) return
         // Only the parameterised routes should exist: /api/reports/:report_id and /api/reports/:report_id/csv
+        // Check both fastify.get('/api/reports', ...) and fastify.route({ url: '/api/reports' }) patterns
         const hasBareReportsRoute =
-          /fastify\.\w+\s*\(\s*['"]\/api\/reports['"]\s*[,)]/.test(src)
+          /fastify\.\w+\s*\(\s*['"]\/api\/reports['"]\s*[,)]/.test(src) ||
+          /fastify\.route\s*\(\s*\{[^}]*url\s*:\s*['"]\/api\/reports['"][^}]*\}/.test(src)
         assert.ok(
           !hasBareReportsRoute,
           'reports.js must NOT register GET /api/reports (bare, no id) — listing endpoint is explicitly forbidden (AC-1, architecture spec)'
@@ -111,6 +113,7 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
 
     describe('GET /api/reports (bare) → 404 — integration via Fastify inject', () => {
       let fastify
+      let setupError = null
 
       before(async () => {
         try {
@@ -129,11 +132,13 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
           await fastify.register(reportsRoute)
           await fastify.register(jobsRoute)
           await fastify.ready()
-        } catch (_) {}
+        } catch (err) {
+          setupError = err
+        }
       })
 
       test('GET /api/reports (no id) returns 404 (route not registered)', async () => {
-        if (!fastify) return
+        assert.ok(!setupError, `Fastify setup must succeed for integration tests — error: ${setupError}`)
         const resp = await fastify.inject({ method: 'GET', url: '/api/reports' })
         assert.equal(
           resp.statusCode, 404,
@@ -142,7 +147,7 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       })
 
       test('GET /api/reports/ (trailing slash, no id) returns 404', async () => {
-        if (!fastify) return
+        assert.ok(!setupError, `Fastify setup must succeed for integration tests — error: ${setupError}`)
         const resp = await fastify.inject({ method: 'GET', url: '/api/reports/' })
         assert.equal(
           resp.statusCode, 404,
@@ -151,7 +156,7 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       })
 
       test('GET /api/reports/:report_id returns 404 for unknown id (route registered; DB miss → 404)', async () => {
-        if (!fastify) return
+        assert.ok(!setupError, `Fastify setup must succeed for integration tests — error: ${setupError}`)
         const resp = await fastify.inject({ method: 'GET', url: '/api/reports/nonexistent-id-8.2' })
         // 404 from the DB miss — the route IS registered; just the report is absent
         assert.equal(
@@ -172,8 +177,10 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
 
       test('jobs.js does NOT register GET /api/jobs without :job_id param (static)', () => {
         if (!src) return
+        // Check both fastify.get('/api/jobs', ...) and fastify.route({ url: '/api/jobs' }) patterns
         const hasBareJobsRoute =
-          /fastify\.\w+\s*\(\s*['"]\/api\/jobs['"]\s*[,)]/.test(src)
+          /fastify\.\w+\s*\(\s*['"]\/api\/jobs['"]\s*[,)]/.test(src) ||
+          /fastify\.route\s*\(\s*\{[^}]*url\s*:\s*['"]\/api\/jobs['"][^}]*\}/.test(src)
         assert.ok(
           !hasBareJobsRoute,
           'jobs.js must NOT register GET /api/jobs (bare, no id) — listing endpoint is explicitly forbidden (AC-2)'
@@ -191,6 +198,7 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
 
     describe('GET /api/jobs (bare) → 404 — integration via Fastify inject', () => {
       let fastify
+      let setupError = null
 
       before(async () => {
         try {
@@ -206,11 +214,13 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
           fastify = Fastify({ logger: false })
           await fastify.register(jobsRoute)
           await fastify.ready()
-        } catch (_) {}
+        } catch (err) {
+          setupError = err
+        }
       })
 
       test('GET /api/jobs (no id) returns 404 (route not registered)', async () => {
-        if (!fastify) return
+        assert.ok(!setupError, `Fastify setup must succeed for integration tests — error: ${setupError}`)
         const resp = await fastify.inject({ method: 'GET', url: '/api/jobs' })
         assert.equal(
           resp.statusCode, 404,
@@ -219,7 +229,7 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       })
 
       test('GET /api/jobs/ (trailing slash) returns 404', async () => {
-        if (!fastify) return
+        assert.ok(!setupError, `Fastify setup must succeed for integration tests — error: ${setupError}`)
         const resp = await fastify.inject({ method: 'GET', url: '/api/jobs/' })
         assert.equal(
           resp.statusCode, 404,
@@ -228,7 +238,7 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       })
 
       test('GET /api/jobs/:job_id returns 404 for unknown id (route registered; DB miss → 404)', async () => {
-        if (!fastify) return
+        assert.ok(!setupError, `Fastify setup must succeed for integration tests — error: ${setupError}`)
         const resp = await fastify.inject({ method: 'GET', url: '/api/jobs/nonexistent-job-id-8.2' })
         assert.equal(
           resp.statusCode, 404,
@@ -259,9 +269,11 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
 
     test('queries.js getReport uses report_id equality filter (not a range or LIKE)', () => {
       if (!src) return
+      // Must verify getReport specifically uses Drizzle eq(reports.reportId, ...) — not just that
+      // 'reportId' appears somewhere (insertReport also uses it and would give a false pass).
       assert.ok(
-        src.includes('reportId') || src.includes('report_id'),
-        'queries.js getReport must filter strictly by report_id equality'
+        /eq\s*\(\s*reports\.reportId/.test(src),
+        'queries.js getReport must use Drizzle eq(reports.reportId, ...) for strict equality — mere presence of "reportId" is insufficient'
       )
       // LIKE or range queries on report_id would allow prefix-guessing attacks
       assert.ok(
@@ -375,9 +387,11 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
 
       test('generate route returns report_id in the 202 response (used for report URL construction)', () => {
         if (!src) return
+        // Verify report_id appears in the reply.status(202).send(...) expression specifically,
+        // not just anywhere in the file (it also appears in db.createJob call arguments).
         assert.ok(
-          src.includes('report_id') || src.includes('reportId'),
-          'generate.js must return report_id in the 202 response so the client can construct the report URL'
+          /reply\.status\s*\(\s*202\s*\)[\s\S]{0,100}report_id/.test(src),
+          'generate.js must include report_id in the reply.status(202).send() body so the client can construct the report URL'
         )
       })
 
@@ -403,9 +417,20 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
 
       test('generate.js uses crypto.randomUUID() for both job_id and report_id (static)', () => {
         if (!src) return
+        // Verify randomUUID() is called at least twice (once for job_id, once for report_id)
+        const randomUUIDCalls = (src.match(/randomUUID\(\)/g) || []).length
         assert.ok(
-          src.includes('randomUUID') || src.includes('uuid') || src.includes('UUID'),
-          'generate.js must use crypto.randomUUID() (or uuid library) for ID generation — never sequential integers'
+          randomUUIDCalls >= 2,
+          `generate.js must call randomUUID() at least twice — once for job_id and once for report_id. Found ${randomUUIDCalls} call(s)`
+        )
+        // Verify each ID variable is specifically assigned via randomUUID()
+        assert.ok(
+          /job_id\s*=\s*randomUUID\(\)/.test(src),
+          'generate.js must assign job_id via randomUUID() — never a sequential integer or timestamp'
+        )
+        assert.ok(
+          /report_id\s*=\s*randomUUID\(\)/.test(src),
+          'generate.js must assign report_id via randomUUID() — never a sequential integer or timestamp'
         )
       })
 
@@ -532,10 +557,15 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       )
     })
 
-    test('report_id access token has sufficient entropy — UUID v4 from crypto.randomUUID() (architecture spec)', () => {
-      // Architecture spec: "UUID v4 (122-bit entropy); 48h TTL; no auth system; report_id IS the access token"
-      // This is a documentation test — the source checks above verify the implementation
-      assert.ok(true, 'report_id is a UUID v4 with 122-bit entropy — the sole access token per architecture spec')
+    test('reports route 404 message is the exact spec-mandated Portuguese string (no ambiguity about expired vs never-existed)', () => {
+      // Architecture spec: uniform 404 prevents enumeration attacks (expired vs never-existed must look identical).
+      // The constant PT_404_MESSAGE in reports.js must match the spec-mandated string exactly.
+      // assert.ok(true) was used here before — replaced with a meaningful static assertion.
+      const PT_404_SPEC = 'Este relatório expirou ou não existe. Gera um novo relatório para obteres dados actualizados.'
+      assert.ok(
+        reportsSrc && reportsSrc.includes(PT_404_SPEC),
+        `reports.js must contain the exact spec-mandated 404 message: "${PT_404_SPEC}" — any deviation risks leaking existence information`
+      )
     })
   })
 
