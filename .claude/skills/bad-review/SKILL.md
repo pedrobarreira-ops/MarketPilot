@@ -71,6 +71,59 @@ Background: BAD's Step 5/7 reviewer can land revert commits after Step 6 writes 
 
 This guard is cheap (~2 minutes of local test time) and closes the hole where a post-body revert breaks CI without anyone noticing.
 
+### Live Smoke Evidence guard (Phase 1 step 7 — Mirakl-touching PRs only)
+
+**Trigger:** `gh pr diff <N> --name-only` (from Phase 1 step 2) includes any
+path matching `src/workers/mirakl/`. (This is the only Mirakl code path in
+the repo; `src/lib/mirakl` does not exist and is not included in the trigger.)
+
+**Required in PR body — exactly one of:**
+  (a) A `## Live Smoke Evidence` section summarising a real-credential run
+      against Mirakl: observed HTTP status(es), response-shape confirmation,
+      and reference to the recording file (e.g. `live-smoke-epic-N.md`), OR
+  (b) An explicit skip marker on its own line: `[Skip-Live-Smoke: <reason>]`
+      where `<reason>` is human-readable (e.g. "test-only refactor, no endpoint
+      paths touched" / "Epic is backend-only, no Mirakl work" / "retroactive
+      smoke scheduled for pre-MVP ship checklist").
+
+**What to do:**
+1. If (a) present: record "live smoke documented" and proceed to Phase 2.
+2. If (b) present: record the skip reason verbatim in Phase 3 synthesis so the
+   reviewer sees it. Proceed to Phase 2.
+3. If neither: HALT. Do not enter Phase 2. Report:
+   `❌ Mirakl-touching PR missing live-smoke evidence. PR #{N} touches
+   {matched-paths} but PR body contains no "## Live Smoke Evidence" section
+   and no "[Skip-Live-Smoke: <reason>]" marker. Add one of these to the PR
+   body and re-run /bad-review.`
+
+Rationale: Epic 7 was the first-trigger epic for the external-API smoke gate
+and the gate did not fire. Memory-rule-only (`feedback_external_api_smoke_gate.md`)
+was not load-bearing; this is the harness version. See also memory
+`feedback_bad_review_live_smoke_gate.md` for the escape-hatch design rationale.
+
+### Filename claim audit (Phase 1 step 8 — deterministic PR body vs diff)
+
+Extract candidate file-path tokens from the PR body using this regex:
+
+```
+\b(?:[a-zA-Z0-9_\-./]+\.(?:js|md|yaml|yml|json|css|html|sql|ts|tsx|sh|py)|(?:src|tests|public|scripts|_bmad-output|\.claude|\.agents)/[a-zA-Z0-9_\-./]+)\b
+```
+
+For each extracted token:
+- If it exactly matches (or is a suffix match of) any line in `gh pr diff <N> --name-only`, drop it (backed by diff).
+- Otherwise, add to `HALLUCINATED_FILENAMES`.
+
+Save `HALLUCINATED_FILENAMES` as a variable (may be empty). In Phase 3
+synthesis, include a "## Filename claim audit" section listing any
+hallucinated tokens — as a **warning, not a HALT** — because these are
+cosmetic, not regressions. Phase 4.5 records the audit result in
+`deferred-work.md` under the usual convention if any are found.
+
+Rationale: Epic 7 Challenge #7 — 3/3 PRs had cosmetic filename hallucinations
+that memory rule `feedback_bad_pipeline_trust.md` alone was not deterministically
+catching. This offloads 80%+ of the hallucination class into a Phase 1
+pre-check.
+
 **Purpose of `PRIOR_DEFERRED_ITEMS`:** used in Phase 3 to (a) deduplicate observations — if an audit subagent surfaces a finding that's already recorded in deferred-work, label it as "previously deferred" rather than a new finding; (b) flag patterns — if the same kind of observation appears across two or more PRs in the same story-family, that's signal for a retro discussion. Without this step, fresh `/bad-review` sessions would re-log the same observation on every PR.
 
 ---
