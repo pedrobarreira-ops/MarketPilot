@@ -3,7 +3,7 @@
 **Epic:** 8 — Data Governance & Cleanup
 **Story:** 8.1
 **Story Key:** 8-1-hourly-ttl-deletion-cron
-**Status:** review
+**Status:** done
 **Date Created:** 2026-04-23
 
 ---
@@ -307,3 +307,8 @@ claude-sonnet-4-6
 - [x] [Review][Defer] No `task.stop()` on SIGTERM / no idempotency guard [src/cleanup/reportCleanup.js:40] — deferred, `process.exit(0)` kills the timer in practice; documented in deferred-work.md.
 - [x] [Review][Defer] Implicit migration-ordering contract [src/cleanup/reportCleanup.js:24] — deferred, prod + test ordering both guaranteed; documented in deferred-work.md.
 - [x] [Review][Defer] Cron can fire during graceful-shutdown window [src/server.js:104-137] — deferred, caught + logged → no crash, cosmetic noise only; documented in deferred-work.md.
+
+### Step 7 Review Findings (2026-04-23)
+
+- [x] [Review][Patch] sprint-status.yaml on PR branch had stale `atdd-done` instead of `review` [_bmad-output/implementation-artifacts/sprint-status.yaml:120] — Step 2 set `atdd-done` and it was never advanced to `review` before PR creation. Fixed: updated to `review` on PR branch so merge does not regress main (which already had `review`).
+- [x] [Review][Dismiss] ATDD test file modified despite "DO NOT MODIFY" constraint — Step 4 test-review strengthened OR→AND assertions and added zero-change/multi-row/boundary tests. All changes only tighten the test coverage; no weakening. The constraint targets implementation agents (Step 3), not the authorized test-review step (Step 4). Dismissed: legitimate Step 4 improvement.
