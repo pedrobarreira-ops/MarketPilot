@@ -92,9 +92,11 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
         //   (3) fastify.route({ path: '/api/reports', ... })         — object form with path key (Fastify accepts both)
         //   (4) fastify.get(`/api/reports`, ...)                     — backtick template literal
         // The string-quote class [`'"] covers all three quote styles in a single pass.
+        // Use [\s\S]*? (lazy dot-all) instead of [^}]* so that a `schema: { ... }` block
+        // appearing before the url/path property does not defeat the match.
         const hasBareReportsRoute =
           /fastify\.\w+\s*\(\s*[`'"]\/api\/reports[`'"]\s*[,)]/.test(src) ||
-          /fastify\.route\s*\(\s*\{[^}]*\b(?:url|path)\s*:\s*[`'"]\/api\/reports[`'"][^}]*\}/.test(src)
+          /fastify\.route\s*\(\s*\{[\s\S]*?\b(?:url|path)\s*:\s*[`'"]\/api\/reports[`'"]/.test(src)
         assert.ok(
           !hasBareReportsRoute,
           'reports.js must NOT register GET /api/reports (bare, no id) — listing endpoint is explicitly forbidden (AC-1, architecture spec). Checked all forms: fastify.<verb>(path, …), fastify.route({url|path, …}), single/double/backtick quotes.'
@@ -201,9 +203,10 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
         //   (1) fastify.<verb>('/api/jobs', ...)
         //   (2) fastify.route({ url: '/api/jobs', ... })  or  { path: '/api/jobs', ... }
         //   (3) backtick template literals
+        // Use [\s\S]*? (lazy dot-all) so a schema:{} block before url/path is not a gap.
         const hasBareJobsRoute =
           /fastify\.\w+\s*\(\s*[`'"]\/api\/jobs[`'"]\s*[,)]/.test(src) ||
-          /fastify\.route\s*\(\s*\{[^}]*\b(?:url|path)\s*:\s*[`'"]\/api\/jobs[`'"][^}]*\}/.test(src)
+          /fastify\.route\s*\(\s*\{[\s\S]*?\b(?:url|path)\s*:\s*[`'"]\/api\/jobs[`'"]/.test(src)
         assert.ok(
           !hasBareJobsRoute,
           'jobs.js must NOT register GET /api/jobs (bare, no id) — listing endpoint is explicitly forbidden (AC-2). Checked all forms: fastify.<verb>(path, …), fastify.route({url|path, …}), single/double/backtick quotes.'
@@ -310,17 +313,17 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
 
     test('queries.js does not export a getAll / listReports / findReports function (static)', () => {
       requireSrc(src, 'queries.js')
-      const badExportPatterns = [
-        /export\s+function\s+getAll\b/,
-        /export\s+function\s+listReports\b/,
-        /export\s+function\s+findReports\b/,
-        /export\s+function\s+getAllReports\b/,
-        /export\s+function\s+selectAll\b/,
-      ]
+      // Cover all ESM export forms: `export function`, `export const`, `export let`, `export var`
+      // (including async variants). `export function <name>` alone misses arrow-function exports
+      // like `export const getAll = () => ...`.
+      const BANNED_NAMES = ['getAll', 'listReports', 'findReports', 'getAllReports', 'selectAll']
+      const badExportPatterns = BANNED_NAMES.map(
+        name => new RegExp(`export\\s+(?:async\\s+)?(?:function|const|let|var)\\s+${name}\\b`)
+      )
       const violates = badExportPatterns.some(p => p.test(src))
       assert.ok(
         !violates,
-        'queries.js must not export any function that returns multiple reports — cross-report access is forbidden (AC-3)'
+        'queries.js must not export any function that returns multiple reports — cross-report access is forbidden (AC-3). Checked: export function/const/let/var (including async variants).'
       )
     })
   })
@@ -597,6 +600,27 @@ describe('Story 8.2 — No listing endpoint + cross-seller isolation', async () 
       assert.ok(
         !jobsSrc.includes('getReport') && !jobsSrc.includes('insertReport'),
         'jobs.js route must only call getJobStatus — must not cross into reports data'
+      )
+    })
+
+    test('server.js does not register bare /api/reports or /api/jobs listing routes directly (static)', () => {
+      // server.js is the composition root — it could bypass route plugins by registering a bare
+      // listing route directly. This test locks that invariant so no future refactor silently
+      // introduces a listing endpoint at the server level.
+      requireSrc(serverSrc, 'server.js')
+      const hasBareReportsInServer =
+        /fastify\.\w+\s*\(\s*[`'"]\/api\/reports[`'"]\s*[,)]/.test(serverSrc) ||
+        /fastify\.route\s*\(\s*\{[\s\S]*?\b(?:url|path)\s*:\s*[`'"]\/api\/reports[`'"]/.test(serverSrc)
+      const hasBareJobsInServer =
+        /fastify\.\w+\s*\(\s*[`'"]\/api\/jobs[`'"]\s*[,)]/.test(serverSrc) ||
+        /fastify\.route\s*\(\s*\{[\s\S]*?\b(?:url|path)\s*:\s*[`'"]\/api\/jobs[`'"]/.test(serverSrc)
+      assert.ok(
+        !hasBareReportsInServer,
+        'server.js must not register GET /api/reports (bare) directly — listing endpoint is forbidden at the server level too (AC-1)'
+      )
+      assert.ok(
+        !hasBareJobsInServer,
+        'server.js must not register GET /api/jobs (bare) directly — listing endpoint is forbidden at the server level too (AC-2)'
       )
     })
   })
