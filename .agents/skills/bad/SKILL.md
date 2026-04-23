@@ -357,6 +357,16 @@ Report: success or failure with error details.
 
 ### Step 5: Code Review (`MODEL_QUALITY`)
 
+**Before spawning Step 5 — Worker-Path Opus Gate (HALT if downgraded):**
+Run `git -C {worktree_path} diff main --name-only`. If any output line starts
+with `src/workers/`, `src/middleware/errorHandler.js`, or `src/routes/`, then
+`MODEL_QUALITY` MUST resolve to `claude-opus-4-7` (Opus). If it resolves to
+anything else, HALT this story's pipeline with error:
+`❌ Story {number}: Worker-path PR requires Opus at Step 5 — MODEL_QUALITY
+is configured as {value}. Override with MODEL_QUALITY=opus and re-run.`
+Rationale: Epic 7 Opus-at-Step-5 caught 3/3 worker-path defects Sonnet missed.
+Standing rule — see memory feedback_bad_step5_opus_worker_paths.md.
+
 Spawn with model `MODEL_QUALITY` (yolo mode):
 ```
 You are the Step 5 code reviewer for story {number}-{short_description}.
