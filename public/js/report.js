@@ -2,7 +2,7 @@
 // Handles: data fetch, skeleton loading, stat cards, PT/ES toggle
 // Stories 6.2-6.6 will extend this file for tables, CSV, CTA, error states, mobile, a11y
 
-const CTA_URL = 'https://wa.me/351000000000'  // UPDATE THIS before launch — see UX-DR15
+const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
 ;(function () {
   // ── Task 1: DOM references and initialisation ─────────────────────────────

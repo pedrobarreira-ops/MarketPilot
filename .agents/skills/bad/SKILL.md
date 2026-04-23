@@ -186,6 +186,12 @@ Working directory: {repo_root}. Auto-approve all tool calls (yolo mode).
 
 1. Run /bmad-testarch-test-design for {current_epic_name}.
 2. Commit any new test plan files.
+3. Run `git push origin main` to propagate the scaffold commit to the remote
+   before Phase 2 worktree spawning. Without this, worktree branches opened
+   against origin/main carry the scaffold commit as a phantom diff, causing
+   mechanical merge conflicts across parallel stories (Epic 7 Challenge #3:
+   2 of 3 PRs merged DIRTY for exactly this reason). See memory
+   feedback_bad_epic_start_push.md.
 
 Report: success or failure with error details.
 ```
@@ -231,6 +237,22 @@ Step names: Step 1 — Create, Step 2 — ATDD, Step 3 — Develop, Step 4 — T
 **Exception:** rate/usage limit failures → run Pre-Continuation Checks (which auto-pauses until reset) then retry.
 
 **Hung subagents:** when `MONITOR_SUPPORT=true` and the activity log hook is installed (Step 4 of setup), use the [Watchdog Pattern](references/coordinator/pattern-watchdog.md) when spawning Steps 2, 3, 4, and 5 to detect stale agents.
+
+**Sprint-Status Immutability Gate (applies to Steps 4, 5, and 6):**
+
+Steps 1, 2, 3, and 7 own sprint-status.yaml transitions. Steps 4, 5, and 6
+MUST NOT modify it. Enforce this by hash-snapshot around each:
+
+Before spawning Step 4/5/6: compute `sha256sum _bmad-output/implementation-artifacts/sprint-status.yaml` → save as `STATUS_HASH_PRE`.
+After Step 4/5/6 reports success: recompute → save as `STATUS_HASH_POST`.
+If `STATUS_HASH_POST != STATUS_HASH_PRE`, HALT this story's pipeline with:
+`❌ Story {number}: Step {N} modified sprint-status.yaml — state-machine
+violation. Only Steps 1, 2, 3, 7 own status transitions. Investigate the
+stray write, revert the sprint-status change, and re-run.`
+
+Rationale: Story 7.2 Step 5 commit cf672d7 flipped status to done at the
+wrong step. Step 7 absorbed it harmlessly but the invariant should hold by
+construction. See memory feedback_bad_sprint_status_immutability.md.
 
 ### Step 1: Create Story (`MODEL_STANDARD`)
 
@@ -308,6 +330,16 @@ Auto-approve all tool calls (yolo mode).
 Report: success or failure with error details.
 ```
 
+**After Step 3 — Uncommitted Files Gate (HALT if working tree dirty):**
+Run `git -C {worktree_path} status --porcelain`. If output is non-empty, HALT
+this story's pipeline with error:
+`❌ Story {number}: Step 3 left uncommitted files in {worktree_path}. Dev
+agent may have truncated mid-implementation. Resolution: commit the changes,
+stash them explicitly, or dismiss with SKIP_CLEAN_TREE_GATE=true if intended.
+Do NOT spawn Step 4 against a dirty tree.`
+Rationale: Story 7.3 dev-agent truncation was caught only because Pedro
+noticed on disk. See memory feedback_bad_step3_clean_tree_gate.md.
+
 ### Step 4: Test Review (`MODEL_STANDARD`)
 
 Spawn with model `MODEL_STANDARD` (yolo mode):
@@ -324,6 +356,16 @@ Report: success or failure with error details.
 ```
 
 ### Step 5: Code Review (`MODEL_QUALITY`)
+
+**Before spawning Step 5 — Worker-Path Opus Gate (HALT if downgraded):**
+Run `git -C {worktree_path} diff main --name-only`. If any output line starts
+with `src/workers/`, `src/middleware/errorHandler.js`, or `src/routes/`, then
+`MODEL_QUALITY` MUST resolve to `claude-opus-4-7` (Opus). If it resolves to
+anything else, HALT this story's pipeline with error:
+`❌ Story {number}: Worker-path PR requires Opus at Step 5 — MODEL_QUALITY
+is configured as {value}. Override with MODEL_QUALITY=opus and re-run.`
+Rationale: Epic 7 Opus-at-Step-5 caught 3/3 worker-path defects Sonnet missed.
+Standing rule — see memory feedback_bad_step5_opus_worker_paths.md.
 
 Spawn with model `MODEL_QUALITY` (yolo mode):
 ```
