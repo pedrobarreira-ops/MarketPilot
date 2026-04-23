@@ -298,3 +298,12 @@ claude-sonnet-4-6
 
 - 2026-04-23: Story 8.1 spec created — hourly TTL deletion cron. (claude-sonnet-4-6)
 - 2026-04-23: Story 8.1 implemented — reportCleanup.js created, server.js wired. All 24 ATDD tests pass, 739 regression tests pass. (claude-sonnet-4-6)
+- 2026-04-23: Step 5 code review (Opus) — 2 patch fixes applied (memoised prepared statement + synchronous cron callback), 3 defer findings recorded, 2 dismissed as noise. ATDD 27/27 pass, regression 742/742 pass. (claude-opus-4-7)
+
+### Review Findings
+
+- [x] [Review][Patch] Memoise prepared DELETE statement + align docstring [src/cleanup/reportCleanup.js:14-31] — `sqlite.prepare(...)` was called inside `deleteExpiredReports()` on every cron fire; docstring claimed lazy-prepared-once. Fixed: module-level `let deleteStmt = null`, populated on first call, reused thereafter. Docstring updated to match actual behaviour.
+- [x] [Review][Patch] Drop vestigial `async` keyword on cron callback [src/cleanup/reportCleanup.js:40] — callback body was fully synchronous (better-sqlite3 is blocking). The `async` wrapper turned any thrown error into a rejected promise that node-cron may silently swallow. Removed `async`; comment added explaining the AC-5 hardening rationale.
+- [x] [Review][Defer] No `task.stop()` on SIGTERM / no idempotency guard [src/cleanup/reportCleanup.js:40] — deferred, `process.exit(0)` kills the timer in practice; documented in deferred-work.md.
+- [x] [Review][Defer] Implicit migration-ordering contract [src/cleanup/reportCleanup.js:24] — deferred, prod + test ordering both guaranteed; documented in deferred-work.md.
+- [x] [Review][Defer] Cron can fire during graceful-shutdown window [src/server.js:104-137] — deferred, caught + logged → no crash, cosmetic noise only; documented in deferred-work.md.
