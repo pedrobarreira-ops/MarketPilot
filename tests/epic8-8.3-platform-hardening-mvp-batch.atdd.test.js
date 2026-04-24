@@ -488,11 +488,7 @@ describe('Story 8.3 — Platform-Hardening MVP Batch', async () => {
       })
 
       test('rate-limited request returns HTTP 429 status', async () => {
-        if (setupError) {
-          // If @fastify/rate-limit not installed, this will surface as setup failure
-          assert.ok(!setupError, `Test app setup must succeed — error: ${setupError?.message}`)
-          return
-        }
+        assert.ok(!setupError, `Test app setup must succeed — error: ${setupError?.message}`)
 
         // Make requests over the limit to trigger 429 on the reports CSV route (max: 10)
         // We inject 11 requests to /api/reports/<uuid>/csv — 11th must return 429
@@ -509,17 +505,18 @@ describe('Story 8.3 — Platform-Hardening MVP Batch', async () => {
             break
           }
         }
-        // Note: if rate-limit plugin is not yet installed, this test will not see 429
-        // The static tests above enforce the implementation requirement
-        if (last429) {
-          assert.equal(last429.statusCode, 429, 'Rate-limited request must return 429 status')
-        }
-        // If no 429 was seen in 11 requests, the plugin is not yet installed/configured —
-        // the static checks in AC-1 through AC-4 enforce the implementation
+        // Hard assertion: 429 MUST be seen within 11 requests — rate-limit plugin is
+        // installed (static tests verify it) and the test app is built with it registered.
+        assert.ok(
+          last429 !== null,
+          'Rate-limit plugin must trigger 429 within 11 requests to /api/reports/:id/csv (max: 10 per AC-3). ' +
+          'If no 429 was seen, the plugin is not active on this route.'
+        )
+        assert.equal(last429.statusCode, 429, 'Rate-limited request must return 429 status')
       })
 
       test('429 response body has { error, message } shape without statusCode field', async () => {
-        if (setupError) return
+        assert.ok(!setupError, `Test app setup must succeed — error: ${setupError?.message}`)
 
         const testId = 'a1b2c3d4-e5f6-4789-abcd-ef0123456789'
         let last429 = null
@@ -535,23 +532,25 @@ describe('Story 8.3 — Platform-Hardening MVP Batch', async () => {
           }
         }
 
-        if (last429) {
-          let body
-          try { body = JSON.parse(last429.body) } catch (_) { return }
+        // Hard assertion: 429 MUST be seen within 15 requests (max: 10 per AC-3).
+        assert.ok(
+          last429 !== null,
+          'Rate-limit plugin must trigger 429 within 15 requests to /api/reports/:id/csv (max: 10 per AC-3)'
+        )
 
-          assert.ok('error' in body, '429 body must have an "error" field')
-          assert.ok('message' in body, '429 body must have a "message" field')
-          assert.equal(body.error, 'too_many_requests',
-            '429 body.error must be "too_many_requests" — not the raw @fastify/rate-limit shape')
-          assert.ok(
-            !('statusCode' in body),
-            '429 body must NOT contain a "statusCode" field — only { error, message } per AC-6'
-          )
-          assert.ok(
-            !('api_key' in body),
-            '429 body must NOT contain api_key — NFR-S2 credential safety'
-          )
-        }
+        const body = JSON.parse(last429.body)
+        assert.ok('error' in body, '429 body must have an "error" field')
+        assert.ok('message' in body, '429 body must have a "message" field')
+        assert.equal(body.error, 'too_many_requests',
+          '429 body.error must be "too_many_requests" — not the raw @fastify/rate-limit shape')
+        assert.ok(
+          !('statusCode' in body),
+          '429 body must NOT contain a "statusCode" field — only { error, message } per AC-6'
+        )
+        assert.ok(
+          !('api_key' in body),
+          '429 body must NOT contain api_key — NFR-S2 credential safety'
+        )
       })
     })
   })
