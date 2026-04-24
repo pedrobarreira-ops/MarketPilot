@@ -1,5 +1,5 @@
 # Story Dependency Graph
-_Last updated: 2026-04-23T00:00:00Z (phase0 reconciliation: PRs #59/#60/#61 merged; 7.1=done, 7.2=done, 7.3=done; epic-7 complete; epic-8 now active; stale worktrees and remote branches for 7.1/7.2/7.3 cleaned)_
+_Last updated: 2026-04-24T00:00:00Z (phase0 reconciliation: PRs #63/#64 merged; 8.1=done, 8.2=done; story 8.3 added with GH Issue #65; epic-8 still in-progress; no stale worktrees)_
 
 ## Stories
 
@@ -35,8 +35,9 @@ _Last updated: 2026-04-23T00:00:00Z (phase0 reconciliation: PRs #59/#60/#61 merg
 | 7.1   | 7    | Empty Catalog & Auth Failure Path | done | #27 | #60 | merged | 3.2, 3.3 | ✅ Yes (done) |
 | 7.2   | 7    | total_count Mismatch Handling | done | #28 | #59 | merged | 3.2 | ✅ Yes (done) |
 | 7.3   | 7    | P11 Rate Limit & Partial Data Recovery | done | #29 | #61 | merged | 3.3 | ✅ Yes (done) |
-| 8.1   | 8    | Hourly TTL Deletion Cron | backlog | #30 | — | — | 3.5 | ✅ Yes |
-| 8.2   | 8    | No Listing Endpoint & Cross-Seller Isolation | backlog | #31 | — | — | 4.3 | ✅ Yes |
+| 8.1   | 8    | Hourly TTL Deletion Cron | done | #30 | #63 | merged | 3.5 | ✅ Yes (done) |
+| 8.2   | 8    | No Listing Endpoint & Cross-Seller Isolation | done | #31 | #64 | merged | 4.3 | ✅ Yes (done) |
+| 8.3   | 8    | Platform-Hardening MVP Batch | backlog | #65 | — | — | 8.1, 8.2 | ✅ Yes |
 
 ## Dependency Chains
 
@@ -68,12 +69,15 @@ _Last updated: 2026-04-23T00:00:00Z (phase0 reconciliation: PRs #59/#60/#61 merg
 - **7.3** depends on: 3.3 (DONE: PR #61 merged 2026-04-22)
 - **8.1** depends on: 3.5
 - **8.2** depends on: 4.3
+- **8.3** depends on: 8.1, 8.2 (Epic-arc sequencing)
 
 ## Notes
 
 - **Epics 1–7 are fully complete** — all stories have merged PRs.
 - **Epic 7 closed** (2026-04-22): PRs #59 (7.2), #60 (7.1), #61 (7.3) all merged. epic-7 row → done. Retrospective done.
-- **Epic 8 is the current epic** — stories 8.1 and 8.2 are both backlog and now unblocked (all epic 1–7 stories done).
-- **Stale worktrees cleaned** (2026-04-23): worktrees for 7.1, 7.2, 7.3 pruned; remote branches deleted.
-- **8.1 and 8.2 are independent** — can be developed in parallel (MAX_PARALLEL_STORIES=3 allows it).
+- **Epic 8 is the current epic** — stories 8.1 and 8.2 merged; story 8.3 is backlog and now unblocked.
+- **8.1 merged** (2026-04-23): PR #63 merged. epic-8-retro row remains `optional` (managed by bmad-retrospective).
+- **8.2 merged** (2026-04-23): PR #64 merged.
+- **8.3 is the only remaining story** — GH Issue #65 created (2026-04-24). Unblocked: all dependencies done.
+- **Stale worktrees cleaned** (2026-04-23): worktrees for 7.1, 7.2, 7.3 pruned; remote branches deleted. No stale worktrees for 8.1/8.2 detected.
 - **Pending open PRs:** none
