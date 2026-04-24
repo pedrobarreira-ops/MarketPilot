@@ -143,6 +143,18 @@ describe('Story 3.3 — P11 competitor scan', async () => {
         'total_price must be used; plain .price must not be used for competitor comparison (P11 spec)'
       )
     })
+
+    test('source filters offers with non-positive total_price (zero-price phantom guard)', () => {
+      // Worten's P11 occasionally returns offers with total_price === 0 — hidden
+      // or placeholder listings. These must be filtered at the source so downstream
+      // scoring classifies the EAN as uncontested rather than "losing to €0,00".
+      // See CSV bug discovered 2026-04-24 (rows with pt_first_price=0 / Infinity gap_pct).
+      assert.ok(
+        /total_price\s*>\s*0/.test(src) ||
+        /Number\.isFinite\(\s*[^)]*total_price[^)]*\)\s*&&\s*[^&]+total_price\s*>\s*0/.test(src),
+        'scanCompetitors.js must filter offers where total_price <= 0 or non-finite — these produce degenerate scoring (gap_pct=Infinity) and misleading UI ("€0,00 1st place"). The filter should combine active===true with total_price > 0 and Number.isFinite() on total_price.'
+      )
+    })
   })
 
   // ── AC-4: Captures first and second positions per channel ─────────────────
