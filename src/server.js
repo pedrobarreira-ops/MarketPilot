@@ -92,6 +92,12 @@ fastify.get('/report/:report_id', async (_req, reply) => {
   return reply.sendFile('report.html')
 })
 
+// Progress page — serves the static HTML shell; progress.js polls /api/jobs/:job_id at runtime.
+// Exposes the extension-less alias /progress; @fastify/static only serves /progress.html literally.
+fastify.get('/progress', async (_req, reply) => {
+  return reply.sendFile('progress.html')
+})
+
 // Initialise SQLite schema (idempotent — runs on every startup)
 try {
   runMigrations()

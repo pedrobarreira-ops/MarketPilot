@@ -8,6 +8,7 @@
  * AC-4: @fastify/static registered and serves files from public/
  * AC-5: errorHandler registered as setErrorHandler
  * AC-6: GET /report/:report_id returns public/report.html
+ * AC-7: GET /progress returns public/progress.html (form.js redirect target)
  * VERIFY: POST body with api_key never leaks the real value to logs
  *
  * Uses Node.js built-in test runner (node:test) — no extra dependencies needed.
@@ -76,6 +77,10 @@ async function buildApp() {
 
   fastify.get('/report/:report_id', async (_req, reply) => {
     return reply.sendFile('report.html')
+  })
+
+  fastify.get('/progress', async (_req, reply) => {
+    return reply.sendFile('progress.html')
   })
 
   fastify.setErrorHandler(errorHandler)
@@ -326,6 +331,35 @@ describe('Story 1.2 — Fastify server with log redaction', async () => {
           `GET /report/${id} must return 200`
         )
       }
+    })
+  })
+
+  // ── AC-7: GET /progress (form.js redirect target) ──────────────────────
+  describe('AC-7: GET /progress returns public/progress.html', () => {
+    test('GET /progress returns HTTP 200', async () => {
+      const res = await app.inject({ method: 'GET', url: '/progress' })
+      assert.equal(res.statusCode, 200, 'GET /progress must return HTTP 200')
+    })
+
+    test('GET /progress with query params returns HTTP 200', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/progress?job_id=test-job&report_id=test-report',
+      })
+      assert.equal(
+        res.statusCode,
+        200,
+        'GET /progress?job_id=…&report_id=… must return HTTP 200 (form.js redirect target)'
+      )
+    })
+
+    test('response body is HTML (contains <!DOCTYPE html> or <html)', async () => {
+      const res = await app.inject({ method: 'GET', url: '/progress' })
+      assert.match(
+        res.body,
+        /<!DOCTYPE html>|<html/i,
+        'GET /progress must return HTML content from progress.html'
+      )
     })
   })
 

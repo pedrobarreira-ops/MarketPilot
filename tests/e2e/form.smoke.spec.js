@@ -58,7 +58,7 @@ test.describe('Form page (public/index.html)', () => {
   // ── UNSKIP when Story 5.1 ships form.js ───────────────────────────────────
   // Pattern: valid submission mocks POST /api/generate → 202, then frontend
   // navigates to /progress?job_id=...&report_id=...
-  test('valid submission — mocked 202 response navigates to progress page', async ({ page }) => {
+  test('valid submission — mocked 202 response navigates to progress page (200, not 404)', async ({ page }) => {
     await page.route('**/api/generate', (route) => {
       expect(route.request().method()).toBe('POST')
       route.fulfill({
@@ -70,10 +70,38 @@ test.describe('Form page (public/index.html)', () => {
       })
     })
 
+    // Mock /api/jobs/* polling so progress.js doesn't surface unrelated noise
+    // — we only assert that the /progress route itself returns 200.
+    await page.route('**/api/jobs/**', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          status: 'queued',
+          phase_message: 'A preparar…',
+          progress_current: null,
+          progress_total: null,
+          report_id: 'test-report-xyz',
+        },
+      }),
+    }))
+
     await page.goto('/')
     await page.locator('#api-key').fill('test-worten-key')
     await page.locator('#email').fill('pedro@example.com')
+
+    // Capture the navigation response. toHaveURL only matches the URL string and
+    // would pass against a 404 page (since the URL still matches); asserting the
+    // HTTP status closes that gap and prevents the route from silently regressing.
+    const navResponsePromise = page.waitForResponse(
+      (resp) => new URL(resp.url()).pathname === '/progress',
+      { timeout: 10_000 }
+    )
+
     await page.getByRole('button', { name: /gerar/i }).click()
+
+    const navResponse = await navResponsePromise
+    expect(navResponse.status()).toBe(200)
 
     await expect(page).toHaveURL(/\/progress.*job_id=test-job-abc.*report_id=test-report-xyz|\/progress.*report_id=test-report-xyz.*job_id=test-job-abc/)
   })
