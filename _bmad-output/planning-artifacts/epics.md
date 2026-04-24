@@ -1223,7 +1223,7 @@ So that one seller cannot discover or access another seller's report.
 
 ### Story 8.3: Platform-Hardening MVP Batch
 
-**GH Issue:** _TBD — create at `bmad-create-story` time_
+**GH Issue:** #65
 
 As the operator of MarketPilot,
 I want the HTTP API layer to enforce rate limits, send cache-control headers on report reads, avoid CSV byte-order-mark ambiguity, and reject malformed `:id` path parameters at route-guard time,

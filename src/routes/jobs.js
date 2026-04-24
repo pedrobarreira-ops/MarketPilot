@@ -14,9 +14,24 @@
 
 import * as db from '../db/queries.js'
 
+// UUID-format guard: ^[0-9a-f-]{36}$ — fires before any DB call (AC-8)
+// Returns 404 (not 400) for malformed IDs — same shape as unknown job prevents enumeration oracle
+const UUID_REGEX = /^[0-9a-f-]{36}$/
+
 export default async function jobsRoute(fastify) {
-  fastify.get('/api/jobs/:job_id', async (request, reply) => {
+  fastify.get('/api/jobs/:job_id', {
+    config: { rateLimit: { max: 120, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const { job_id } = request.params
+
+    // UUID guard must fire BEFORE any DB call (AC-8) — uniform 404 for all invalid job IDs
+    if (!UUID_REGEX.test(job_id)) {
+      return reply.status(404).send({
+        error:   'job_not_found',
+        message: 'Job não encontrado.',
+      })
+    }
+
     const row = db.getJobStatus(job_id)
     if (!row) {
       return reply.status(404).send({

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import fs from 'node:fs'
 import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
+import rateLimit from '@fastify/rate-limit'
 import { config } from './config.js'
 import { reportQueue } from './queue/reportQueue.js'  // establishes Redis connection at startup (fail-fast)
 import { worker as reportWorker } from './workers/reportWorker.js'
@@ -56,6 +57,30 @@ await fastify.register(staticPlugin, {
   prefix: '/',
 })
 
+// Global error handler — maps all unhandled errors to safe { error, message } (NFR-S4)
+// Must be registered before rateLimit so the 429 dispatch branch in errorHandler is active.
+fastify.setErrorHandler(errorHandler)
+
+// Register rate-limit plugin — BEFORE any route declarations so the global default applies to ALL routes.
+// Registration order matters in Fastify: plugins registered after a route declaration do not apply to it.
+// Registering here (before /health and /report/:report_id) ensures every route is covered.
+// errorResponseBuilder overrides the plugin's default 429 shape to match our { error, message } contract (AC-6)
+// allowList excludes /health from rate limiting — Coolify liveness probes must not be limited (AC-1)
+// We match on the route template (routeOptions.url) rather than request.url so a probe that arrives
+// as `/health?foo=1` still bypasses the rate limiter instead of falling into the global bucket.
+await fastify.register(rateLimit, {
+  global: true,
+  max: 60,
+  timeWindow: '1 minute',
+  errorResponseBuilder: (_request, _context) => {
+    return {
+      error: 'too_many_requests',
+      message: 'Demasiados pedidos. Tenta novamente em breve.',
+    }
+  },
+  allowList: (request) => request.routeOptions?.url === '/health',
+})
+
 // Health check — used by Coolify for container liveness probes
 fastify.get('/health', async (_req, reply) => {
   return reply.send({ status: 'ok' })
@@ -66,9 +91,6 @@ fastify.get('/health', async (_req, reply) => {
 fastify.get('/report/:report_id', async (_req, reply) => {
   return reply.sendFile('report.html')
 })
-
-// Global error handler — maps all unhandled errors to safe { error, message } (NFR-S4)
-fastify.setErrorHandler(errorHandler)
 
 // Initialise SQLite schema (idempotent — runs on every startup)
 try {
@@ -82,7 +104,7 @@ try {
 // Start hourly TTL cleanup cron — after migrations so the reports table exists (AC-4)
 startCleanupCron(fastify.log)
 
-// Register routes — AFTER setErrorHandler and runMigrations (Story 4.1)
+// Register routes — AFTER setErrorHandler, rateLimit plugin, and runMigrations (Story 4.1)
 await fastify.register(generateRoute)
 await fastify.register(jobsRoute)   // Story 4.2: GET /api/jobs/:job_id polling
 // Report retrieval routes — GET /api/reports/:id and GET /api/reports/:id/csv (Story 4.3)

@@ -16,11 +16,23 @@ export function errorHandler(err, request, reply) {
     })
   }
 
+  // @fastify/rate-limit throws the errorResponseBuilder result as a plain object.
+  // That object has err.error === 'too_many_requests' and err.message set by the builder.
+  // We forward the 429 status and the pre-shaped body — no api_key in scope here (AC-6, NFR-S2).
+  if (err && typeof err === 'object' && err.error === 'too_many_requests') {
+    return reply.status(429).send({
+      error: 'too_many_requests',
+      message: typeof err.message === 'string'
+        ? err.message
+        : 'Demasiados pedidos. Tenta novamente em breve.',
+    })
+  }
+
   // Log the error type and code — NEVER the full message (may contain API key details)
   request.log.error({
-    error_type: err.constructor.name,
-    error_code: err.code,
-    status_code: err.statusCode ?? 500,
+    error_type: err?.constructor?.name ?? 'UnknownError',
+    error_code: err?.code,
+    status_code: err?.statusCode ?? 500,
   }, 'Unhandled error')
 
   // All other errors → always 500 with a safe, generic message.
