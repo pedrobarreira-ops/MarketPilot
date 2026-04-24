@@ -25,6 +25,7 @@ import { config } from '../config.js'
 
 export default async function generateRoute(fastify) {
   fastify.post('/api/generate', {
+    config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
     schema: {
       body: {
         type: 'object',

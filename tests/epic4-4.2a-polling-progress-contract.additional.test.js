@@ -26,6 +26,7 @@ import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
+import { randomUUID } from 'node:crypto'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -40,8 +41,9 @@ process.env.LOG_LEVEL       = 'silent'
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
+// Story 8.3 added UUID-format guard on :id route params — test IDs must be valid UUIDs
 function randomId() {
-  return `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return randomUUID()
 }
 
 /**

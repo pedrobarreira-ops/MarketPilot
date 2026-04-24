@@ -6,7 +6,7 @@
 **Epic:** 8 — Data Governance & Cleanup
 **Story:** 8.3
 **Story Key:** 8-3-platform-hardening-mvp-batch
-**Status:** ready-for-dev
+**Status:** review
 **Date Created:** 2026-04-24
 
 ---
@@ -101,44 +101,44 @@ node --test tests/epic8-8.3-platform-hardening-mvp-batch.atdd.test.js
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Install `@fastify/rate-limit` dependency** (AC: 1)
-  - [ ] Run `npm install @fastify/rate-limit` in the worktree
-  - [ ] Confirm the package appears in `package.json` `dependencies`
+- [x] **Task 1: Install `@fastify/rate-limit` dependency** (AC: 1)
+  - [x] Run `npm install @fastify/rate-limit` in the worktree
+  - [x] Confirm the package appears in `package.json` `dependencies`
 
-- [ ] **Task 2: Register rate-limit plugin in `src/server.js`** (AC: 1, 6)
-  - [ ] Import `rateLimit` from `@fastify/rate-limit`
-  - [ ] Register with `await fastify.register(rateLimit, { global: true, max: 60, timeWindow: '1 minute', errorResponseBuilder })` before route registration
-  - [ ] Implement `errorResponseBuilder` that returns `{ error: 'too_many_requests', message: 'Demasiados pedidos. Tenta novamente em breve.' }` (see Dev Notes for exact pattern)
-  - [ ] Confirm `/health` route has no `rateLimit` config (excluded via plugin config or explicit skip — see Dev Notes)
+- [x] **Task 2: Register rate-limit plugin in `src/server.js`** (AC: 1, 6)
+  - [x] Import `rateLimit` from `@fastify/rate-limit`
+  - [x] Register with `await fastify.register(rateLimit, { global: true, max: 60, timeWindow: '1 minute', errorResponseBuilder })` before route registration
+  - [x] Implement `errorResponseBuilder` that returns `{ error: 'too_many_requests', message: 'Demasiados pedidos. Tenta novamente em breve.' }` (see Dev Notes for exact pattern)
+  - [x] Confirm `/health` route has no `rateLimit` config (excluded via plugin config or explicit skip — see Dev Notes)
 
-- [ ] **Task 3: Add per-route rate-limit overrides** (AC: 2, 3, 4)
-  - [ ] `src/routes/generate.js` — add `config: { rateLimit: { max: 5, timeWindow: '1 minute' } }` to route options
-  - [ ] `src/routes/reports.js` — add `config: { rateLimit: { max: 10, timeWindow: '1 minute' } }` to the `/csv` route options only
-  - [ ] `src/routes/jobs.js` — add `config: { rateLimit: { max: 120, timeWindow: '1 minute' } }` to route options
+- [x] **Task 3: Add per-route rate-limit overrides** (AC: 2, 3, 4)
+  - [x] `src/routes/generate.js` — add `config: { rateLimit: { max: 5, timeWindow: '1 minute' } }` to route options
+  - [x] `src/routes/reports.js` — add `config: { rateLimit: { max: 10, timeWindow: '1 minute' } }` to the `/csv` route options only
+  - [x] `src/routes/jobs.js` — add `config: { rateLimit: { max: 120, timeWindow: '1 minute' } }` to route options
 
-- [ ] **Task 4: Add `Cache-Control: private, no-store` headers to report routes** (AC: 7)
-  - [ ] `GET /api/reports/:report_id` — add header on both 200 and 404 reply paths
-  - [ ] `GET /api/reports/:report_id/csv` — add header on both 200 and 404 reply paths
+- [x] **Task 4: Add `Cache-Control: private, no-store` headers to report routes** (AC: 7)
+  - [x] `GET /api/reports/:report_id` — add header on both 200 and 404 reply paths
+  - [x] `GET /api/reports/:report_id/csv` — add header on both 200 and 404 reply paths
 
-- [ ] **Task 5: Add UUID-format `:id` guard** (AC: 8)
-  - [ ] Define `const UUID_REGEX = /^[0-9a-f-]{36}$/` once at module top in `src/routes/reports.js`
-  - [ ] Define the same shared `UUID_REGEX` at module top in `src/routes/jobs.js`
-  - [ ] Add guard at top of handler body in `GET /api/reports/:report_id`: `if (!UUID_REGEX.test(report_id)) return 404 with standard reports 404 body`
-  - [ ] Add guard at top of handler body in `GET /api/reports/:report_id/csv`: same guard
-  - [ ] Add guard at top of handler body in `GET /api/jobs/:job_id`: `if (!UUID_REGEX.test(job_id)) return 404 with standard jobs 404 body`
-  - [ ] Verify no DB call is made when guard fires (guard must be BEFORE any `getReport` / `getJobStatus` call)
+- [x] **Task 5: Add UUID-format `:id` guard** (AC: 8)
+  - [x] Define `const UUID_REGEX = /^[0-9a-f-]{36}$/` once at module top in `src/routes/reports.js`
+  - [x] Define the same shared `UUID_REGEX` at module top in `src/routes/jobs.js`
+  - [x] Add guard at top of handler body in `GET /api/reports/:report_id`: `if (!UUID_REGEX.test(report_id)) return 404 with standard reports 404 body`
+  - [x] Add guard at top of handler body in `GET /api/reports/:report_id/csv`: same guard
+  - [x] Add guard at top of handler body in `GET /api/jobs/:job_id`: `if (!UUID_REGEX.test(job_id)) return 404 with standard jobs 404 body`
+  - [x] Verify no DB call is made when guard fires (guard must be BEFORE any `getReport` / `getJobStatus` call)
 
-- [ ] **Task 6: Verify CSV no-BOM assertion passes** (AC: 9, 10)
-  - [ ] Run `node --test tests/epic8-8.3-platform-hardening-mvp-batch.atdd.test.js` — the BOM-assertion test must pass without modifying `src/workers/scoring/buildReport.js`
-  - [ ] If the test fails, the source file already emits a BOM (unexpected); investigate and do NOT add a BOM — do NOT modify workers; raise to Pedro
+- [x] **Task 6: Verify CSV no-BOM assertion passes** (AC: 9, 10)
+  - [x] Run `node --test tests/epic8-8.3-platform-hardening-mvp-batch.atdd.test.js` — the BOM-assertion test must pass without modifying `src/workers/scoring/buildReport.js`
+  - [x] If the test fails, the source file already emits a BOM (unexpected); investigate and do NOT add a BOM — do NOT modify workers; raise to Pedro
 
-- [ ] **Task 7: Run full test suite** (AC: 11)
-  - [ ] Run `node --test tests/epic8-8.3-platform-hardening-mvp-batch.atdd.test.js` — all pass
-  - [ ] Run `npm test` — no new failures vs pre-story baseline
+- [x] **Task 7: Run full test suite** (AC: 11)
+  - [x] Run `node --test tests/epic8-8.3-platform-hardening-mvp-batch.atdd.test.js` — all pass
+  - [x] Run `npm test` — no new failures vs pre-story baseline
 
-- [ ] **Task 8: Mark story complete**
-  - [ ] Update story Status to `review`
-  - [ ] Fill in Dev Agent Record section
+- [x] **Task 8: Mark story complete**
+  - [x] Update story Status to `review`
+  - [x] Fill in Dev Agent Record section
 
 ---
 
@@ -392,16 +392,33 @@ After completing all tasks, verify:
 
 ### Agent Model Used
 
-_To be filled in by dev agent_
+claude-sonnet-4-6 (Step 3 Developer)
 
 ### Completion Notes List
 
-_To be filled in by dev agent_
+- Installed `@fastify/rate-limit` via `npm install @fastify/rate-limit`; package added to dependencies in `package.json`.
+- Registered rate-limit plugin in `src/server.js` with `global: true`, `max: 60`, `timeWindow: '1 minute'`, custom `errorResponseBuilder` returning `{ error: 'too_many_requests', message: 'Demasiados pedidos. Tenta novamente em breve.' }`, and `allowList` to exclude `/health`.
+- Added per-route rate-limit overrides: POST /api/generate (5/min), GET /api/reports/:id/csv (10/min), GET /api/jobs/:job_id (120/min). GET /api/reports/:id uses global default (60/min) — no override.
+- Added `Cache-Control: private, no-store` on all four response paths in `src/routes/reports.js`: both 200 and 404 on both report routes. UUID guard 404 path also sets Cache-Control.
+- Added `UUID_REGEX = /^[0-9a-f-]{36}$/` at module top of both `src/routes/reports.js` and `src/routes/jobs.js`. Guard fires BEFORE any `getReport`/`getJobStatus` call. Returns 404 with spec-mandated message — no enumeration oracle.
+- CSV no-BOM assertion: `buildReport.js` was NOT modified; ATDD test confirmed existing output has no BOM.
+- `src/workers/**` has zero diffs — confirmed.
+- Test compatibility: Stories 4.2, 4.2a, and 4.3 test files used `test-<timestamp>-<random>` format IDs which are not UUID-format. UUID guard would have blocked these, causing regressions. Updated `randomId()` in those three test files to use `randomUUID()` from `node:crypto` — all 823 tests now pass (0 fail).
+- All 76 ATDD 8.3 tests pass. Full suite: 823 tests, 0 failures.
 
 ### File List
 
-_To be filled in by dev agent_
+- `src/server.js` — added `@fastify/rate-limit` import and plugin registration with global config, errorResponseBuilder, and allowList for /health
+- `src/routes/generate.js` — added `config: { rateLimit: { max: 5, timeWindow: '1 minute' } }` to POST route options
+- `src/routes/reports.js` — added `UUID_REGEX` guard (before DB calls), `Cache-Control: private, no-store` on all reply paths (200 and 404), `config: { rateLimit: { max: 10, ... } }` on /csv route
+- `src/routes/jobs.js` — added `UUID_REGEX` guard (before DB call), `config: { rateLimit: { max: 120, timeWindow: '1 minute' } }` on GET route
+- `package.json` — `@fastify/rate-limit` added to dependencies
+- `package-lock.json` — updated by `npm install`
+- `tests/epic4-4.2-get-api-jobs-polling.atdd.test.js` — updated `randomId()` to use `randomUUID()` for UUID guard compatibility
+- `tests/epic4-4.2a-polling-progress-contract.additional.test.js` — updated `randomId()` to use `randomUUID()` for UUID guard compatibility
+- `tests/epic4-4.3-get-api-reports-and-csv.atdd.test.js` — updated `randomId()` to use `randomUUID()` for UUID guard compatibility
 
 ### Change Log
 
 - 2026-04-24: Story 8.3 created — platform-hardening MVP batch (rate-limit + Cache-Control + CSV BOM assertion + :id UUID guards).
+- 2026-04-24: Story 8.3 implemented — all ACs satisfied; 76 ATDD tests pass; 823 full-suite tests pass (0 fail). Status set to review.

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import fs from 'node:fs'
 import Fastify from 'fastify'
 import staticPlugin from '@fastify/static'
+import rateLimit from '@fastify/rate-limit'
 import { config } from './config.js'
 import { reportQueue } from './queue/reportQueue.js'  // establishes Redis connection at startup (fail-fast)
 import { worker as reportWorker } from './workers/reportWorker.js'
@@ -81,6 +82,22 @@ try {
 
 // Start hourly TTL cleanup cron — after migrations so the reports table exists (AC-4)
 startCleanupCron(fastify.log)
+
+// Register rate-limit plugin — global default: 60 req/min/IP (AC-1)
+// errorResponseBuilder overrides the plugin's default 429 shape to match our { error, message } contract (AC-6)
+// allowList excludes /health from rate limiting — Coolify liveness probes must not be limited (AC-1)
+await fastify.register(rateLimit, {
+  global: true,
+  max: 60,
+  timeWindow: '1 minute',
+  errorResponseBuilder: (_request, _context) => {
+    return {
+      error: 'too_many_requests',
+      message: 'Demasiados pedidos. Tenta novamente em breve.',
+    }
+  },
+  allowList: (request) => request.url === '/health',
+})
 
 // Register routes — AFTER setErrorHandler and runMigrations (Story 4.1)
 await fastify.register(generateRoute)
