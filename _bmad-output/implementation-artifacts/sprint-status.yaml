@@ -122,5 +122,5 @@ development_status:
   epic-8: in-progress
   8-1-hourly-ttl-deletion-cron: done
   8-2-no-listing-endpoint-and-cross-seller-isolation: done
-  8-3-platform-hardening-mvp-batch: backlog
+  8-3-platform-hardening-mvp-batch: atdd-done
   epic-8-retrospective: optional
