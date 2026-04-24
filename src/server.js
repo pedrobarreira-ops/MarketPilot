@@ -57,33 +57,13 @@ await fastify.register(staticPlugin, {
   prefix: '/',
 })
 
-// Health check — used by Coolify for container liveness probes
-fastify.get('/health', async (_req, reply) => {
-  return reply.send({ status: 'ok' })
-})
-
-// Report page — serves the static HTML shell; report.js fetches /api/reports/:id at runtime.
-// Must be registered AFTER staticPlugin so it overrides the static handler for /report/ paths.
-fastify.get('/report/:report_id', async (_req, reply) => {
-  return reply.sendFile('report.html')
-})
-
 // Global error handler — maps all unhandled errors to safe { error, message } (NFR-S4)
+// Must be registered before rateLimit so the 429 dispatch branch in errorHandler is active.
 fastify.setErrorHandler(errorHandler)
 
-// Initialise SQLite schema (idempotent — runs on every startup)
-try {
-  runMigrations()
-  fastify.log.info('Database migrations complete')
-} catch (err) {
-  fastify.log.error({ error_type: err.constructor.name }, 'Migration failed — aborting startup')
-  process.exit(1)
-}
-
-// Start hourly TTL cleanup cron — after migrations so the reports table exists (AC-4)
-startCleanupCron(fastify.log)
-
-// Register rate-limit plugin — global default: 60 req/min/IP (AC-1)
+// Register rate-limit plugin — BEFORE any route declarations so the global default applies to ALL routes.
+// Registration order matters in Fastify: plugins registered after a route declaration do not apply to it.
+// Registering here (before /health and /report/:report_id) ensures every route is covered.
 // errorResponseBuilder overrides the plugin's default 429 shape to match our { error, message } contract (AC-6)
 // allowList excludes /health from rate limiting — Coolify liveness probes must not be limited (AC-1)
 // We match on the route template (routeOptions.url) rather than request.url so a probe that arrives
@@ -101,7 +81,30 @@ await fastify.register(rateLimit, {
   allowList: (request) => request.routeOptions?.url === '/health',
 })
 
-// Register routes — AFTER setErrorHandler and runMigrations (Story 4.1)
+// Health check — used by Coolify for container liveness probes
+fastify.get('/health', async (_req, reply) => {
+  return reply.send({ status: 'ok' })
+})
+
+// Report page — serves the static HTML shell; report.js fetches /api/reports/:id at runtime.
+// Must be registered AFTER staticPlugin so it overrides the static handler for /report/ paths.
+fastify.get('/report/:report_id', async (_req, reply) => {
+  return reply.sendFile('report.html')
+})
+
+// Initialise SQLite schema (idempotent — runs on every startup)
+try {
+  runMigrations()
+  fastify.log.info('Database migrations complete')
+} catch (err) {
+  fastify.log.error({ error_type: err.constructor.name }, 'Migration failed — aborting startup')
+  process.exit(1)
+}
+
+// Start hourly TTL cleanup cron — after migrations so the reports table exists (AC-4)
+startCleanupCron(fastify.log)
+
+// Register routes — AFTER setErrorHandler, rateLimit plugin, and runMigrations (Story 4.1)
 await fastify.register(generateRoute)
 await fastify.register(jobsRoute)   // Story 4.2: GET /api/jobs/:job_id polling
 // Report retrieval routes — GET /api/reports/:id and GET /api/reports/:id/csv (Story 4.3)
