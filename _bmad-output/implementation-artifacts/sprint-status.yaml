@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-16
-last_updated: 2026-04-24  (phase0 reconciliation: PRs #63/#64 merged → 8.1=done, 8.2=done; story 8.3 GH Issue #65 created; epic-8 in-progress)
+last_updated: 2026-04-24  (8.3 code review complete → done; Step 7 fix: rateLimit registration order)
 # last story created: 1-5-docker-and-coolify-deployment-config → done (2026-04-17)
 # last code review: 2-1-keystore-module → done (2026-04-17)
 # epic-1-retrospective → done (2026-04-17)
@@ -122,5 +122,5 @@ development_status:
   epic-8: in-progress
   8-1-hourly-ttl-deletion-cron: done
   8-2-no-listing-endpoint-and-cross-seller-isolation: done
-  8-3-platform-hardening-mvp-batch: atdd-done
+  8-3-platform-hardening-mvp-batch: done
   epic-8-retrospective: optional
