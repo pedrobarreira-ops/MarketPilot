@@ -111,7 +111,7 @@ async function buildTestApp() {
           message: 'Demasiados pedidos. Tenta novamente em breve.',
         }
       },
-      allowList: (request) => request.url === '/health',
+      allowList: (request) => request.routeOptions?.url === '/health',
     })
   } catch (_) {
     // @fastify/rate-limit not installed yet — tests that require it will fail appropriately

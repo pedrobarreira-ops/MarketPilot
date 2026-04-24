@@ -86,6 +86,8 @@ startCleanupCron(fastify.log)
 // Register rate-limit plugin — global default: 60 req/min/IP (AC-1)
 // errorResponseBuilder overrides the plugin's default 429 shape to match our { error, message } contract (AC-6)
 // allowList excludes /health from rate limiting — Coolify liveness probes must not be limited (AC-1)
+// We match on the route template (routeOptions.url) rather than request.url so a probe that arrives
+// as `/health?foo=1` still bypasses the rate limiter instead of falling into the global bucket.
 await fastify.register(rateLimit, {
   global: true,
   max: 60,
@@ -96,7 +98,7 @@ await fastify.register(rateLimit, {
       message: 'Demasiados pedidos. Tenta novamente em breve.',
     }
   },
-  allowList: (request) => request.url === '/health',
+  allowList: (request) => request.routeOptions?.url === '/health',
 })
 
 // Register routes — AFTER setErrorHandler and runMigrations (Story 4.1)

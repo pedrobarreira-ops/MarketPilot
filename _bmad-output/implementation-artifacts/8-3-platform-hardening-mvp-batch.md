@@ -422,3 +422,20 @@ claude-sonnet-4-6 (Step 3 Developer)
 
 - 2026-04-24: Story 8.3 created — platform-hardening MVP batch (rate-limit + Cache-Control + CSV BOM assertion + :id UUID guards).
 - 2026-04-24: Story 8.3 implemented — all ACs satisfied; 76 ATDD tests pass; 823 full-suite tests pass (0 fail). Status set to review.
+- 2026-04-24: Step 5 code review (Opus) — 3 defers, 1 patch applied, 3 dismissals. Patch: hardened `/health` allowList to match on `request.routeOptions?.url` instead of raw `request.url` so query-stringed health probes still bypass the limiter. Spec deviation documented: `src/middleware/errorHandler.js` IS modified (against the spec's Architecture Guardrail) because `@fastify/rate-limit` `throw`s the builder result rather than calling `reply.send` directly — without the new 429 dispatch branch in `errorHandler`, AC-6 would silently fail. All 76 ATDD tests and 823 full-suite tests pass post-review.
+
+---
+
+### Review Findings
+
+Code review run on 2026-04-24 (Step 5 — Opus). 7 findings triaged:
+
+- [x] **[Review][Patch]** `/health` allowList missed query-stringed probes [src/server.js] — changed `request.url === '/health'` to `request.routeOptions?.url === '/health'` so `/health?probe=1` still bypasses the rate limiter. Test-app helper in `tests/epic8-8.3-platform-hardening-mvp-batch.atdd.test.js` updated to match. All 76 ATDD tests + 823 full-suite tests still pass.
+- [x] **[Review][Patch]** Document `errorHandler.js` spec deviation as intentional — spec's Architecture Guardrail said "No changes needed" but `@fastify/rate-limit` uses `throw` not `reply.send`, so the `errorHandler` 429 dispatch branch is load-bearing for AC-6. Change log updated; no code action needed beyond the documentation.
+- [x] **[Review][Defer]** `errorHandler.js` 429 dispatch relies on string-literal match [src/middleware/errorHandler.js:22] — deferred, would benefit from a symbol-keyed marker or dedicated error class.
+- [x] **[Review][Defer]** `UUID_REGEX` duplicated across `reports.js` and `jobs.js` [src/routes/reports.js:23, src/routes/jobs.js:19] — deferred, Dev Notes explicitly sanctioned duplication; consolidate in a future hardening pass.
+- [x] **[Review][Defer]** `Cache-Control: private, no-store` literal duplicated 4× in `reports.js` — deferred, forward-compatibility nit; a future reply-path addition could silently miss the header.
+- [x] **[Review][Dismiss]** UUID_REGEX looser than RFC 4122 — INTENTIONAL per Epic 8.3 AC wording ("one regex, not length+charset pair"). False-match outcomes end in 404 DB-miss. No enumeration oracle.
+- [x] **[Review][Dismiss]** `errorResponseBuilder` ignores `_context` (no Retry-After in body) — no AC requires it; plugin sets `Retry-After` header automatically.
+
+Deferred items recorded in `_bmad-output/implementation-artifacts/deferred-work.md` under the 2026-04-24 section.
