@@ -46,14 +46,16 @@ function scoreChannel(product, my_price, channelData) {
 
   // Uncontested — no competitor data, or malformed competitor price.
   // Reject: null/undefined (no data), non-numeric (e.g. string from a buggy
-  // upstream), non-finite (NaN, Infinity), and negative (a negative price would
-  // make gap_pct negative, incorrectly triggering is_quick_win via `<= 0.02`).
-  // Zero IS allowed — handled explicitly as a degenerate losing case (see G-6).
+  // upstream), non-finite (NaN, Infinity), and non-positive (zero would produce
+  // gap_pct = Infinity and misleading "€0,00 first place" UI; negative would
+  // make gap_pct negative and incorrectly trigger is_quick_win via `<= 0.02`).
+  // scanCompetitors.js is the primary source of zero-filtering — this is
+  // defense-in-depth in case a zero ever slips through.
   if (
     competitorFirst === null ||
     typeof competitorFirst !== 'number' ||
     !Number.isFinite(competitorFirst) ||
-    competitorFirst < 0
+    competitorFirst <= 0
   ) {
     return { status: 'uncontested' }
   }

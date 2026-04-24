@@ -65,10 +65,17 @@ function extractPricesForChannel(products, batchEans) {
     const ean = resolveEanForProduct(product, batchEans)
     if (!ean) continue
 
-    const activeOffers = (product.offers ?? []).filter(o => o.active === true)
+    // Filter to active offers with a positive, finite total_price. Worten's P11
+    // sometimes returns offers with total_price === 0 (hidden/placeholder listings).
+    // Treating those as valid competitor prices produces degenerate scoring
+    // (gap_pct = Infinity, wow_score = 0) and misleading UI (€0,00 "1st place").
+    // Null-out zero-or-non-positive so downstream classifies as uncontested.
+    const validOffers = (product.offers ?? []).filter(
+      o => o.active === true && Number.isFinite(o.total_price) && o.total_price > 0
+    )
     m.set(ean, {
-      first: activeOffers[0]?.total_price ?? null,
-      second: activeOffers[1]?.total_price ?? null,
+      first:  validOffers[0]?.total_price ?? null,
+      second: validOffers[1]?.total_price ?? null,
     })
   }
   return m

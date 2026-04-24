@@ -221,10 +221,14 @@ describe('Story 3.4 unit — gaps not covered by ATDD', async () => {
   })
 
   // ── G-6: competitor_first === 0 boundary ─────────────────────────────────
-  describe('G-6: competitor_first === 0 does not crash (division edge case)', () => {
-    test('competitor_first === 0 with my_price > 0 yields losing classification without NaN crash', () => {
-      // gap_pct = gap / 0 → Infinity; wow_score = my_price / Infinity = 0
-      // This is mathematically degenerate but should not throw
+  describe('G-6: competitor_first === 0 is classified as uncontested (not losing)', () => {
+    test('competitor_first === 0 with my_price > 0 yields uncontested classification', () => {
+      // A zero competitor price is a degenerate data point (typically a hidden
+      // or placeholder Mirakl offer). Treating it as a legitimate losing case
+      // produces gap_pct = Infinity, wow_score = 0 in the CSV and "€0,00 first
+      // place" in the UI — both misleading to end users. scanCompetitors.js
+      // should filter these at the source; computeReport enforces it as
+      // defense-in-depth.
       const catalog = [makeCatalogEntry({ ean: 'ZERO', price: 10.00 })]
       const competitors = new Map([['ZERO', makeCompetitorEntry({ ptFirst: 0 })]])
 
@@ -233,9 +237,9 @@ describe('Story 3.4 unit — gaps not covered by ATDD', async () => {
         result = computeReport(catalog, competitors)
       }, 'computeReport must not throw when competitor_first === 0')
 
-      // Product is losing (10 > 0) — verify it is classified, even if scores are extreme
-      assert.equal(result.summary_pt.losing, 1, 'my_price(10) > competitor_first(0) → losing')
-      assert.equal(result.opportunities_pt.length, 1, 'losing product must appear in opportunities_pt')
+      assert.equal(result.summary_pt.uncontested, 1, 'competitor_first(0) → uncontested (degenerate input)')
+      assert.equal(result.summary_pt.losing, 0, 'competitor_first(0) must NOT be classified as losing')
+      assert.equal(result.opportunities_pt.length, 0, 'uncontested product must NOT appear in opportunities_pt')
     })
   })
 
