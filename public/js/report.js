@@ -101,13 +101,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     const tbodies = document.querySelectorAll('tbody')
     if (tbodies.length < 2) return
 
-    // Opportunities and Quick Wins tables both have 5 columns post-design-port
-    // (Pontuação / Score WOW columns dropped — opaque to clients without explanation).
+    // Opportunities and Quick Wins tables both have 6 columns post-2026-04-27:
+    // Produto, O teu preço, 1.º lugar €, Diferença €, Diferença %, Ver (link).
     tbodies[0].innerHTML = ''
-    for (let i = 0; i < 4; i++) tbodies[0].appendChild(makeShimmerRow(5))
+    for (let i = 0; i < 4; i++) tbodies[0].appendChild(makeShimmerRow(6))
 
     tbodies[1].innerHTML = ''
-    for (let i = 0; i < 4; i++) tbodies[1].appendChild(makeShimmerRow(5))
+    for (let i = 0; i < 4; i++) tbodies[1].appendChild(makeShimmerRow(6))
   }
 
   function applySkeletonStatCards () {
@@ -202,7 +202,7 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     const noDataMsg = 'Sem dados para Worten ES — este catálogo não tem ofertas activas neste canal.'
     for (const tbody of tbodies) {
       const noDataTd = document.createElement('td')
-      noDataTd.colSpan = 5
+      noDataTd.colSpan = 6
       noDataTd.className = 'px-6 py-8 text-on-surface-variant text-center'
       noDataTd.textContent = noDataMsg
       const noDataRow = document.createElement('tr')
@@ -268,6 +268,62 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
   // a tighter ≤2% threshold for is_quick_win.)
   const COMPETITIVE_GAP_THRESHOLD = 0.05
 
+  // Row cap per visible table — opportunities are sorted desc by wow_score,
+  // so the top N are the most actionable. Long-tail rows are available in
+  // the CSV download. Without a cap a 31k-product report scrolls forever.
+  const VISIBLE_ROW_CAP = 20
+
+  // Worten storefront EAN-search URL. Mirakl OF21/P11 don't expose a direct
+  // product page URL (verified via Mirakl MCP 2026-04-27 — the only URL fields
+  // are product_media.dam_url / media_url which point at images). EAN search
+  // is the most reliable cross-marketplace fallback.
+  function eanSearchUrl (ean) {
+    return 'https://www.worten.pt/search?query=' + encodeURIComponent(ean)
+  }
+
+  function makeLinkCell (ean, baseClassName) {
+    const td = document.createElement('td')
+    td.className = baseClassName + ' text-center'
+    if (!ean) return td // no EAN → empty cell, no link
+    const link = document.createElement('a')
+    link.href = eanSearchUrl(ean)
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.className = 'inline-flex items-center justify-center gap-1 px-3 py-1.5 text-[12px] text-on-surface-variant hover:text-primary hover:bg-primary-fixed rounded-md transition-colors'
+    link.title = 'Abrir página deste produto no Worten'
+    const icon = document.createElement('span')
+    icon.className = 'material-symbols-outlined'
+    icon.style.fontSize = '16px'
+    icon.textContent = 'open_in_new'
+    link.appendChild(icon)
+    td.appendChild(link)
+    return td
+  }
+
+  // Append "A mostrar 20 de N..." note as a tfoot row, or remove the existing
+  // one if N <= cap. Called by both renderers.
+  function setRowCapFooter (tbody, totalRows, sectionLabel) {
+    const table = tbody.closest('table')
+    if (!table) return
+    let tfoot = table.querySelector('tfoot')
+    if (totalRows <= VISIBLE_ROW_CAP) {
+      if (tfoot) tfoot.remove()
+      return
+    }
+    if (!tfoot) {
+      tfoot = document.createElement('tfoot')
+      table.appendChild(tfoot)
+    }
+    tfoot.innerHTML = ''
+    const tr = document.createElement('tr')
+    const td = document.createElement('td')
+    td.colSpan = 6
+    td.className = 'px-6 pt-6 text-center text-xs text-on-surface-variant'
+    td.textContent = 'A mostrar as ' + VISIBLE_ROW_CAP + ' principais ' + sectionLabel + ' de ' + totalRows + ' totais. Descarrega o CSV para a lista completa.'
+    tr.appendChild(td)
+    tfoot.appendChild(tr)
+  }
+
   function renderOpportunities (opportunities) {
     const oppTbody = document.querySelectorAll('tbody')[0]
     if (!oppTbody) return
@@ -277,6 +333,12 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     const competitive = allOpps.filter(function (o) {
       return o.gap_pct != null && Number.isFinite(o.gap_pct) && o.gap_pct <= COMPETITIVE_GAP_THRESHOLD
     })
+
+    // Cap visible rows; surface "X de N" in tfoot when truncated. The full
+    // ranked list still lands in the CSV download.
+    const totalCompetitive = competitive.length
+    const visibleOpps = competitive.slice(0, VISIBLE_ROW_CAP)
+    setRowCapFooter(oppTbody, totalCompetitive, 'oportunidades')
 
     if (competitive.length === 0) {
       const td = document.createElement('td')
@@ -296,7 +358,7 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       return
     }
 
-    competitive.forEach(function (item, idx) {
+    visibleOpps.forEach(function (item, idx) {
       const tr = document.createElement('tr')
       tr.className = 'bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors shadow-sm rounded-lg'
       if (idx === 0) {
@@ -328,19 +390,23 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       tdGapEur.style.color = '#DC2626'
       tdGapEur.textContent = formatGapEur(gapEur)
 
-      // Column 5: Gap pct — red pill, rounded right
+      // Column 5: Gap pct — red pill (no longer rounded right; link cell takes that role)
       const tdGapPct = document.createElement('td')
-      tdGapPct.className = 'px-6 py-6 rounded-r-lg text-center'
+      tdGapPct.className = 'px-6 py-6 text-center'
       const pill = document.createElement('span')
       pill.className = 'bg-error-container text-on-error-container px-2 py-0.5 rounded text-xs'
       pill.textContent = formatGapPct(item.gap_pct)
       tdGapPct.appendChild(pill)
+
+      // Column 6: Worten product link (EAN search), rounded right
+      const tdLink = makeLinkCell(item.ean, 'px-6 py-6 rounded-r-lg')
 
       tr.appendChild(tdProduct)
       tr.appendChild(tdMyPrice)
       tr.appendChild(tdFirstPrice)
       tr.appendChild(tdGapEur)
       tr.appendChild(tdGapPct)
+      tr.appendChild(tdLink)
       oppTbody.appendChild(tr)
     })
   }
@@ -352,9 +418,12 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     if (!qwTbody) return
     qwTbody.innerHTML = ''
 
-    if (!quickwins || quickwins.length === 0) {
+    const allQuickWins = quickwins || []
+    setRowCapFooter(qwTbody, allQuickWins.length, 'vitórias rápidas')
+
+    if (allQuickWins.length === 0) {
       const td = document.createElement('td')
-      td.colSpan = 5
+      td.colSpan = 6
       td.className = 'px-6 py-8 text-on-surface-variant text-center'
       td.style.padding = '2rem 1.5rem'  // inline fallback for py-8 (Tailwind JIT safety)
       td.textContent = 'Não há vitórias rápidas disponíveis neste canal.'
@@ -364,7 +433,9 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       return
     }
 
-    quickwins.forEach(function (item) {
+    const visibleQuickWins = allQuickWins.slice(0, VISIBLE_ROW_CAP)
+
+    visibleQuickWins.forEach(function (item) {
       const tr = document.createElement('tr')
       tr.className = 'hover:bg-surface-container transition-colors'
 
@@ -398,11 +469,15 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       pill.textContent = formatGapPct(item.gap_pct)
       tdGapPct.appendChild(pill)
 
+      // Column 6: Worten product link (EAN search)
+      const tdLink = makeLinkCell(item.ean, 'px-6 py-5 border-b border-outline-variant/10')
+
       tr.appendChild(tdProduct)
       tr.appendChild(tdMyPrice)
       tr.appendChild(tdFirstPrice)
       tr.appendChild(tdGapEur)
       tr.appendChild(tdGapPct)
+      tr.appendChild(tdLink)
       qwTbody.appendChild(tr)
     })
   }

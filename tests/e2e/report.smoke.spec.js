@@ -197,8 +197,9 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
   // Post-design-port (2026-04-27): the WOW Score / Pontuação column was dropped
   // from both Maiores Oportunidades and Vitórias Rápidas tables — clients
   // couldn't interpret the opaque integer without a documented formula. Tables
-  // now have 5 columns; ordering already encodes priority.
-  test('6.2 — both tables have 5 columns (Pontuação/Score column dropped post-design-port)', async ({ page }) => {
+  // now have 6 columns post-2026-04-27 (5 data + a "Ver" link column to the
+  // Worten storefront via EAN search); ordering already encodes priority.
+  test('6.2 — both tables have 6 columns (5 data + Ver link)', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({ data: SAMPLE_REPORT }),
@@ -208,15 +209,20 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.locator('#stat-winning')).toHaveText('4.821')
     await expect(page.getByText('Apple AirPods Pro 2')).toBeVisible()
 
-    // Each thead row must have exactly 5 <th> cells
+    // Each thead row must have exactly 6 <th> cells
     const oppHeaderCells = page.locator('table').nth(0).locator('thead tr th')
-    await expect(oppHeaderCells).toHaveCount(5)
+    await expect(oppHeaderCells).toHaveCount(6)
     const qwHeaderCells = page.locator('table').nth(1).locator('thead tr th')
-    await expect(qwHeaderCells).toHaveCount(5)
+    await expect(qwHeaderCells).toHaveCount(6)
 
-    // First quick-wins row must have 5 <td> cells (one per data column)
+    // First quick-wins row must have 6 <td> cells (one per data column + the link)
     const firstQwRow = page.locator('tbody').nth(1).locator('tr').first()
-    await expect(firstQwRow.locator('td')).toHaveCount(5)
+    await expect(firstQwRow.locator('td')).toHaveCount(6)
+
+    // Link column points at Worten search-by-EAN (verified via Mirakl MCP
+    // 2026-04-27 — OF21/P11 expose no direct product-page URL).
+    const firstLink = firstQwRow.locator('a[href*="worten.pt/search?query="]')
+    await expect(firstLink).toHaveAttribute('target', '_blank')
 
     // Headers reflect the design-port labels (Δ symbols reverted to "Diferença"
     // 2026-04-27 per Pedro feedback — clearer for non-technical readers)
