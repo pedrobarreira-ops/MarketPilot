@@ -4,9 +4,12 @@
  *
  * Acceptance criteria verified (static-only, no browser, no server):
  *
- * AC-8 (static): WOW scores are rendered as formatted numbers — not injected
- *   as raw/unformatted values. The source must contain locale formatting logic
- *   (toLocaleString or Intl.NumberFormat) in the vicinity of wow_score usage.
+ * AC-8 (static): Numeric values rendered in the report use locale formatting —
+ *   prices, gap percentages, and stat-card counts go through toLocaleString or
+ *   Intl.NumberFormat. WOW score / Pontuação column itself was dropped in the
+ *   2026-04-27 design port (clients can't interpret an opaque score without an
+ *   explained formula); the score field still exists on the data shape and is
+ *   used for sorting upstream, just not surfaced in the UI.
  *
  * These tests read `public/js/report.js` source text and apply regex assertions.
  * They are hermetic — no browser, no Fastify, no Redis, no SQLite required.
@@ -50,9 +53,9 @@ function requireSource() {
   return reportJsSrc
 }
 
-// ── AC-8: WOW scores formatted as locale numbers ──────────────────────────
+// ── AC-8: numeric values use locale formatting ───────────────────────────
 
-describe('AC-8 (static): WOW scores rendered as formatted numbers (not raw)', () => {
+describe('AC-8 (static): numeric values rendered via locale formatting', () => {
   test('T-6.2-static.1a — source contains toLocaleString or Intl.NumberFormat for numeric formatting', () => {
     const src = requireSource()
     const hasLocaleString = /\.toLocaleString\s*\(/.test(src)
@@ -60,17 +63,8 @@ describe('AC-8 (static): WOW scores rendered as formatted numbers (not raw)', ()
     assert.ok(
       hasLocaleString || hasIntlFormat,
       'report.js must use toLocaleString() or Intl.NumberFormat to format numeric values ' +
-      '(prices, WOW scores, stat counts) in pt-PT locale. ' +
+      '(prices, gap percentages, stat counts, value-line currency) in pt-PT locale. ' +
       'Raw number injection via textContent/innerHTML is not acceptable for locale-formatted display.'
-    )
-  })
-
-  test('T-6.2-static.1b — source references wow_score field from opportunities data', () => {
-    const src = requireSource()
-    assert.ok(
-      /wow_score/.test(src),
-      'report.js must reference wow_score when rendering the Opportunities table (AC-4). ' +
-      'The wow_score field from the API response must be read and displayed in the WOW column.'
     )
   })
 

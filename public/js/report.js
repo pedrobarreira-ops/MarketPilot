@@ -22,12 +22,20 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
   const ptBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[0] : null
   const esBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[1] : null
 
-  // Stat card number spans (three large numbers in the existing 3-card row)
-  const statNumbers = document.querySelectorAll('.text-6xl.font-extrabold.text-primary')
+  // Stat card number elements — 4-up grid (Em 1.º lugar, A perder, Sem
+  // concorrência, Ao alcance). Stable IDs introduced with the design port.
+  const statWinningEl = document.getElementById('stat-winning')
+  const statLosingEl = document.getElementById('stat-losing')
+  const statUncontestedEl = document.getElementById('stat-uncontested')
+  const statReachEl = document.getElementById('stat-reach')
+  const statNumbers = [statWinningEl, statLosingEl, statUncontestedEl, statReachEl].filter(Boolean)
 
-  // PRODUTOS AO ALCANCE hero card — count element targeted by id (different
-  // styling from the 3-card row, so not picked up by the statNumbers query above)
-  const withinReachEl = document.getElementById('within-reach-count')
+  // Value-line elements — Σ(my_price) per bucket, surfaced as "valor de catálogo"
+  const valueWinningEl = document.getElementById('value-winning')
+  const valueLosingEl = document.getElementById('value-losing')
+  const valueUncontestedEl = document.getElementById('value-uncontested')
+  const valueReachEl = document.getElementById('value-reach')
+  const valueLines = [valueWinningEl, valueLosingEl, valueUncontestedEl, valueReachEl].filter(Boolean)
 
   // CSV download button (in the Quick Wins section — contains a download icon)
   let csvBtn = null
@@ -92,32 +100,42 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     const tbodies = document.querySelectorAll('tbody')
     if (tbodies.length < 2) return
 
-    // Opportunities table: 6 columns
+    // Opportunities and Quick Wins tables both have 5 columns post-design-port
+    // (Pontuação / Score WOW columns dropped — opaque to clients without explanation).
     tbodies[0].innerHTML = ''
-    for (let i = 0; i < 4; i++) tbodies[0].appendChild(makeShimmerRow(6))
+    for (let i = 0; i < 4; i++) tbodies[0].appendChild(makeShimmerRow(5))
 
-    // Quick Wins table: 6 columns
     tbodies[1].innerHTML = ''
-    for (let i = 0; i < 4; i++) tbodies[1].appendChild(makeShimmerRow(6))
+    for (let i = 0; i < 4; i++) tbodies[1].appendChild(makeShimmerRow(5))
   }
 
   function applySkeletonStatCards () {
+    // Cards 1-3 use shared shimmer; the navy-fill reach card (#stat-reach) needs
+    // a translucent-white shimmer so the pulse stays visible on dark fill.
     statNumbers.forEach(el => {
       el.textContent = ''
-      el.classList.add('animate-pulse', 'bg-surface-container', 'rounded')
+      el.classList.add('animate-pulse', 'rounded')
+      if (el === statReachEl) {
+        el.style.background = 'rgba(255,255,255,0.15)'
+      } else {
+        el.classList.add('bg-surface-container')
+      }
       el.style.minWidth = '4rem'
       el.style.minHeight = '1.5rem'
       el.style.display = 'inline-block'
     })
-    // PRODUTOS AO ALCANCE hero card — distinct skeleton (white-on-primary, larger)
-    if (withinReachEl) {
-      withinReachEl.textContent = ''
-      withinReachEl.classList.add('animate-pulse', 'rounded')
-      withinReachEl.style.background = 'rgba(255,255,255,0.15)'
-      withinReachEl.style.minWidth = '5rem'
-      withinReachEl.style.minHeight = '4rem'
-      withinReachEl.style.display = 'inline-block'
-    }
+    valueLines.forEach(el => {
+      el.textContent = ''
+      el.classList.add('animate-pulse', 'rounded')
+      if (el === valueReachEl) {
+        el.style.background = 'rgba(255,255,255,0.15)'
+      } else {
+        el.classList.add('bg-surface-container')
+      }
+      el.style.minWidth = '3rem'
+      el.style.minHeight = '0.875rem'
+      el.style.display = 'inline-block'
+    })
   }
 
   function applySkeleton () {
@@ -140,19 +158,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
   // ── Task 4 helpers: remove skeleton and render populated state ────────────
 
   function removeSkeletonStatCards () {
-    statNumbers.forEach(el => {
+    statNumbers.concat(valueLines).forEach(el => {
       el.classList.remove('animate-pulse', 'bg-surface-container', 'rounded')
+      el.style.background = ''
       el.style.minWidth = ''
       el.style.minHeight = ''
       el.style.display = ''
     })
-    if (withinReachEl) {
-      withinReachEl.classList.remove('animate-pulse', 'rounded')
-      withinReachEl.style.background = ''
-      withinReachEl.style.minWidth = ''
-      withinReachEl.style.minHeight = ''
-      withinReachEl.style.display = ''
-    }
   }
 
   function formatPortugueseDate (generatedAt) {
@@ -189,7 +201,7 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     const noDataMsg = 'Sem dados para Worten ES — este catálogo não tem ofertas activas neste canal.'
     for (const tbody of tbodies) {
       const noDataTd = document.createElement('td')
-      noDataTd.colSpan = 6
+      noDataTd.colSpan = 5
       noDataTd.className = 'px-6 py-8 text-on-surface-variant text-center'
       noDataTd.textContent = noDataMsg
       const noDataRow = document.createElement('tr')
@@ -234,6 +246,18 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     return (n * 100).toFixed(1) + '%'
   }
 
+  // Compact pt-PT currency for stat-card value-lines: "€248.500" (no decimals,
+  // dot thousands). Designed for headline summaries — formatPrice stays for
+  // per-row table cells where 2 decimals matter.
+  function formatCurrencyCompact (val) {
+    const n = Math.round(Number(val) || 0)
+    try {
+      return '€' + n.toLocaleString('pt-PT', { maximumFractionDigits: 0 })
+    } catch (_) {
+      return '€' + Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    }
+  }
+
   // ── Story 6.2: Opportunities table renderer ───────────────────────────────
 
   // Maiores Oportunidades shows only products in the competitive zone:
@@ -255,7 +279,7 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
     if (competitive.length === 0) {
       const td = document.createElement('td')
-      td.colSpan = 6
+      td.colSpan = 5
       td.className = 'px-6 py-8 text-on-surface-variant text-center'
       td.style.padding = '2rem 1.5rem'  // inline fallback for py-8 (Tailwind JIT safety)
       // Differentiate "winning all" vs "losing all by >5%" — both render an
@@ -275,13 +299,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       const tr = document.createElement('tr')
       tr.className = 'bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors shadow-sm rounded-lg'
       if (idx === 0) {
-        // First-row #EFF6FF tint — inline style to avoid JIT purge of bg-blue-50
+        // First-row tint — inline style to avoid JIT purge of bg-blue-50
         tr.style.backgroundColor = '#EFF6FF'
       }
 
-      // Column 1: Product title
+      // Column 1: Product title (rounded left, first row gets accent border)
       const tdProduct = document.createElement('td')
-      tdProduct.className = 'px-6 py-6 rounded-l-lg'
+      tdProduct.className = 'px-6 py-6 rounded-l-lg font-bold text-primary'
       tdProduct.textContent = item.product_title || item.ean || ''
       if (idx === 0) tdProduct.classList.add('border-l-4', 'border-primary')
 
@@ -303,25 +327,19 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       tdGapEur.style.color = '#DC2626'
       tdGapEur.textContent = formatGapEur(gapEur)
 
-      // Column 5: Gap pct — red pill
+      // Column 5: Gap pct — red pill, rounded right
       const tdGapPct = document.createElement('td')
-      tdGapPct.className = 'px-6 py-6'
+      tdGapPct.className = 'px-6 py-6 rounded-r-lg'
       const pill = document.createElement('span')
       pill.className = 'bg-error-container text-on-error-container px-2 py-0.5 rounded text-xs'
       pill.textContent = formatGapPct(item.gap_pct)
       tdGapPct.appendChild(pill)
-
-      // Column 6: WOW score — right-aligned integer
-      const tdWow = document.createElement('td')
-      tdWow.className = 'px-6 py-6 rounded-r-lg font-black text-primary text-lg tracking-tighter text-right'
-      tdWow.textContent = Math.round(Number(item.wow_score) || 0).toString()
 
       tr.appendChild(tdProduct)
       tr.appendChild(tdMyPrice)
       tr.appendChild(tdFirstPrice)
       tr.appendChild(tdGapEur)
       tr.appendChild(tdGapPct)
-      tr.appendChild(tdWow)
       oppTbody.appendChild(tr)
     })
   }
@@ -335,7 +353,7 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
     if (!quickwins || quickwins.length === 0) {
       const td = document.createElement('td')
-      td.colSpan = 6
+      td.colSpan = 5
       td.className = 'px-6 py-8 text-on-surface-variant text-center'
       td.style.padding = '2rem 1.5rem'  // inline fallback for py-8 (Tailwind JIT safety)
       td.textContent = 'Não há vitórias rápidas disponíveis neste canal.'
@@ -344,8 +362,6 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       qwTbody.appendChild(tr)
       return
     }
-
-    const maxScore = Math.max.apply(null, quickwins.map(function (q) { return q.wow_score || 0 })) || 1
 
     quickwins.forEach(function (item) {
       const tr = document.createElement('tr')
@@ -381,26 +397,11 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       pill.textContent = formatGapPct(item.gap_pct)
       tdGapPct.appendChild(pill)
 
-      // Column 6: Score bar (not a number — horizontal navy bar relative to maxScore).
-      // Coerce wow_score defensively — undefined / maxScore yields NaN and makes the bar invisible.
-      const itemScore = Number(item.wow_score) || 0
-      const pct = Math.max(2, Math.round((itemScore / maxScore) * 100))
-      const tdScore = document.createElement('td')
-      tdScore.className = 'px-6 py-5 border-b border-outline-variant/10'
-      const barOuter = document.createElement('div')
-      barOuter.className = 'w-24 h-1 bg-surface-variant rounded-full overflow-hidden'
-      const barInner = document.createElement('div')
-      barInner.className = 'h-full bg-primary'
-      barInner.style.width = pct + '%'
-      barOuter.appendChild(barInner)
-      tdScore.appendChild(barOuter)
-
       tr.appendChild(tdProduct)
       tr.appendChild(tdMyPrice)
       tr.appendChild(tdFirstPrice)
       tr.appendChild(tdGapEur)
       tr.appendChild(tdGapPct)
-      tr.appendChild(tdScore)
       qwTbody.appendChild(tr)
     })
   }
@@ -422,15 +423,24 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     const winning = summary.winning != null ? summary.winning : (summary.in_first != null ? summary.in_first : 0)
     const losing = summary.losing != null ? summary.losing : 0
     const uncontested = summary.uncontested != null ? summary.uncontested : 0
+    const withinReach = summary.within_reach != null ? summary.within_reach : 0
 
     // Update stat cards with pt-PT locale formatting (AC-12)
-    if (statNumbers[0]) statNumbers[0].textContent = formatPtPT(winning)
-    if (statNumbers[1]) statNumbers[1].textContent = formatPtPT(losing)
-    if (statNumbers[2]) statNumbers[2].textContent = formatPtPT(uncontested)
+    if (statWinningEl) statWinningEl.textContent = formatPtPT(winning)
+    if (statLosingEl) statLosingEl.textContent = formatPtPT(losing)
+    if (statUncontestedEl) statUncontestedEl.textContent = formatPtPT(uncontested)
+    if (statReachEl) statReachEl.textContent = formatPtPT(withinReach)
 
-    // PRODUTOS AO ALCANCE hero card — losing products with gap_pct ≤5%
-    const withinReach = summary.within_reach != null ? summary.within_reach : 0
-    if (withinReachEl) withinReachEl.textContent = formatPtPT(withinReach)
+    // Value-lines — Σ(my_price) per bucket. Older reports (generated before
+    // *_value was added to summary) won't have these fields; fall back to "€—".
+    function setValue(el, val) {
+      if (!el) return
+      el.textContent = (val == null || !Number.isFinite(Number(val))) ? '€—' : formatCurrencyCompact(val)
+    }
+    setValue(valueWinningEl, summary.winning_value)
+    setValue(valueLosingEl, summary.losing_value)
+    setValue(valueUncontestedEl, summary.uncontested_value)
+    setValue(valueReachEl, summary.within_reach_value)
 
     const tbodies = document.querySelectorAll('tbody')
     if (tbodies.length < 2) return

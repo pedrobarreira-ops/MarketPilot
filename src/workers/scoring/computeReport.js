@@ -95,9 +95,17 @@ function scoreChannel(product, my_price, channelData) {
  * @returns {{
  *   opportunities_pt: Array, opportunities_es: Array,
  *   quickwins_pt: Array, quickwins_es: Array,
- *   summary_pt: { total: number, winning: number, losing: number, uncontested: number },
- *   summary_es: { total: number, winning: number, losing: number, uncontested: number }
+ *   summary_pt: { total, winning, losing, uncontested, within_reach,
+ *                  winning_value, losing_value, uncontested_value, within_reach_value },
+ *   summary_es: { total, winning, losing, uncontested, within_reach,
+ *                  winning_value, losing_value, uncontested_value, within_reach_value }
  * }}
+ *
+ * `*_value` fields are Σ(my_price) per bucket — surfaced as "valor de catálogo
+ * a vencer / exposto / exclusivo / ao alcance" on the report cards. Honest
+ * framing per the design discussion: never multiplied by stock or velocity.
+ * Products with non-numeric price contribute to `uncontested` count only,
+ * not to any `*_value` sum.
  */
 // Threshold for "within reach" classification — losing products with gap_pct
 // at or below this value are competitive (closing the gap is realistic without
@@ -112,15 +120,22 @@ export function computeReport(catalog, competitors) {
   // AC-7: total equals catalog.length for both channels — both channels see every
   // product, they just classify it differently.
   // within_reach is a subset of losing — counted independently per channel.
-  const summary_pt = { total: catalog.length, winning: 0, losing: 0, uncontested: 0, within_reach: 0 }
-  const summary_es = { total: catalog.length, winning: 0, losing: 0, uncontested: 0, within_reach: 0 }
+  const summary_pt = {
+    total: catalog.length, winning: 0, losing: 0, uncontested: 0, within_reach: 0,
+    winning_value: 0, losing_value: 0, uncontested_value: 0, within_reach_value: 0,
+  }
+  const summary_es = {
+    total: catalog.length, winning: 0, losing: 0, uncontested: 0, within_reach: 0,
+    winning_value: 0, losing_value: 0, uncontested_value: 0, within_reach_value: 0,
+  }
 
   for (const product of catalog) {
     const my_price = parseFloat(product.price)
 
     // NaN guard (AC-1 dev note): price is null/undefined/non-numeric → treat as
     // uncontested for both channels. Still counted in summary totals to preserve
-    // the invariant winning + losing + uncontested === total.
+    // the invariant winning + losing + uncontested === total. *_value sums
+    // skip these rows since there's no price to add.
     if (Number.isNaN(my_price)) {
       summary_pt.uncontested++
       summary_es.uncontested++
@@ -134,11 +149,17 @@ export function computeReport(catalog, competitors) {
     if (ptResult.status === 'losing') {
       opportunities_pt.push(ptResult.entry)
       summary_pt.losing++
-      if (ptResult.entry.gap_pct <= WITHIN_REACH_THRESHOLD) summary_pt.within_reach++
+      summary_pt.losing_value += my_price
+      if (ptResult.entry.gap_pct <= WITHIN_REACH_THRESHOLD) {
+        summary_pt.within_reach++
+        summary_pt.within_reach_value += my_price
+      }
     } else if (ptResult.status === 'winning') {
       summary_pt.winning++
+      summary_pt.winning_value += my_price
     } else {
       summary_pt.uncontested++
+      summary_pt.uncontested_value += my_price
     }
 
     // ES channel — scored independently (AC-8)
@@ -146,11 +167,17 @@ export function computeReport(catalog, competitors) {
     if (esResult.status === 'losing') {
       opportunities_es.push(esResult.entry)
       summary_es.losing++
-      if (esResult.entry.gap_pct <= WITHIN_REACH_THRESHOLD) summary_es.within_reach++
+      summary_es.losing_value += my_price
+      if (esResult.entry.gap_pct <= WITHIN_REACH_THRESHOLD) {
+        summary_es.within_reach++
+        summary_es.within_reach_value += my_price
+      }
     } else if (esResult.status === 'winning') {
       summary_es.winning++
+      summary_es.winning_value += my_price
     } else {
       summary_es.uncontested++
+      summary_es.uncontested_value += my_price
     }
   }
 

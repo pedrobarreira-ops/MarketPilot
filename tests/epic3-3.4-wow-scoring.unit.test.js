@@ -267,4 +267,57 @@ describe('Story 3.4 unit — gaps not covered by ATDD', async () => {
       )
     })
   })
+
+  // ── G-8: *_value fields — Σ(my_price) per bucket ─────────────────────────
+  // Surfaced as "valor de catálogo" lines on the report cards. Honest framing:
+  // sum of catalog prices, never multiplied by stock or velocity.
+  describe('G-8: summary *_value fields sum my_price per bucket', () => {
+    test('winning_value, losing_value, uncontested_value, within_reach_value sum correctly', () => {
+      // gap_pct = (my_price - competitor_first) / competitor_first
+      // within_reach threshold = 0.05 (≤5%)
+      const catalog = [
+        makeCatalogEntry({ ean: 'V001', price: 100 }),  // winning PT (100 <= 120)
+        makeCatalogEntry({ ean: 'V002', price: 105 }),  // losing PT, within_reach (gap_pct = 5/100 = 0.05)
+        makeCatalogEntry({ ean: 'V003', price: 300 }),  // losing PT, NOT within_reach (gap_pct = 100/200 = 0.50)
+        makeCatalogEntry({ ean: 'V004', price: 400 }),  // uncontested PT (no competitor)
+      ]
+      const competitors = new Map([
+        ['V001', makeCompetitorEntry({ ptFirst: 120 })],
+        ['V002', makeCompetitorEntry({ ptFirst: 100 })],
+        ['V003', makeCompetitorEntry({ ptFirst: 200 })],
+        // V004 absent → uncontested PT
+      ])
+
+      const result = computeReport(catalog, competitors)
+
+      assert.equal(result.summary_pt.winning_value, 100, 'winning_value = sum of winning prices')
+      assert.equal(result.summary_pt.losing_value, 405, 'losing_value = sum of all losing prices (105 + 300)')
+      assert.equal(result.summary_pt.within_reach_value, 105, 'within_reach_value = sum of within-reach prices only (105, not 300)')
+      assert.equal(result.summary_pt.uncontested_value, 400, 'uncontested_value = sum of uncontested prices')
+    })
+
+    test('NaN-priced product contributes to uncontested count but not to *_value sums', () => {
+      const catalog = [
+        makeCatalogEntry({ ean: 'NAN1', price: null }),   // NaN → uncontested both channels, no value
+        makeCatalogEntry({ ean: 'GOOD', price: 50 }),     // uncontested both (no competitor data) → adds 50
+      ]
+      const competitors = new Map()
+
+      const result = computeReport(catalog, competitors)
+
+      assert.equal(result.summary_pt.uncontested, 2, 'NaN product still counted in uncontested')
+      assert.equal(result.summary_pt.uncontested_value, 50, 'NaN price must NOT add to uncontested_value')
+      assert.equal(result.summary_es.uncontested_value, 50, 'ES: NaN price must NOT add to uncontested_value')
+    })
+
+    test('all *_value fields exist as numbers for both channels (shape contract)', () => {
+      const result = computeReport([], new Map())
+      for (const channel of ['summary_pt', 'summary_es']) {
+        for (const field of ['winning_value', 'losing_value', 'uncontested_value', 'within_reach_value']) {
+          assert.equal(typeof result[channel][field], 'number', `${channel}.${field} must be a number`)
+          assert.equal(result[channel][field], 0, `${channel}.${field} must be 0 for empty catalog`)
+        }
+      }
+    })
+  })
 })
