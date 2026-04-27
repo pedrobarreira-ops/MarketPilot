@@ -17,8 +17,9 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
   // Header date span
   const headerDateEl = document.querySelector('header .text-secondary')
 
-  // Toggle container and buttons
-  const toggleContainer = document.querySelector('.flex.bg-surface-container.p-1.rounded-lg')
+  // Toggle container and buttons — stable ID introduced with the 2026-04-27
+  // design port (PT/ES → Portugal/Espanha solid-navy variant).
+  const toggleContainer = document.getElementById('channel-toggle')
   const ptBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[0] : null
   const esBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[1] : null
 
@@ -460,14 +461,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
   // ── Task 5: PT/ES toggle handlers ─────────────────────────────────────────
 
-  // Visual styling classes for the active vs inactive toggle button. These
-  // mirror the static initial state in report.html (PT default-active):
-  //   active   → "bg-surface-container-lowest text-primary font-bold rounded-md shadow-sm"
-  //   inactive → "text-on-surface-variant font-medium hover:text-primary transition-colors"
-  // Previously the click handlers updated only aria-pressed and re-rendered
-  // data — the visual pill background never moved. Audit 2026-04-27.
-  var TOGGLE_ACTIVE_CLASSES = ['bg-surface-container-lowest', 'text-primary', 'font-bold', 'shadow-sm']
-  var TOGGLE_INACTIVE_CLASSES = ['text-on-surface-variant', 'font-medium', 'hover:text-primary', 'transition-colors']
+  // Visual styling classes for the active vs inactive toggle button. Updated
+  // for the 2026-04-27 design port: solid-navy active state (was white card
+  // with shadow). Both buttons keep base styles (px-5 py-2 font-semibold
+  // brand-font text-sm rounded-sm transition-colors) — the swap only toggles
+  // background + text color + the hover hint on the inactive side.
+  var TOGGLE_ACTIVE_CLASSES = ['bg-primary', 'text-white']
+  var TOGGLE_INACTIVE_CLASSES = ['bg-transparent', 'text-on-surface-variant', 'hover:text-primary']
 
   function setToggleVisualState (activeBtn, inactiveBtn) {
     if (activeBtn) {

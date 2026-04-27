@@ -118,14 +118,14 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.locator('#stat-winning')).toHaveText('4.821')
 
     // Click ES toggle (exact match to avoid ambiguity with CSV button text)
-    await page.getByRole('button', { name: 'ES', exact: true }).click()
+    await page.getByRole('button', { name: 'Espanha', exact: true }).click()
 
     // Assert no additional fetch was made
     expect(fetchCount).toBe(1)
 
     // Assert ES pill aria-pressed="true", PT pill aria-pressed="false"
-    await expect(page.getByRole('button', { name: 'ES', exact: true })).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByRole('button', { name: 'PT', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByRole('button', { name: 'Espanha', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: 'Portugal', exact: true })).toHaveAttribute('aria-pressed', 'false')
 
     // Assert ES stat cards populated with ES data from SAMPLE_REPORT
     // SAMPLE_REPORT es: { in_first: 2103, losing: 512, uncontested: 312 }
@@ -158,7 +158,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.locator('#stat-winning')).toHaveText('4.821')
 
     // Click ES toggle
-    await page.getByRole('button', { name: 'ES', exact: true }).click()
+    await page.getByRole('button', { name: 'Espanha', exact: true }).click()
 
     // ES no-data message should appear in the table area
     await expect(page.getByText(/sem dados para Worten ES/i).first()).toBeVisible()
@@ -238,7 +238,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.getByText('Apple AirPods Pro 2')).toBeVisible()
 
     // Switch to ES channel (quickwins_es: [] in SAMPLE_REPORT)
-    await page.getByRole('button', { name: 'ES', exact: true }).click()
+    await page.getByRole('button', { name: 'Espanha', exact: true }).click()
 
     // AC-10: PT quick wins row must no longer be present after channel switch
     await expect(page.getByText('Apple AirPods Pro 2')).not.toBeVisible()
@@ -353,8 +353,8 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     expect(hasHorizontalScroll).toBe(false)
 
     // AC-5: Both PT and ES toggle pills visible on desktop
-    await expect(page.getByRole('button', { name: 'PT', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'ES', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Portugal', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Espanha', exact: true })).toBeVisible()
 
     // AC-2: hint hidden on desktop (matchMedia change event fired)
     await expect(page.getByText(/← desliza para ver mais →/).first()).not.toBeVisible()
