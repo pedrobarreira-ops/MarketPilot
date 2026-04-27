@@ -450,6 +450,26 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
   // ── Task 5: PT/ES toggle handlers ─────────────────────────────────────────
 
+  // Visual styling classes for the active vs inactive toggle button. These
+  // mirror the static initial state in report.html (PT default-active):
+  //   active   → "bg-surface-container-lowest text-primary font-bold rounded-md shadow-sm"
+  //   inactive → "text-on-surface-variant font-medium hover:text-primary transition-colors"
+  // Previously the click handlers updated only aria-pressed and re-rendered
+  // data — the visual pill background never moved. Audit 2026-04-27.
+  var TOGGLE_ACTIVE_CLASSES = ['bg-surface-container-lowest', 'text-primary', 'font-bold', 'shadow-sm']
+  var TOGGLE_INACTIVE_CLASSES = ['text-on-surface-variant', 'font-medium', 'hover:text-primary', 'transition-colors']
+
+  function setToggleVisualState (activeBtn, inactiveBtn) {
+    if (activeBtn) {
+      activeBtn.classList.remove.apply(activeBtn.classList, TOGGLE_INACTIVE_CLASSES)
+      activeBtn.classList.add.apply(activeBtn.classList, TOGGLE_ACTIVE_CLASSES)
+    }
+    if (inactiveBtn) {
+      inactiveBtn.classList.remove.apply(inactiveBtn.classList, TOGGLE_ACTIVE_CLASSES)
+      inactiveBtn.classList.add.apply(inactiveBtn.classList, TOGGLE_INACTIVE_CLASSES)
+    }
+  }
+
   function initToggleHandlers () {
     if (ptBtn) {
       ptBtn.addEventListener('click', function () {
@@ -457,6 +477,7 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
         activeChannel = 'pt'
         if (ptBtn) ptBtn.setAttribute('aria-pressed', 'true')
         if (esBtn) esBtn.setAttribute('aria-pressed', 'false')
+        setToggleVisualState(ptBtn, esBtn)
         renderChannel('pt')
       })
     }
@@ -467,6 +488,7 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
         activeChannel = 'es'
         if (ptBtn) ptBtn.setAttribute('aria-pressed', 'false')
         if (esBtn) esBtn.setAttribute('aria-pressed', 'true')
+        setToggleVisualState(esBtn, ptBtn)
         renderChannel('es')
       })
     }
