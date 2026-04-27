@@ -31,6 +31,8 @@ export class CatalogTruncationError extends Error {
  *
  * Paginates with max=100 per page using offset-based pagination.
  * Filters for active offers only (offers.active === true — MCP-verified field).
+ * Set env INCLUDE_INACTIVE_OFFERS=true to bypass the filter for dry runs against
+ * the full catalog (intended for local/staging testing — never production).
  * Asserts fetched.length === total_count (NFR-R2 — no silent truncation).
  * Calls onProgress(n, total) every 1,000 offers.
  *
@@ -103,7 +105,22 @@ export async function fetchCatalog(baseUrl, apiKey, onProgressOrOpts, jobId) {
 
   // AC-3: filter for active offers only — MCP-verified field: offers.active (boolean)
   // NOT offers.state — 'state' is not a documented OF21 response field. Verified 2026-04-18.
-  const activeOffers = allOffers.filter(offer => offer.active === true)
+  //
+  // Dry-run bypass: INCLUDE_INACTIVE_OFFERS=true skips the active filter so we can
+  // generate a full-catalog report without having to physically activate every SKU
+  // on Worten. Default off — production behavior unchanged. The bypass logs a
+  // warning so accidental "left on" state is obvious in the run log.
+  const includeInactive = process.env.INCLUDE_INACTIVE_OFFERS === 'true'
+  if (includeInactive) {
+    log.warn({
+      job_id: jobId,
+      bypass: 'INCLUDE_INACTIVE_OFFERS',
+      total_offers: allOffers.length,
+    }, 'fetchCatalog: active filter bypassed via env flag — DRY RUN MODE')
+  }
+  const activeOffers = includeInactive
+    ? allOffers
+    : allOffers.filter(offer => offer.active === true)
 
   // AC-6: empty after active filter (covers: all offers inactive, or allOffers was empty
   // because total_count was null and pages returned nothing)
