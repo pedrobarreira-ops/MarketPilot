@@ -79,16 +79,15 @@
   }
 
   // ── updateStatusLine(data) — AC-6, AC-7 ────────────────────────────────────
+  // The backend's phase_message already includes the "(N de M produtos)" count
+  // for fetching_catalog and scanning_competitors phases (see reportWorker.js).
+  // Previously this function appended a redundant "(N / M produtos)" slash-format
+  // count from progress_current/progress_total, producing duplicates like
+  // "A obter catálogo… (7000 de 32 179 produtos) (7000 / 32 179 produtos)".
+  // Use phase_message as-authored by the backend.
   function updateStatusLine(data) {
     if (!statusEl) return;
-    if (data.progress_current !== null && data.progress_current !== undefined &&
-        data.progress_total   !== null && data.progress_total   !== undefined) {
-      var current = Number(data.progress_current).toLocaleString('pt-PT');
-      var total   = Number(data.progress_total).toLocaleString('pt-PT');
-      statusEl.textContent = data.phase_message + ' (' + current + ' / ' + total + ' produtos)';
-    } else {
-      statusEl.textContent = data.phase_message || '';
-    }
+    statusEl.textContent = data.phase_message || '';
   }
 
   // ── showFallbackLink(rid) — AC-12 ──────────────────────────────────────────
