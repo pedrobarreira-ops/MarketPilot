@@ -99,15 +99,16 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
   function applySkeletonTables () {
     const tbodies = document.querySelectorAll('tbody')
-    if (tbodies.length < 2) return
+    if (tbodies.length < 3) return
 
-    // Opportunities and Quick Wins tables both have 6 columns post-2026-04-27:
-    // Produto, O teu preço, 1.º lugar €, Diferença €, Diferença %, Ver (link).
-    tbodies[0].innerHTML = ''
-    for (let i = 0; i < 4; i++) tbodies[0].appendChild(makeShimmerRow(6))
-
-    tbodies[1].innerHTML = ''
-    for (let i = 0; i < 4; i++) tbodies[1].appendChild(makeShimmerRow(6))
+    // Three 6-column tables on the report (post-2026-04-27):
+    //   [0] Maiores Oportunidades       — losing products with gap_pct ≤ 5%
+    //   [1] Margem para subir           — winning products with 1%-30% headroom
+    //   [2] Vitórias Rápidas            — losing products with gap_pct ≤ 2%
+    for (let t = 0; t < 3; t++) {
+      tbodies[t].innerHTML = ''
+      for (let i = 0; i < 4; i++) tbodies[t].appendChild(makeShimmerRow(6))
+    }
   }
 
   function applySkeletonStatCards () {
@@ -245,6 +246,26 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
   function formatGapPct (gapPct) {
     const n = Number(gapPct) || 0
     return (n * 100).toFixed(1) + '%'
+  }
+
+  // Margem extra €: "+€40,00" — positive sign prefix, € prefix, 2 decimals
+  // (matches existing report €-prefix convention)
+  function formatHeadroomEur (val) {
+    const n = Math.abs(Number(val) || 0)
+    try {
+      return '+€' + n.toLocaleString('pt-PT', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    } catch (_) {
+      return '+€' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    }
+  }
+
+  // Margem extra %: "+5.3%" from 0.053
+  function formatHeadroomPct (val) {
+    const n = Math.abs(Number(val) || 0)
+    return '+' + (n * 100).toFixed(1) + '%'
   }
 
   // Compact pt-PT currency for stat-card value-lines: "€248.500" (no decimals,
@@ -411,10 +432,85 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     })
   }
 
+  // ── 2026-04-27: Margem para subir — winning products with headroom ────────
+
+  // Renders the "Margem para subir" section (3rd table on the report).
+  // Pure-margin opportunities: products where we already hold 1.º place but
+  // the runner-up sits 1-30% above us — a price raise captures the gap
+  // without losing position. Same shape as renderOpportunities (top-N cap,
+  // tfoot note, link column) but values are green and prefixed with "+".
+  function renderHeadroom (entries) {
+    const headroomTbody = document.querySelectorAll('tbody')[1]
+    if (!headroomTbody) return
+    headroomTbody.innerHTML = ''
+
+    const all = entries || []
+    setRowCapFooter(headroomTbody, all.length, 'oportunidades de margem')
+
+    if (all.length === 0) {
+      const td = document.createElement('td')
+      td.colSpan = 6
+      td.className = 'px-6 py-8 text-on-surface-variant text-center'
+      td.style.padding = '2rem 1.5rem'
+      td.textContent = 'Não há produtos em 1.º lugar com margem confortável para subir o preço neste canal.'
+      const tr = document.createElement('tr')
+      tr.appendChild(td)
+      headroomTbody.appendChild(tr)
+      return
+    }
+
+    const visible = all.slice(0, VISIBLE_ROW_CAP)
+
+    visible.forEach(function (item) {
+      const tr = document.createElement('tr')
+      tr.className = 'bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors shadow-sm rounded-lg'
+
+      // Column 1: Product title
+      const tdProduct = document.createElement('td')
+      tdProduct.className = 'px-6 py-6 rounded-l-lg font-bold text-primary'
+      tdProduct.textContent = item.product_title || item.ean || ''
+
+      // Column 2: My price
+      const tdMyPrice = document.createElement('td')
+      tdMyPrice.className = 'px-6 py-6 text-center'
+      tdMyPrice.textContent = formatPrice(item.my_price)
+
+      // Column 3: Próximo concorrente (the runner-up's price — what we can
+      // safely creep up toward without losing 1.º place)
+      const tdSecond = document.createElement('td')
+      tdSecond.className = 'px-6 py-6 font-bold text-center'
+      tdSecond.textContent = formatPrice(item.competitor_second)
+
+      // Column 4: Margem extra € — green, "+" prefixed
+      const tdMarginEur = document.createElement('td')
+      tdMarginEur.className = 'px-6 py-6 font-bold text-center'
+      tdMarginEur.style.color = 'var(--mp-win)'
+      tdMarginEur.textContent = formatHeadroomEur(item.headroom_eur)
+
+      // Column 5: Margem extra % — green, "+" prefixed
+      const tdMarginPct = document.createElement('td')
+      tdMarginPct.className = 'px-6 py-6 font-bold text-center'
+      tdMarginPct.style.color = 'var(--mp-win)'
+      tdMarginPct.textContent = formatHeadroomPct(item.headroom_pct)
+
+      // Column 6: Worten product link (EAN search), rounded right
+      const tdLink = makeLinkCell(item.ean, 'px-6 py-6 rounded-r-lg')
+
+      tr.appendChild(tdProduct)
+      tr.appendChild(tdMyPrice)
+      tr.appendChild(tdSecond)
+      tr.appendChild(tdMarginEur)
+      tr.appendChild(tdMarginPct)
+      tr.appendChild(tdLink)
+      headroomTbody.appendChild(tr)
+    })
+  }
+
   // ── Story 6.2: Quick Wins table renderer ──────────────────────────────────
 
   function renderQuickWins (quickwins) {
-    const qwTbody = document.querySelectorAll('tbody')[1]
+    // Quick Wins is now the 3rd tbody (Margem para subir was inserted at index 1)
+    const qwTbody = document.querySelectorAll('tbody')[2]
     if (!qwTbody) return
     qwTbody.innerHTML = ''
 
@@ -519,18 +615,20 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     setValue(valueReachEl, summary.within_reach_value)
 
     const tbodies = document.querySelectorAll('tbody')
-    if (tbodies.length < 2) return
+    if (tbodies.length < 3) return
 
-    // AC-11: ES no-data edge case
+    // AC-11: ES no-data edge case — clear all three tables (Maiores, Margem, Vitórias)
     if (channel === 'es' && winning === 0 && losing === 0 && uncontested === 0) {
-      renderNoData([tbodies[0], tbodies[1]])
+      renderNoData([tbodies[0], tbodies[1], tbodies[2]])
       return
     }
 
-    // Story 6.2: Render opportunities and quick wins rows for the active channel (AC-10)
-    const opps = reportData['opportunities_' + channel] || []
-    const qws  = reportData['quickwins_' + channel]     || []
+    // Render the three tables for the active channel
+    const opps     = reportData['opportunities_'  + channel] || []
+    const headroom = reportData['price_headroom_' + channel] || []
+    const qws      = reportData['quickwins_'      + channel] || []
     renderOpportunities(opps)
+    renderHeadroom(headroom)
     renderQuickWins(qws)
   }
 
