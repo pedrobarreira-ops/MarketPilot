@@ -216,24 +216,42 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
   // ── Story 6.2: Opportunities table renderer ───────────────────────────────
 
+  // Maiores Oportunidades shows only products in the competitive zone:
+  // gap_pct <= 0.05 (within 5% of the 1st-place price). Products losing by
+  // more than 5% are non-competitive — closing the gap would require pricing
+  // below cost, so they're not actionable. (Vitórias Rápidas section uses
+  // a tighter ≤2% threshold for is_quick_win.)
+  const COMPETITIVE_GAP_THRESHOLD = 0.05
+
   function renderOpportunities (opportunities) {
     const oppTbody = document.querySelectorAll('tbody')[0]
     if (!oppTbody) return
     oppTbody.innerHTML = ''
 
-    if (!opportunities || opportunities.length === 0) {
+    const allOpps = opportunities || []
+    const competitive = allOpps.filter(function (o) {
+      return o.gap_pct != null && Number.isFinite(o.gap_pct) && o.gap_pct <= COMPETITIVE_GAP_THRESHOLD
+    })
+
+    if (competitive.length === 0) {
       const td = document.createElement('td')
       td.colSpan = 6
       td.className = 'px-6 py-8 text-on-surface-variant text-center'
       td.style.padding = '2rem 1.5rem'  // inline fallback for py-8 (Tailwind JIT safety)
-      td.textContent = 'Estás em 1.º lugar em todos os produtos neste canal.'
+      // Differentiate "winning all" vs "losing all by >5%" — both render an
+      // empty table but mean opposite things to the user.
+      if (allOpps.length === 0) {
+        td.textContent = 'Estás em 1.º lugar em todos os produtos neste canal.'
+      } else {
+        td.textContent = 'Sem oportunidades competitivas (margem ≤5%) neste canal.'
+      }
       const tr = document.createElement('tr')
       tr.appendChild(td)
       oppTbody.appendChild(tr)
       return
     }
 
-    opportunities.forEach(function (item, idx) {
+    competitive.forEach(function (item, idx) {
       const tr = document.createElement('tr')
       tr.className = 'bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors shadow-sm rounded-lg'
       if (idx === 0) {
