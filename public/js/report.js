@@ -253,12 +253,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       tdMyPrice.textContent = formatPrice(item.my_price)
 
       // Column 3: First price
+      // Field name is `competitor_first` per computeReport.js scoreChannel output.
       const tdFirstPrice = document.createElement('td')
       tdFirstPrice.className = 'px-6 py-6 font-bold'
-      tdFirstPrice.textContent = formatPrice(item.first_price)
+      tdFirstPrice.textContent = formatPrice(item.competitor_first)
 
       // Column 4: Gap EUR (negative, red)
-      const gapEur = (item.my_price || 0) - (item.first_price || 0)
+      const gapEur = (item.my_price || 0) - (item.competitor_first || 0)
       const tdGapEur = document.createElement('td')
       tdGapEur.className = 'px-6 py-6'
       tdGapEur.style.color = '#DC2626'
@@ -323,12 +324,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       tdMyPrice.textContent = formatPrice(item.my_price)
 
       // Column 3: First price
+      // Field name is `competitor_first` per computeReport.js scoreChannel output.
       const tdFirstPrice = document.createElement('td')
       tdFirstPrice.className = 'px-6 py-5 border-b border-outline-variant/10 font-bold'
-      tdFirstPrice.textContent = formatPrice(item.first_price)
+      tdFirstPrice.textContent = formatPrice(item.competitor_first)
 
       // Column 4: Gap EUR
-      const gapEur = (item.my_price || 0) - (item.first_price || 0)
+      const gapEur = (item.my_price || 0) - (item.competitor_first || 0)
       const tdGapEur = document.createElement('td')
       tdGapEur.className = 'px-6 py-5 border-b border-outline-variant/10 font-medium text-on-tertiary-fixed-variant'
       tdGapEur.textContent = formatGapEur(gapEur)
