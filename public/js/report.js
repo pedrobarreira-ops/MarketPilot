@@ -311,25 +311,25 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
       // Column 2: My price
       const tdMyPrice = document.createElement('td')
-      tdMyPrice.className = 'px-6 py-6'
+      tdMyPrice.className = 'px-6 py-6 text-center'
       tdMyPrice.textContent = formatPrice(item.my_price)
 
       // Column 3: First price
       // Field name is `competitor_first` per computeReport.js scoreChannel output.
       const tdFirstPrice = document.createElement('td')
-      tdFirstPrice.className = 'px-6 py-6 font-bold'
+      tdFirstPrice.className = 'px-6 py-6 font-bold text-center'
       tdFirstPrice.textContent = formatPrice(item.competitor_first)
 
       // Column 4: Gap EUR (negative, red)
       const gapEur = (item.my_price || 0) - (item.competitor_first || 0)
       const tdGapEur = document.createElement('td')
-      tdGapEur.className = 'px-6 py-6'
+      tdGapEur.className = 'px-6 py-6 text-center'
       tdGapEur.style.color = '#DC2626'
       tdGapEur.textContent = formatGapEur(gapEur)
 
       // Column 5: Gap pct — red pill, rounded right
       const tdGapPct = document.createElement('td')
-      tdGapPct.className = 'px-6 py-6 rounded-r-lg'
+      tdGapPct.className = 'px-6 py-6 rounded-r-lg text-center'
       const pill = document.createElement('span')
       pill.className = 'bg-error-container text-on-error-container px-2 py-0.5 rounded text-xs'
       pill.textContent = formatGapPct(item.gap_pct)
@@ -374,24 +374,24 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
       // Column 2: My price
       const tdMyPrice = document.createElement('td')
-      tdMyPrice.className = 'px-6 py-5 border-b border-outline-variant/10 text-on-surface-variant'
+      tdMyPrice.className = 'px-6 py-5 border-b border-outline-variant/10 text-on-surface-variant text-center'
       tdMyPrice.textContent = formatPrice(item.my_price)
 
       // Column 3: First price
       // Field name is `competitor_first` per computeReport.js scoreChannel output.
       const tdFirstPrice = document.createElement('td')
-      tdFirstPrice.className = 'px-6 py-5 border-b border-outline-variant/10 font-bold'
+      tdFirstPrice.className = 'px-6 py-5 border-b border-outline-variant/10 font-bold text-center'
       tdFirstPrice.textContent = formatPrice(item.competitor_first)
 
       // Column 4: Gap EUR
       const gapEur = (item.my_price || 0) - (item.competitor_first || 0)
       const tdGapEur = document.createElement('td')
-      tdGapEur.className = 'px-6 py-5 border-b border-outline-variant/10 font-medium text-on-tertiary-fixed-variant'
+      tdGapEur.className = 'px-6 py-5 border-b border-outline-variant/10 font-medium text-on-tertiary-fixed-variant text-center'
       tdGapEur.textContent = formatGapEur(gapEur)
 
       // Column 5: Gap pct pill
       const tdGapPct = document.createElement('td')
-      tdGapPct.className = 'px-6 py-5 border-b border-outline-variant/10'
+      tdGapPct.className = 'px-6 py-5 border-b border-outline-variant/10 text-center'
       const pill = document.createElement('span')
       pill.className = 'bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded text-xs'
       pill.textContent = formatGapPct(item.gap_pct)

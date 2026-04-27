@@ -218,10 +218,11 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     const firstQwRow = page.locator('tbody').nth(1).locator('tr').first()
     await expect(firstQwRow.locator('td')).toHaveCount(5)
 
-    // Headers reflect the shorter design-port labels
+    // Headers reflect the design-port labels (Δ symbols reverted to "Diferença"
+    // 2026-04-27 per Pedro feedback — clearer for non-technical readers)
     await expect(page.getByText('1.º lugar €').first()).toBeVisible()
-    await expect(page.getByText('Δ €').first()).toBeVisible()
-    await expect(page.getByText('Δ %').first()).toBeVisible()
+    await expect(page.getByText('Diferença €').first()).toBeVisible()
+    await expect(page.getByText('Diferença %').first()).toBeVisible()
   })
 
   // ── Story 6.2: PT/ES toggle re-renders Quick Wins for ES (empty array) ────
