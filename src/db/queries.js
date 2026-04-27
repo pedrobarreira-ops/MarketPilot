@@ -18,9 +18,11 @@ const unixNow = () => Math.floor(Date.now() / 1000)
 // Note: TTL (now + 172800) is owned by the caller of insertReport — see
 // src/workers/scoring/buildReport.js. queries.js does not compute expires_at.
 
-// CSV column header used in csv_data (FR17 — all products, both channels).
-// Full header: EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score
-export const CSV_COLUMNS = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
+// CSV column header used in csv_data — Portuguese client-readable, 10 columns.
+// wow_score columns intentionally omitted (internal scoring metric).
+// Must remain byte-equal to CSV_HEADER in src/workers/scoring/buildReport.js
+// — see drift test in epic3-3.5-report-persistence.additional.test.js.
+export const CSV_COLUMNS = 'EAN,Produto,SKU,O meu preço,Preço 1.º lugar PT,Diferença € PT,Diferença % PT,Preço 1.º lugar ES,Diferença € ES,Diferença % ES'
 
 /**
  * Insert a new job into generation_jobs with status='queued'.
