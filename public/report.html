@@ -120,12 +120,12 @@
 <button class="px-6 py-2 text-on-surface-variant font-medium hover:text-primary transition-colors text-sm">ES</button>
 </div>
 </section>
-<!-- Section 1: A tua posição agora — 4-up stat grid (Ao alcance is 4th card, navy fill) -->
+<!-- Section 1: A tua posição agora — 3-up stat grid + full-width hero card -->
 <section class="mb-20">
 <div class="mb-8">
 <h2 class="text-label-sm uppercase tracking-widest font-bold text-primary">A tua posição agora</h2>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
 <!-- Card 1: Em 1.º lugar (win) -->
 <div class="bg-surface-container-lowest border border-outline-variant/30 p-6 rounded-2xl relative overflow-hidden">
 <div class="mp-card-icon absolute top-4 right-4" style="background: var(--mp-win-soft); color: var(--mp-win); border: 1px solid var(--mp-win-border);">
@@ -165,18 +165,30 @@
 <div class="text-[10px] font-semibold tracking-[0.08em] uppercase text-on-surface-variant mt-0.5">Catálogo exclusivo</div>
 </div>
 </div>
-<!-- Card 4: Ao alcance (reach — navy fill, the punchline) -->
-<div class="p-6 rounded-2xl relative overflow-hidden shadow-lg" style="background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-2));">
-<div class="absolute -right-10 -bottom-10 w-36 h-36 rounded-full" style="background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%); pointer-events: none;" aria-hidden="true"></div>
-<div class="mp-card-icon absolute top-4 right-4" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
-<span class="material-symbols-outlined">rocket_launch</span>
 </div>
-<p class="text-[10px] font-bold tracking-[0.12em] uppercase mb-2" style="color: var(--mp-primary-tint);">Ao alcance</p>
-<div id="stat-reach" class="text-5xl font-extrabold text-white tracking-tighter leading-none mb-1 relative z-10">0</div>
-<p class="text-xs font-medium mb-3 relative z-10" style="color: var(--mp-primary-tint);">SKUs a &lt; 5% do 1.º lugar</p>
-<div class="pt-3 border-t relative z-10" style="border-color: rgba(255,255,255,0.15);">
-<div id="value-reach" class="text-sm font-bold text-white tracking-tight">€0</div>
-<div class="text-[10px] font-semibold tracking-[0.08em] uppercase mt-0.5" style="color: var(--mp-primary-tint);">Valor ao alcance</div>
+<!-- Hero card: A um passo do 1.º (full-width navy gradient — the punchline) -->
+<div class="relative overflow-hidden rounded-2xl px-9 py-7" style="background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-2)); box-shadow: 0 12px 32px color-mix(in oklch, var(--mp-primary) 22%, transparent);">
+<!-- Decorative washes -->
+<div class="absolute -right-20 -top-20 w-72 h-72 rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(255,255,255,0.07), transparent 70%);" aria-hidden="true"></div>
+<div class="absolute -bottom-32 left-2/5 w-60 h-60 rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(255,255,255,0.04), transparent 70%);" aria-hidden="true"></div>
+<div class="relative z-10 grid items-center gap-9 grid-cols-1 md:grid-cols-[auto_1fr_auto]">
+<!-- Left: rocket + label + count + subtitle -->
+<div class="flex items-center gap-5">
+<div class="grid place-items-center flex-shrink-0 w-14 h-14 rounded-2xl" style="background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); color: #fff;">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<div>
+<p class="text-[11px] font-bold tracking-[0.12em] uppercase mb-1.5" style="color: var(--mp-primary-tint);">A um passo do 1.º</p>
+<div id="stat-reach" class="text-[56px] font-extrabold text-white tracking-tighter leading-none mb-1.5 tabular-nums">0</div>
+<p class="text-[13px] font-medium" style="color: var(--mp-primary-tint);">SKUs a &lt; 5% do 1.º lugar</p>
+</div>
+</div>
+<!-- Divider (hidden on narrow screens) -->
+<div class="hidden md:block w-px h-20 justify-self-center" style="background: rgba(255,255,255,0.18);" aria-hidden="true"></div>
+<!-- Right: potential gain -->
+<div class="md:text-right md:min-w-[220px]">
+<p class="text-[15px] font-medium mb-2" style="color: var(--mp-primary-tint);">Ganho potencial com a MarketPilot</p>
+<div id="value-reach" class="text-[44px] font-extrabold text-white tracking-tight leading-none tabular-nums">€0</div>
 </div>
 </div>
 </div>
@@ -184,7 +196,6 @@
 <!-- Section 2: Maiores oportunidades -->
 <section class="mb-20 bg-surface-container-low p-10 rounded-2xl">
 <div class="mb-10">
-<span class="text-[11px] font-bold tracking-[0.12em] uppercase text-primary mb-2 block">Secção 2 · Oportunidades</span>
 <h2 class="text-3xl font-extrabold text-primary tracking-tight mb-2">Maiores oportunidades</h2>
 <p class="text-on-surface-variant font-medium">Os produtos de maior valor onde estás a perder a primeira posição por uma pequena margem</p>
 </div>
@@ -209,7 +220,6 @@
 <section class="mb-20">
 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
 <div>
-<span class="text-[11px] font-bold tracking-[0.12em] uppercase mb-2 block" style="color: var(--mp-win);">Secção 3 · Vitórias rápidas</span>
 <h2 class="text-3xl font-extrabold text-primary tracking-tight mb-2">Vitórias rápidas</h2>
 <p class="text-on-surface-variant font-medium">Produtos onde uma redução de preço de ≤2% te coloca em primeiro lugar</p>
 </div>
