@@ -22,8 +22,12 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
   const ptBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[0] : null
   const esBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[1] : null
 
-  // Stat card number spans (three large numbers)
+  // Stat card number spans (three large numbers in the existing 3-card row)
   const statNumbers = document.querySelectorAll('.text-6xl.font-extrabold.text-primary')
+
+  // PRODUTOS AO ALCANCE hero card — count element targeted by id (different
+  // styling from the 3-card row, so not picked up by the statNumbers query above)
+  const withinReachEl = document.getElementById('within-reach-count')
 
   // CSV download button (in the Quick Wins section — contains a download icon)
   let csvBtn = null
@@ -105,6 +109,15 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       el.style.minHeight = '1.5rem'
       el.style.display = 'inline-block'
     })
+    // PRODUTOS AO ALCANCE hero card — distinct skeleton (white-on-primary, larger)
+    if (withinReachEl) {
+      withinReachEl.textContent = ''
+      withinReachEl.classList.add('animate-pulse', 'rounded')
+      withinReachEl.style.background = 'rgba(255,255,255,0.15)'
+      withinReachEl.style.minWidth = '5rem'
+      withinReachEl.style.minHeight = '4rem'
+      withinReachEl.style.display = 'inline-block'
+    }
   }
 
   function applySkeleton () {
@@ -133,6 +146,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       el.style.minHeight = ''
       el.style.display = ''
     })
+    if (withinReachEl) {
+      withinReachEl.classList.remove('animate-pulse', 'rounded')
+      withinReachEl.style.background = ''
+      withinReachEl.style.minWidth = ''
+      withinReachEl.style.minHeight = ''
+      withinReachEl.style.display = ''
+    }
   }
 
   function formatPortugueseDate (generatedAt) {
@@ -216,24 +236,42 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
 
   // ── Story 6.2: Opportunities table renderer ───────────────────────────────
 
+  // Maiores Oportunidades shows only products in the competitive zone:
+  // gap_pct <= 0.05 (within 5% of the 1st-place price). Products losing by
+  // more than 5% are non-competitive — closing the gap would require pricing
+  // below cost, so they're not actionable. (Vitórias Rápidas section uses
+  // a tighter ≤2% threshold for is_quick_win.)
+  const COMPETITIVE_GAP_THRESHOLD = 0.05
+
   function renderOpportunities (opportunities) {
     const oppTbody = document.querySelectorAll('tbody')[0]
     if (!oppTbody) return
     oppTbody.innerHTML = ''
 
-    if (!opportunities || opportunities.length === 0) {
+    const allOpps = opportunities || []
+    const competitive = allOpps.filter(function (o) {
+      return o.gap_pct != null && Number.isFinite(o.gap_pct) && o.gap_pct <= COMPETITIVE_GAP_THRESHOLD
+    })
+
+    if (competitive.length === 0) {
       const td = document.createElement('td')
       td.colSpan = 6
       td.className = 'px-6 py-8 text-on-surface-variant text-center'
       td.style.padding = '2rem 1.5rem'  // inline fallback for py-8 (Tailwind JIT safety)
-      td.textContent = 'Estás em 1.º lugar em todos os produtos neste canal.'
+      // Differentiate "winning all" vs "losing all by >5%" — both render an
+      // empty table but mean opposite things to the user.
+      if (allOpps.length === 0) {
+        td.textContent = 'Estás em 1.º lugar em todos os produtos neste canal.'
+      } else {
+        td.textContent = 'Sem oportunidades competitivas (margem ≤5%) neste canal.'
+      }
       const tr = document.createElement('tr')
       tr.appendChild(td)
       oppTbody.appendChild(tr)
       return
     }
 
-    opportunities.forEach(function (item, idx) {
+    competitive.forEach(function (item, idx) {
       const tr = document.createElement('tr')
       tr.className = 'bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors shadow-sm rounded-lg'
       if (idx === 0) {
@@ -253,12 +291,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       tdMyPrice.textContent = formatPrice(item.my_price)
 
       // Column 3: First price
+      // Field name is `competitor_first` per computeReport.js scoreChannel output.
       const tdFirstPrice = document.createElement('td')
       tdFirstPrice.className = 'px-6 py-6 font-bold'
-      tdFirstPrice.textContent = formatPrice(item.first_price)
+      tdFirstPrice.textContent = formatPrice(item.competitor_first)
 
       // Column 4: Gap EUR (negative, red)
-      const gapEur = (item.my_price || 0) - (item.first_price || 0)
+      const gapEur = (item.my_price || 0) - (item.competitor_first || 0)
       const tdGapEur = document.createElement('td')
       tdGapEur.className = 'px-6 py-6'
       tdGapEur.style.color = '#DC2626'
@@ -323,12 +362,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       tdMyPrice.textContent = formatPrice(item.my_price)
 
       // Column 3: First price
+      // Field name is `competitor_first` per computeReport.js scoreChannel output.
       const tdFirstPrice = document.createElement('td')
       tdFirstPrice.className = 'px-6 py-5 border-b border-outline-variant/10 font-bold'
-      tdFirstPrice.textContent = formatPrice(item.first_price)
+      tdFirstPrice.textContent = formatPrice(item.competitor_first)
 
       // Column 4: Gap EUR
-      const gapEur = (item.my_price || 0) - (item.first_price || 0)
+      const gapEur = (item.my_price || 0) - (item.competitor_first || 0)
       const tdGapEur = document.createElement('td')
       tdGapEur.className = 'px-6 py-5 border-b border-outline-variant/10 font-medium text-on-tertiary-fixed-variant'
       tdGapEur.textContent = formatGapEur(gapEur)
@@ -387,6 +427,10 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     if (statNumbers[0]) statNumbers[0].textContent = formatPtPT(winning)
     if (statNumbers[1]) statNumbers[1].textContent = formatPtPT(losing)
     if (statNumbers[2]) statNumbers[2].textContent = formatPtPT(uncontested)
+
+    // PRODUTOS AO ALCANCE hero card — losing products with gap_pct ≤5%
+    const withinReach = summary.within_reach != null ? summary.within_reach : 0
+    if (withinReachEl) withinReachEl.textContent = formatPtPT(withinReach)
 
     const tbodies = document.querySelectorAll('tbody')
     if (tbodies.length < 2) return

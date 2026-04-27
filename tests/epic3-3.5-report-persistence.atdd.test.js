@@ -158,15 +158,20 @@ describe('Story 3.5 — Report persistence and CSV generation', async () => {
     })
 
     test('CSV stored includes all required column headers (static or functional)', () => {
-      // Check if a CSV builder is present in codebase
+      // Post-overhaul: 10 Portuguese client-readable columns. wow_score columns
+      // intentionally omitted (internal scoring metric, not user-facing).
+      // See issue 5 (PR fix/report-fidelity-bundle).
       const requiredCsvColumns = [
-        'EAN', 'product_title', 'shop_sku', 'my_price',
-        'pt_first_price', 'pt_gap_eur', 'pt_gap_pct', 'pt_wow_score',
-        'es_first_price', 'es_gap_eur', 'es_gap_pct', 'es_wow_score',
+        'EAN', 'Produto', 'SKU', 'O meu preço',
+        'Preço 1.º lugar PT', 'Diferença € PT', 'Diferença % PT',
+        'Preço 1.º lugar ES', 'Diferença € ES', 'Diferença % ES',
       ]
 
-      // Check in queries.js or in the worker scoring/persistence files
+      // Check in queries.js (CSV_COLUMNS export) or in the buildReport.js source
       let csvSrc = src
+      try {
+        csvSrc += codeLines(readFileSync(join(__dirname, '../src/workers/scoring/buildReport.js'), 'utf8'))
+      } catch (_) {}
       try {
         csvSrc += codeLines(readFileSync(join(__dirname, '../src/workers/scoring/computeReport.js'), 'utf8'))
       } catch (_) {}
@@ -177,7 +182,7 @@ describe('Story 3.5 — Report persistence and CSV generation', async () => {
       for (const col of requiredCsvColumns) {
         assert.ok(
           csvSrc.includes(col),
-          `CSV must include column "${col}" — required by FR17 spec`
+          `CSV must include column "${col}" — required by post-overhaul spec (issue 5)`
         )
       }
     })

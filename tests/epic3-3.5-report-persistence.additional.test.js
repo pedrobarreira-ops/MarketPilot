@@ -79,7 +79,7 @@ describe('AC-2 supplement: buildReport.js must contain all 12 CSV column names',
     assert.ok(exists, 'src/workers/scoring/buildReport.js must exist (Story 3.5 deliverable)')
   })
 
-  test('buildReport.js contains all 12 required CSV column names', () => {
+  test('buildReport.js contains all 10 required CSV column names (Portuguese, post-overhaul)', () => {
     let src
     try {
       src = readFileSync(BUILD_REPORT_PATH, 'utf8')
@@ -88,16 +88,27 @@ describe('AC-2 supplement: buildReport.js must contain all 12 CSV column names',
       return
     }
 
+    // wow_score columns intentionally OMITTED (internal scoring metric).
+    // Column count: 10 (was 12 pre-overhaul).
     const requiredCsvColumns = [
-      'EAN', 'product_title', 'shop_sku', 'my_price',
-      'pt_first_price', 'pt_gap_eur', 'pt_gap_pct', 'pt_wow_score',
-      'es_first_price', 'es_gap_eur', 'es_gap_pct', 'es_wow_score',
+      'EAN', 'Produto', 'SKU', 'O meu preço',
+      'Preço 1.º lugar PT', 'Diferença € PT', 'Diferença % PT',
+      'Preço 1.º lugar ES', 'Diferença € ES', 'Diferença % ES',
     ]
 
     for (const col of requiredCsvColumns) {
       assert.ok(
         src.includes(col),
-        `buildReport.js must contain CSV column "${col}" — required by FR17 spec`
+        `buildReport.js must contain CSV column "${col}" — Portuguese client-readable headers per issue 5`
+      )
+    }
+
+    // Belt-and-suspenders: explicitly verify the omitted columns are NOT present.
+    const omittedColumns = ['pt_wow_score', 'es_wow_score']
+    for (const col of omittedColumns) {
+      assert.ok(
+        !src.includes(col),
+        `buildReport.js must NOT contain CSV column "${col}" — wow_score is internal-only post-overhaul`
       )
     }
   })
@@ -177,11 +188,11 @@ describe('AC-3 functional: buildAndPersistReport stores all products in CSV', ()
 
     const lines = csv.split('\n')
 
-    // Header row must be first
+    // Header row must be first — Portuguese 10-column header per issue 5 overhaul.
     assert.equal(
       lines[0],
-      'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score',
-      'CSV header row must match the exact 12-column spec'
+      'EAN,Produto,SKU,O meu preço,Preço 1.º lugar PT,Diferença € PT,Diferença % PT,Preço 1.º lugar ES,Diferença € ES,Diferença % ES',
+      'CSV header row must match the exact 10-column post-overhaul spec'
     )
 
     // All 3 catalog products must appear (AC-3: not just opportunities)
@@ -216,13 +227,19 @@ describe('AC-3 functional: buildAndPersistReport stores all products in CSV', ()
     const csv = row.csv_data ?? row.csvData
     const dataLine = csv.split('\n')[1]  // first data row
 
-    // pt_first_price, pt_gap_eur, pt_gap_pct, pt_wow_score should all be empty
-    // CSV structure: EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,...
+    // PT gap columns (cells[4]-[6]) and ES gap columns (cells[7]-[9]) must all
+    // be empty for a product winning in PT and uncontested in ES.
+    // 10-column post-overhaul layout:
+    //   [0]EAN [1]Produto [2]SKU [3]O meu preço
+    //   [4]Preço 1.º lugar PT [5]Diferença € PT [6]Diferença % PT
+    //   [7]Preço 1.º lugar ES [8]Diferença € ES [9]Diferença % ES
     const cells = dataLine.split(',')
-    assert.equal(cells[4], '', 'pt_first_price must be empty string for winning product')
-    assert.equal(cells[5], '', 'pt_gap_eur must be empty string for winning product')
-    assert.equal(cells[6], '', 'pt_gap_pct must be empty string for winning product')
-    assert.equal(cells[7], '', 'pt_wow_score must be empty string for winning product')
+    assert.equal(cells[4], '', 'Preço 1.º lugar PT must be empty for winning product')
+    assert.equal(cells[5], '', 'Diferença € PT must be empty for winning product')
+    assert.equal(cells[6], '', 'Diferença % PT must be empty for winning product')
+    assert.equal(cells[7], '', 'Preço 1.º lugar ES must be empty for uncontested-in-ES product')
+    assert.equal(cells[8], '', 'Diferença € ES must be empty for uncontested-in-ES product')
+    assert.equal(cells[9], '', 'Diferença % ES must be empty for uncontested-in-ES product')
   })
 
   test('AC-3: Uncontested product has empty PT gap columns in CSV', async () => {
@@ -249,10 +266,10 @@ describe('AC-3 functional: buildAndPersistReport stores all products in CSV', ()
     const dataLine = csv.split('\n')[1]
 
     const cells = dataLine.split(',')
-    assert.equal(cells[4], '', 'pt_first_price must be empty string for uncontested product')
-    assert.equal(cells[5], '', 'pt_gap_eur must be empty string for uncontested product')
-    assert.equal(cells[6], '', 'pt_gap_pct must be empty string for uncontested product')
-    assert.equal(cells[7], '', 'pt_wow_score must be empty string for uncontested product')
+    assert.equal(cells[4], '', 'Preço 1.º lugar PT must be empty for uncontested product')
+    assert.equal(cells[5], '', 'Diferença € PT must be empty for uncontested product')
+    assert.equal(cells[6], '', 'Diferença % PT must be empty for uncontested product')
+    assert.equal(cells[7], '', 'Preço 1.º lugar ES must be empty for uncontested-in-ES product')
   })
 
   test('AC-3: Losing product has populated PT gap columns in CSV', async () => {
@@ -282,10 +299,12 @@ describe('AC-3 functional: buildAndPersistReport stores all products in CSV', ()
     const dataLine = csv.split('\n')[1]
 
     const cells = dataLine.split(',')
-    assert.equal(cells[4], '15', 'pt_first_price must be populated for losing product')
-    assert.notEqual(cells[5], '', 'pt_gap_eur must not be empty for losing product')
-    assert.notEqual(cells[6], '', 'pt_gap_pct must not be empty for losing product')
-    assert.notEqual(cells[7], '', 'pt_wow_score must not be empty for losing product')
+    // Post-overhaul: prices use formatNumberCell (toFixed(2)) → "15.00" not "15"
+    assert.equal(cells[4], '15.00', 'Preço 1.º lugar PT must be populated with 2-decimal format for losing product')
+    assert.notEqual(cells[5], '', 'Diferença € PT must not be empty for losing product')
+    assert.notEqual(cells[6], '', 'Diferença % PT must not be empty for losing product')
+    // Verify percentage format: cells[6] should end with "%" per formatPctCell
+    assert.ok(cells[6].endsWith('%'), `Diferença % PT must end with "%" sign per formatPctCell, got "${cells[6]}"`)
   })
 
   test('AC-1 + AC-3: expires_at is caller-provided (now + 172800), not computed inside insertReport', async () => {
@@ -320,18 +339,18 @@ describe('AC-3 functional: buildAndPersistReport stores all products in CSV', ()
 // ── CSV_COLUMNS / CSV_HEADER drift check ───────────────────────────────────────
 
 describe('CSV_COLUMNS export vs buildReport.js CSV_HEADER — no drift', () => {
-  test('CSV_COLUMNS exported from queries.js matches the 12-column header string', async () => {
+  test('CSV_COLUMNS exported from queries.js matches the 10-column post-overhaul header string', async () => {
     const queries = await import('../src/db/queries.js')
     assert.equal(
       typeof queries.CSV_COLUMNS,
       'string',
       'queries.js must export CSV_COLUMNS as a string'
     )
-    const expected = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
+    const expected = 'EAN,Produto,SKU,O meu preço,Preço 1.º lugar PT,Diferença € PT,Diferença % PT,Preço 1.º lugar ES,Diferença € ES,Diferença % ES'
     assert.equal(
       queries.CSV_COLUMNS,
       expected,
-      'CSV_COLUMNS must exactly match the 12-column FR17 spec'
+      'CSV_COLUMNS must exactly match the 10-column post-overhaul Portuguese header (issue 5)'
     )
   })
 
@@ -517,9 +536,107 @@ describe('CSV edge case: empty catalog produces header-only CSV', () => {
     assert.equal(lines.length, 1, 'Empty catalog must produce a CSV with exactly 1 line (header only)')
     assert.equal(
       lines[0],
-      'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score',
-      'The single line must be the header row'
+      'EAN,Produto,SKU,O meu preço,Preço 1.º lugar PT,Diferença € PT,Diferença % PT,Preço 1.º lugar ES,Diferença € ES,Diferença % ES',
+      'The single line must be the post-overhaul 10-column Portuguese header row'
     )
+  })
+})
+
+// ── Post-overhaul: numeric precision and sort order (issue 5) ──────────────────
+
+describe('CSV post-overhaul: 2-decimal prices, "X.X%" percentages, gap-asc ordering', () => {
+  let buildAndPersistReport
+  let getReport
+  let available = false
+
+  before(async () => {
+    const queries = await import('../src/db/queries.js')
+    getReport = queries.getReport
+    try {
+      const buildMod = await import('../src/workers/scoring/buildReport.js')
+      buildAndPersistReport = buildMod.buildAndPersistReport
+      available = true
+    } catch (_) {}
+  })
+
+  test('Prices use 2-decimal fixed format (no float artefacts)', async () => {
+    if (!available) return
+    const reportId = randomId()
+    // gap = 213.98000000002 (a real JS float artefact from 1378.45 - 1164.47)
+    const catalog = [
+      { ean: 'EAN-FLOAT', shop_sku: 'SKU-FLOAT', product_title: 'Float Test', price: '1378.45' },
+    ]
+    const computedReport = {
+      opportunities_pt: [
+        { ean: 'EAN-FLOAT', shop_sku: 'SKU-FLOAT', product_title: 'Float Test', my_price: 1378.45,
+          competitor_first: 1164.47, gap: 213.98000000002, gap_pct: 0.18375, wow_score: 7501.46, is_quick_win: false },
+      ],
+      opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 0, losing: 1, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+    buildAndPersistReport(reportId, 'atdd@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const cells = row.csv_data.split('\n')[1].split(',')
+    // [3]O meu preço [4]Preço 1.º lugar PT [5]Diferença € PT
+    assert.equal(cells[3], '1378.45', 'O meu preço must be exactly "1378.45" — no float artefacts')
+    assert.equal(cells[4], '1164.47', 'Preço 1.º lugar PT must be exactly "1164.47"')
+    assert.equal(cells[5], '213.98', 'Diferença € PT must be exactly "213.98" — float "213.98000000002" must be rounded by toFixed(2)')
+  })
+
+  test('Percentages use "X.X%" format (issue 5b)', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const catalog = [{ ean: 'EAN-PCT', shop_sku: 'SKU-PCT', product_title: 'Pct Test', price: '100.00' }]
+    const computedReport = {
+      opportunities_pt: [
+        { ean: 'EAN-PCT', shop_sku: 'SKU-PCT', product_title: 'Pct Test', my_price: 100.00,
+          competitor_first: 84.62, gap: 15.38, gap_pct: 0.18175, wow_score: 550.21, is_quick_win: false },
+      ],
+      opportunities_es: [], quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 1, winning: 0, losing: 1, uncontested: 0 },
+      summary_es: { total: 1, winning: 0, losing: 0, uncontested: 1 },
+    }
+    buildAndPersistReport(reportId, 'atdd@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const cells = row.csv_data.split('\n')[1].split(',')
+    // [6]Diferença % PT — formatPctCell((0.18175 * 100).toFixed(1) + '%') === "18.2%"
+    assert.equal(cells[6], '18.2%', 'Diferença % PT must be "18.2%" — formatPctCell(0.18175) → (0.18175*100).toFixed(1)+"%" → "18.2%"')
+  })
+
+  test('Catalog rows sorted by min(pt_gap_pct, es_gap_pct) ascending; uncontested at end', async () => {
+    if (!available) return
+    const reportId = randomId()
+    const catalog = [
+      { ean: 'EAN-MED',  shop_sku: 'SKU-MED',  product_title: 'Medium Gap',     price: '20.00' },
+      { ean: 'EAN-LOW',  shop_sku: 'SKU-LOW',  product_title: 'Smallest Gap',   price: '20.00' },
+      { ean: 'EAN-NONE', shop_sku: 'SKU-NONE', product_title: 'Uncontested',    price: '20.00' },
+      { ean: 'EAN-HIGH', shop_sku: 'SKU-HIGH', product_title: 'Largest Gap',    price: '20.00' },
+    ]
+    const computedReport = {
+      opportunities_pt: [
+        // Gap-pct values chosen to be unambiguous: 0.05 < 0.20 < 0.50
+        { ean: 'EAN-LOW',  shop_sku: 'SKU-LOW',  product_title: 'Smallest Gap', my_price: 20, competitor_first: 19, gap: 1,  gap_pct: 0.05, wow_score: 400, is_quick_win: false },
+        { ean: 'EAN-MED',  shop_sku: 'SKU-MED',  product_title: 'Medium Gap',   my_price: 20, competitor_first: 16, gap: 4,  gap_pct: 0.25, wow_score: 80,  is_quick_win: false },
+        { ean: 'EAN-HIGH', shop_sku: 'SKU-HIGH', product_title: 'Largest Gap',  my_price: 20, competitor_first: 10, gap: 10, gap_pct: 1.00, wow_score: 20,  is_quick_win: false },
+      ],
+      opportunities_es: [],
+      quickwins_pt: [], quickwins_es: [],
+      summary_pt: { total: 4, winning: 0, losing: 3, uncontested: 1 },
+      summary_es: { total: 4, winning: 0, losing: 0, uncontested: 4 },
+    }
+    buildAndPersistReport(reportId, 'atdd@example.com', catalog, computedReport)
+    const now = Math.floor(Date.now() / 1000)
+    const row = getReport(reportId, now)
+    const dataLines = row.csv_data.split('\n').slice(1)  // skip header
+    // Expected order by gap_pct ascending: LOW (0.05), MED (0.25), HIGH (1.00), NONE (Infinity)
+    assert.ok(dataLines[0].startsWith('EAN-LOW,'),  `Row 1 must be EAN-LOW (gap_pct=0.05); got: ${dataLines[0].slice(0, 30)}`)
+    assert.ok(dataLines[1].startsWith('EAN-MED,'),  `Row 2 must be EAN-MED (gap_pct=0.25); got: ${dataLines[1].slice(0, 30)}`)
+    assert.ok(dataLines[2].startsWith('EAN-HIGH,'), `Row 3 must be EAN-HIGH (gap_pct=1.00); got: ${dataLines[2].slice(0, 30)}`)
+    assert.ok(dataLines[3].startsWith('EAN-NONE,'), `Row 4 must be EAN-NONE (uncontested → Infinity); got: ${dataLines[3].slice(0, 30)}`)
   })
 })
 

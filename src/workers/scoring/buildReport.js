@@ -10,9 +10,12 @@ import { insertReport } from '../../db/queries.js'
 // 48 hours in seconds (matches reports table TTL)
 const TTL_SECONDS = 172800
 
-// CSV column names — all 12 required by FR17 spec (AC-2)
-// EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score
-const CSV_HEADER = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
+// CSV column names — Portuguese client-readable headers, 10 columns total.
+// wow_score columns intentionally OMITTED (internal scoring metric, not user-facing).
+// Note: "Preço" contains an accented character — escapeTextCell handles UTF-8.
+// Note: header values containing commas would need RFC 4180 quoting; current
+// Portuguese labels do not contain commas so plain join is safe.
+const CSV_HEADER = 'EAN,Produto,SKU,O meu preço,Preço 1.º lugar PT,Diferença € PT,Diferença % PT,Preço 1.º lugar ES,Diferença € ES,Diferença % ES'
 
 // Column classification for CSV formula injection prevention (CWE-1236):
 //
@@ -48,6 +51,31 @@ function escapeCell(val) {
     return `"${str.replace(/"/g, '""')}"`
   }
   return str
+}
+
+/**
+ * Format a numeric cell value with fixed 2-decimal precision (e.g. price,
+ * gap_eur). Returns '' for null / undefined / non-finite — preserves the
+ * "blank for missing" convention. Avoids JS float artefacts like
+ * "213.98000000002" leaking into the CSV.
+ */
+function formatNumberCell(val) {
+  if (val === null || val === undefined || val === '') return ''
+  const n = Number(val)
+  if (!Number.isFinite(n)) return ''
+  return n.toFixed(2)
+}
+
+/**
+ * Format a fractional value (e.g. 0.184) as a percentage string with one
+ * decimal: "18.4%". Matches the UI display in report.js's formatGapPct.
+ * Returns '' for null / undefined / non-finite.
+ */
+function formatPctCell(val) {
+  if (val === null || val === undefined || val === '') return ''
+  const n = Number(val)
+  if (!Number.isFinite(n)) return ''
+  return (n * 100).toFixed(1) + '%'
 }
 
 /**
@@ -102,36 +130,46 @@ export function buildAndPersistReport(reportId, email, catalog, computedReport) 
 
   // Build EAN → opportunity entry lookup for O(1) access per catalog row.
   // Only losing products appear in opportunities_pt/es; winning and uncontested
-  // will produce a Map miss (undefined), giving empty string cells (AC-3).
+  // will produce a Map miss (undefined), giving empty string cells.
   //
-  // Note: entry.price in the CSV cell `my_price` passes through as-is. When
-  // computeReport classifies a product as uncontested (because price parses to
-  // NaN) the CSV still shows the raw upstream string — this is an intentional
-  // trade-off so operators can see the actual upstream value when triaging.
+  // Note: entry.price in the CSV cell `O meu preço` passes through formatNumberCell.
+  // When computeReport classifies a product as uncontested (because price parses
+  // to NaN) the CSV will show '' — formatNumberCell rejects non-finite numbers.
   const ptMap = new Map(opportunities_pt.map(o => [o.ean, o]))
   const esMap = new Map(opportunities_es.map(o => [o.ean, o]))
 
+  // Sort catalog by min(pt_gap_pct, es_gap_pct) ascending so the most-competitive
+  // products surface at the top of the CSV. Products with no opportunity entry
+  // in either channel (winning or uncontested in both) sort to the end (Infinity).
+  // Sort is stable on equal keys (V8 in Node ≥22).
+  function minGapPct(entry) {
+    const pt = ptMap.get(entry.ean)
+    const es = esMap.get(entry.ean)
+    const ptGap = pt && Number.isFinite(pt.gap_pct) ? pt.gap_pct : Infinity
+    const esGap = es && Number.isFinite(es.gap_pct) ? es.gap_pct : Infinity
+    return Math.min(ptGap, esGap)
+  }
+  const sortedCatalog = [...catalog].sort((a, b) => minGapPct(a) - minGapPct(b))
+
   const rows = [CSV_HEADER]
 
-  for (const entry of catalog) {
+  for (const entry of sortedCatalog) {
     const pt = ptMap.get(entry.ean)   // undefined if winning or uncontested in PT
     const es = esMap.get(entry.ean)   // undefined if winning or uncontested in ES
 
     // Text columns (attacker-controllable via Mirakl P11) → escapeTextCell
-    // Numeric columns (system-computed)                   → escapeCell
+    // Numeric columns → formatNumberCell (2-decimal) or formatPctCell ("18.4%")
     const row = [
-      escapeTextCell(entry.ean),                          // text: attacker-controllable
-      escapeTextCell(entry.product_title),                // text: attacker-controllable
-      escapeTextCell(entry.shop_sku),                     // text: attacker-controllable
-      escapeCell(entry.price),                            // my_price (numeric)
-      escapeCell(pt ? pt.competitor_first : ''),          // pt_first_price (numeric)
-      escapeCell(pt ? pt.gap             : ''),           // pt_gap_eur (numeric)
-      escapeCell(pt ? pt.gap_pct         : ''),           // pt_gap_pct (numeric)
-      escapeCell(pt ? pt.wow_score       : ''),           // pt_wow_score (numeric)
-      escapeCell(es ? es.competitor_first : ''),          // es_first_price (numeric)
-      escapeCell(es ? es.gap             : ''),           // es_gap_eur (numeric)
-      escapeCell(es ? es.gap_pct         : ''),           // es_gap_pct (numeric)
-      escapeCell(es ? es.wow_score       : ''),           // es_wow_score (numeric)
+      escapeTextCell(entry.ean),                                              // EAN
+      escapeTextCell(entry.product_title),                                    // Produto
+      escapeTextCell(entry.shop_sku),                                         // SKU
+      escapeCell(formatNumberCell(entry.price)),                              // O meu preço
+      escapeCell(formatNumberCell(pt ? pt.competitor_first : null)),          // Preço 1.º lugar PT
+      escapeCell(formatNumberCell(pt ? pt.gap             : null)),           // Diferença € PT
+      escapeCell(formatPctCell(pt ? pt.gap_pct            : null)),           // Diferença % PT
+      escapeCell(formatNumberCell(es ? es.competitor_first : null)),          // Preço 1.º lugar ES
+      escapeCell(formatNumberCell(es ? es.gap             : null)),           // Diferença € ES
+      escapeCell(formatPctCell(es ? es.gap_pct            : null)),           // Diferença % ES
     ].join(',')
 
     rows.push(row)

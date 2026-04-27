@@ -398,7 +398,7 @@ describe('AC-6 (T5a.10): Realistic HYPERLINK payload is fully neutralised end-to
 
 // ── AC-6 (T5a.11): CSV header row is literal — no prefix applied ───────────
 
-describe('AC-6 (T5a.11): CSV header row is the exact 12-column literal string', () => {
+describe('AC-6 (T5a.11): CSV header row is the exact 10-column literal string (post-overhaul)', () => {
   let buildAndPersistReport
   let getReport
 
@@ -409,7 +409,7 @@ describe('AC-6 (T5a.11): CSV header row is the exact 12-column literal string', 
     buildAndPersistReport = buildMod.buildAndPersistReport
   })
 
-  test('T5a.11: First line of csv_data is exactly the 12-column header — no leading single-quote on any column name', async () => {
+  test('T5a.11: First line of csv_data is exactly the 10-column Portuguese header — no leading single-quote on any column name', async () => {
     const reportId = randomId()
     const catalog = [{ ean: 'EAN-HDR', shop_sku: 'SKU-HDR', product_title: 'Header Test', price: '10.00' }]
     buildAndPersistReport(reportId, 'atdd@example.com', catalog, minimalComputedReport())
@@ -419,12 +419,13 @@ describe('AC-6 (T5a.11): CSV header row is the exact 12-column literal string', 
     const csv = row.csv_data ?? row.csvData
     const headerRow = csv.split('\n')[0]
 
-    const expectedHeader = 'EAN,product_title,shop_sku,my_price,pt_first_price,pt_gap_eur,pt_gap_pct,pt_wow_score,es_first_price,es_gap_eur,es_gap_pct,es_wow_score'
+    // Post-overhaul header (issue 5): 10 columns, Portuguese, no wow_score.
+    const expectedHeader = 'EAN,Produto,SKU,O meu preço,Preço 1.º lugar PT,Diferença € PT,Diferença % PT,Preço 1.º lugar ES,Diferença € ES,Diferença % ES'
 
     assert.equal(
       headerRow,
       expectedHeader,
-      `Header row must be the exact 12-column literal string without any prefix. ` +
+      `Header row must be the exact 10-column post-overhaul literal string without any prefix. ` +
       `Got: ${JSON.stringify(headerRow)}`
     )
   })
