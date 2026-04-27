@@ -95,9 +95,9 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
 
     // SAMPLE_REPORT uses: pt: { in_first: 4821, losing: 1340, uncontested: 756 }
     // report.js reads: summary.winning ?? summary.in_first → "4.821", "1.340", "756"
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
-    await expect(page.locator('.text-6xl').nth(1)).toHaveText('1.340')
-    await expect(page.locator('.text-6xl').nth(2)).toHaveText('756')
+    await expect(page.locator('#stat-winning')).toHaveText('4.821')
+    await expect(page.locator('#stat-losing')).toHaveText('1.340')
+    await expect(page.locator('#stat-uncontested')).toHaveText('756')
   })
 
   // ── Story 6.1: PT/ES toggle swaps data without re-fetch ──────────────────
@@ -115,7 +115,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await page.goto(`/report/${SAMPLE_ID}`)
 
     // Wait for data to load (PT stat cards populated)
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+    await expect(page.locator('#stat-winning')).toHaveText('4.821')
 
     // Click ES toggle (exact match to avoid ambiguity with CSV button text)
     await page.getByRole('button', { name: 'ES', exact: true }).click()
@@ -129,9 +129,9 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
 
     // Assert ES stat cards populated with ES data from SAMPLE_REPORT
     // SAMPLE_REPORT es: { in_first: 2103, losing: 512, uncontested: 312 }
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('2.103')
-    await expect(page.locator('.text-6xl').nth(1)).toHaveText('512')
-    await expect(page.locator('.text-6xl').nth(2)).toHaveText('312')
+    await expect(page.locator('#stat-winning')).toHaveText('2.103')
+    await expect(page.locator('#stat-losing')).toHaveText('512')
+    await expect(page.locator('#stat-uncontested')).toHaveText('312')
   })
 
   // ── Story 6.1: ES no-data edge case ──────────────────────────────────────
@@ -155,7 +155,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await page.goto(`/report/${SAMPLE_ID}`)
 
     // Wait for PT data to load first
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+    await expect(page.locator('#stat-winning')).toHaveText('4.821')
 
     // Click ES toggle
     await page.getByRole('button', { name: 'ES', exact: true }).click()
@@ -174,7 +174,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await page.goto(`/report/${SAMPLE_ID}`)
 
     // Wait for data to load (PT stat cards populated)
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+    await expect(page.locator('#stat-winning')).toHaveText('4.821')
 
     // First row visible with product title
     await expect(page.getByText('Sony Bravia XR-55A80L')).toBeVisible()
@@ -185,9 +185,6 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     // AC-3: Price formatted in pt-PT locale: "€799,00"
     await expect(page.getByText('€799,00')).toBeVisible()
 
-    // AC-3: WOW score rendered as right-aligned integer in first row area
-    await expect(page.getByText('974')).toBeVisible()
-
     // AC-2: first row has #EFF6FF tint applied as inline background-color style
     // (bg-blue-50 = rgb(239, 246, 255) = #EFF6FF — applied inline to avoid JIT purge)
     const firstRow = page.locator('tbody').nth(0).locator('tr').first()
@@ -197,30 +194,34 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
   })
 
   // ── Story 6.2: Quick Wins table (unskipped) ───────────────────────────────
-  // AC-4,7: rows render; score column shows a horizontal bar div, NOT raw number text
-  test('6.2 — Vitórias Rápidas table renders score bar graphics (not raw numbers)', async ({ page }) => {
+  // Post-design-port (2026-04-27): the WOW Score / Pontuação column was dropped
+  // from both Maiores Oportunidades and Vitórias Rápidas tables — clients
+  // couldn't interpret the opaque integer without a documented formula. Tables
+  // now have 5 columns; ordering already encodes priority.
+  test('6.2 — both tables have 5 columns (Pontuação/Score column dropped post-design-port)', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({ data: SAMPLE_REPORT }),
     }))
     await page.goto(`/report/${SAMPLE_ID}`)
 
-    // Wait for data to load
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
-
-    // Quick wins product visible
+    await expect(page.locator('#stat-winning')).toHaveText('4.821')
     await expect(page.getByText('Apple AirPods Pro 2')).toBeVisible()
 
-    // AC-7: Score bar inner fill div (bg-primary) is present inside the last cell of the first row
-    const scoreCell = page.locator('tbody').nth(1).locator('tr').first().locator('td').last()
-    await expect(scoreCell.locator('div.bg-primary')).toBeVisible()
+    // Each thead row must have exactly 5 <th> cells
+    const oppHeaderCells = page.locator('table').nth(0).locator('thead tr th')
+    await expect(oppHeaderCells).toHaveCount(5)
+    const qwHeaderCells = page.locator('table').nth(1).locator('thead tr th')
+    await expect(qwHeaderCells).toHaveCount(5)
 
-    // AC-7: Score bar outer container has overflow-hidden (prevents fill from escaping)
-    const barOuter = scoreCell.locator('div.rounded-full.overflow-hidden')
-    await expect(barOuter).toBeVisible()
+    // First quick-wins row must have 5 <td> cells (one per data column)
+    const firstQwRow = page.locator('tbody').nth(1).locator('tr').first()
+    await expect(firstQwRow.locator('td')).toHaveCount(5)
 
-    // AC-7: The raw wow_score number "920" must NOT appear as text content in the score cell
-    await expect(scoreCell).not.toHaveText('920')
+    // Headers reflect the shorter design-port labels
+    await expect(page.getByText('1.º lugar €').first()).toBeVisible()
+    await expect(page.getByText('Δ €').first()).toBeVisible()
+    await expect(page.getByText('Δ %').first()).toBeVisible()
   })
 
   // ── Story 6.2: PT/ES toggle re-renders Quick Wins for ES (empty array) ────
@@ -256,7 +257,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await page.goto(`/report/${SAMPLE_ID}`)
 
     // Wait for data to load (skeleton removed)
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+    await expect(page.locator('#stat-winning')).toHaveText('4.821')
 
     // CSV button visible after data loads (was hidden during skeleton)
     const csvBtn = page.locator('button').filter({ has: page.locator('.material-symbols-outlined') })
@@ -312,7 +313,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await page.goto(`/report/${SAMPLE_ID}`)
 
     // Wait for data to load
-    await expect(page.locator('.text-6xl').nth(0)).toHaveText('4.821')
+    await expect(page.locator('#stat-winning')).toHaveText('4.821')
 
     // AC-1: Stat cards grid is single-column on mobile
     const statGrid = page.locator('.grid.grid-cols-1')

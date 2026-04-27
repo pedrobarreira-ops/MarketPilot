@@ -77,9 +77,25 @@
       }
     </script>
 <style>
+      :root {
+        --mp-win: oklch(58% 0.14 155);
+        --mp-win-soft: oklch(95% 0.04 155);
+        --mp-win-border: oklch(58% 0.14 155 / 0.20);
+        --mp-loss: oklch(58% 0.19 25);
+        --mp-loss-soft: oklch(96% 0.04 25);
+        --mp-loss-border: oklch(58% 0.19 25 / 0.20);
+        --mp-neutral: oklch(58% 0.14 240);
+        --mp-neutral-soft: oklch(96% 0.03 240);
+        --mp-neutral-border: oklch(58% 0.14 240 / 0.20);
+        --mp-primary: #00113a;
+        --mp-primary-2: #002366;
+        --mp-primary-tint: #dbe1ff;
+      }
       body { font-family: 'Inter', sans-serif; }
       h1, h2, h3, .brand-font { font-family: 'Manrope', sans-serif; }
       .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+      .mp-card-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; }
+      .mp-card-icon .material-symbols-outlined { font-size: 18px; font-variation-settings: 'FILL' 1; }
     </style>
 </head>
 <body class="bg-background text-on-surface">
@@ -104,55 +120,64 @@
 <button class="px-6 py-2 text-on-surface-variant font-medium hover:text-primary transition-colors text-sm">ES</button>
 </div>
 </section>
-<!-- Section 1: A tua posição agora -->
+<!-- Section 1: A tua posição agora — 4-up stat grid (Ao alcance is 4th card, navy fill) -->
 <section class="mb-20">
 <div class="flex items-center gap-3 mb-8">
 <span class="w-8 h-[2px] bg-primary"></span>
 <h2 class="text-label-sm uppercase tracking-widest font-bold text-primary">A tua posição agora</h2>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-<!-- Card 1 -->
-<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col gap-4 group transition-all duration-300 hover:shadow-[0_12px_24px_0_rgba(25,28,30,0.04)]">
-<span class="text-xs font-bold text-on-tertiary-fixed-variant bg-tertiary-fixed px-3 py-1 rounded-sm self-start">EM 1.º LUGAR</span>
-<div class="flex items-baseline gap-2 mt-4">
-<span class="text-6xl font-extrabold text-primary tracking-tighter">4.821</span>
-<span class="material-symbols-outlined text-on-tertiary-fixed-variant" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+<!-- Card 1: Em 1.º lugar (win) -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-6 rounded-2xl relative overflow-hidden">
+<div class="mp-card-icon absolute top-4 right-4" style="background: var(--mp-win-soft); color: var(--mp-win); border: 1px solid var(--mp-win-border);">
+<span class="material-symbols-outlined">trending_up</span>
 </div>
-<p class="text-sm text-on-surface-variant font-medium">SKUs dominando o Buy Box</p>
-</div>
-<!-- Card 2 -->
-<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col gap-4 group transition-all duration-300 hover:shadow-[0_12px_24px_0_rgba(25,28,30,0.04)]">
-<span class="text-xs font-bold text-on-error-container bg-error-container px-3 py-1 rounded-sm self-start">A PERDER POSIÇÃO</span>
-<div class="flex items-baseline gap-2 mt-4">
-<span class="text-6xl font-extrabold text-primary tracking-tighter">1.340</span>
-<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">trending_down</span>
-</div>
-<p class="text-sm text-on-surface-variant font-medium">Produtos ultrapassados hoje</p>
-</div>
-<!-- Card 3 -->
-<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col gap-4 group transition-all duration-300 hover:shadow-[0_12px_24px_0_rgba(25,28,30,0.04)]">
-<span class="text-xs font-bold text-on-primary-container bg-secondary-container px-3 py-1 rounded-sm self-start">SEM CONCORRÊNCIA</span>
-<div class="flex items-baseline gap-2 mt-4">
-<span class="text-6xl font-extrabold text-primary tracking-tighter">756</span>
-<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">verified</span>
-</div>
-<p class="text-sm text-on-surface-variant font-medium">Itens exclusivos em catálogo</p>
+<p class="text-[10px] font-bold tracking-[0.12em] uppercase text-on-surface-variant mb-2">Em 1.º lugar</p>
+<div id="stat-winning" class="text-5xl font-extrabold text-primary tracking-tighter leading-none mb-1">0</div>
+<p class="text-xs text-on-surface-variant font-medium mb-3">SKUs dominando o Buy Box</p>
+<div class="pt-3 border-t border-outline-variant/20">
+<div id="value-winning" class="text-sm font-bold text-on-surface tracking-tight">€0</div>
+<div class="text-[10px] font-semibold tracking-[0.08em] uppercase text-on-surface-variant mt-0.5">Catálogo a vencer</div>
 </div>
 </div>
-</section>
-<!-- Section 1.5: PRODUTOS AO ALCANCE hero card — wow card surfacing winnable competitive zone -->
-<section class="mb-20">
-<div class="bg-primary p-10 md:p-12 rounded-2xl relative overflow-hidden">
-<div class="absolute -right-20 -top-20 w-80 h-80 bg-white/5 rounded-full blur-3xl" aria-hidden="true"></div>
-<div class="absolute -left-16 -bottom-16 w-64 h-64 bg-white/5 rounded-full blur-3xl" aria-hidden="true"></div>
-<div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-<div class="flex flex-col gap-3">
-<span class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Produtos ao Alcance</span>
-<p class="text-base text-primary-fixed-dim font-medium">Produtos a &lt; 5% do 1.º lugar</p>
+<!-- Card 2: A perder posição (loss) -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-6 rounded-2xl relative overflow-hidden">
+<div class="mp-card-icon absolute top-4 right-4" style="background: var(--mp-loss-soft); color: var(--mp-loss); border: 1px solid var(--mp-loss-border);">
+<span class="material-symbols-outlined">trending_down</span>
 </div>
-<div class="flex items-baseline gap-4">
-<span id="within-reach-count" class="text-7xl md:text-8xl font-extrabold text-white tracking-tighter">0</span>
-<span class="material-symbols-outlined text-primary-fixed-dim text-4xl" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+<p class="text-[10px] font-bold tracking-[0.12em] uppercase text-on-surface-variant mb-2">A perder posição</p>
+<div id="stat-losing" class="text-5xl font-extrabold text-primary tracking-tighter leading-none mb-1">0</div>
+<p class="text-xs text-on-surface-variant font-medium mb-3">Produtos ultrapassados hoje</p>
+<div class="pt-3 border-t border-outline-variant/20">
+<div id="value-losing" class="text-sm font-bold text-on-surface tracking-tight">€0</div>
+<div class="text-[10px] font-semibold tracking-[0.08em] uppercase text-on-surface-variant mt-0.5">Catálogo exposto</div>
+</div>
+</div>
+<!-- Card 3: Sem concorrência (neutral) -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-6 rounded-2xl relative overflow-hidden">
+<div class="mp-card-icon absolute top-4 right-4" style="background: var(--mp-neutral-soft); color: var(--mp-neutral); border: 1px solid var(--mp-neutral-border);">
+<span class="material-symbols-outlined">verified</span>
+</div>
+<p class="text-[10px] font-bold tracking-[0.12em] uppercase text-on-surface-variant mb-2">Sem concorrência</p>
+<div id="stat-uncontested" class="text-5xl font-extrabold text-primary tracking-tighter leading-none mb-1">0</div>
+<p class="text-xs text-on-surface-variant font-medium mb-3">Itens exclusivos em catálogo</p>
+<div class="pt-3 border-t border-outline-variant/20">
+<div id="value-uncontested" class="text-sm font-bold text-on-surface tracking-tight">€0</div>
+<div class="text-[10px] font-semibold tracking-[0.08em] uppercase text-on-surface-variant mt-0.5">Catálogo exclusivo</div>
+</div>
+</div>
+<!-- Card 4: Ao alcance (reach — navy fill, the punchline) -->
+<div class="p-6 rounded-2xl relative overflow-hidden shadow-lg" style="background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-2));">
+<div class="absolute -right-10 -bottom-10 w-36 h-36 rounded-full" style="background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%); pointer-events: none;" aria-hidden="true"></div>
+<div class="mp-card-icon absolute top-4 right-4" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<p class="text-[10px] font-bold tracking-[0.12em] uppercase mb-2" style="color: var(--mp-primary-tint);">Ao alcance</p>
+<div id="stat-reach" class="text-5xl font-extrabold text-white tracking-tighter leading-none mb-1 relative z-10">0</div>
+<p class="text-xs font-medium mb-3 relative z-10" style="color: var(--mp-primary-tint);">SKUs a &lt; 5% do 1.º lugar</p>
+<div class="pt-3 border-t relative z-10" style="border-color: rgba(255,255,255,0.15);">
+<div id="value-reach" class="text-sm font-bold text-white tracking-tight">€0</div>
+<div class="text-[10px] font-semibold tracking-[0.08em] uppercase mt-0.5" style="color: var(--mp-primary-tint);">Valor ao alcance</div>
 </div>
 </div>
 </div>
@@ -160,6 +185,10 @@
 <!-- Section 2: Maiores oportunidades -->
 <section class="mb-20 bg-surface-container-low p-10 rounded-2xl">
 <div class="mb-10">
+<div class="flex items-center gap-2 mb-2">
+<span class="w-6 h-[2px] bg-primary"></span>
+<span class="text-[11px] font-bold tracking-[0.12em] uppercase text-primary">Secção 2 · Oportunidades</span>
+</div>
 <h2 class="text-3xl font-extrabold text-primary tracking-tight mb-2">Maiores oportunidades</h2>
 <p class="text-on-surface-variant font-medium">Os produtos de maior valor onde estás a perder a primeira posição por uma pequena margem</p>
 </div>
@@ -167,49 +196,15 @@
 <table class="w-full text-left border-separate border-spacing-y-3">
 <thead>
 <tr class="text-label-sm uppercase tracking-widest text-slate-400 font-bold">
-<th class="px-6 py-4">Produto</th>
-<th class="px-6 py-4">O teu preço</th>
-<th class="px-6 py-4">Preço do 1.º lugar</th>
-<th class="px-6 py-4">Diferença €</th>
-<th class="px-6 py-4">Diferença %</th>
-<th class="px-6 py-4">Pontuação</th>
+<th class="px-6 py-4 whitespace-nowrap">Produto</th>
+<th class="px-6 py-4 whitespace-nowrap">O teu preço</th>
+<th class="px-6 py-4 whitespace-nowrap">1.º lugar €</th>
+<th class="px-6 py-4 whitespace-nowrap">Δ €</th>
+<th class="px-6 py-4 whitespace-nowrap">Δ %</th>
 </tr>
 </thead>
 <tbody class="text-sm font-medium">
-<!-- Highlighted Row -->
-<tr class="bg-surface-container-lowest shadow-sm rounded-lg group transition-transform duration-150 hover:-translate-y-1">
-<td class="px-6 py-6 rounded-l-lg border-l-4 border-primary">
-<div class="flex items-center gap-4">
-<img alt="" class="w-12 h-12 object-cover rounded shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCO8-Cyq_kZJjvmdQ16YrMzhH8lJA41KeaZwtQEXYJJMrRA7h9DGjLCTn0-IQPAaGKozkN3qzOHYvnuXMZvmd02n66OuiuokWK84qUJfhpeT-7AJ-hjQKGttM7Lzg3U7w37acWX_yc_ZfAl-_QM5abqqhaMetA-GbPlt08P5HSf2QkqVz4bFMBjbKjb04cWRt-aklYPYYjZvlWmk5lR2BWfbWbtsDrTtrvhvvngpO8N7DW6e67AqhFosOB30bwIiYr8nBsm_ZpXA8-b"/>
-<span class="font-bold text-primary">Sony TV 55'</span>
-</div>
-</td>
-<td class="px-6 py-6 text-primary">€799,00</td>
-<td class="px-6 py-6 font-bold text-primary">€792,50</td>
-<td class="px-6 py-6 text-on-error-container">-€6,50</td>
-<td class="px-6 py-6">
-<span class="bg-error-container text-on-error-container px-2 py-0.5 rounded text-xs">0.8%</span>
-</td>
-<td class="px-6 py-6 rounded-r-lg font-black text-primary text-lg tracking-tighter">974</td>
-</tr>
-<!-- Sub Row 1 -->
-<tr class="bg-surface-container-lowest/50 hover:bg-surface-container-lowest transition-colors shadow-sm rounded-lg">
-<td class="px-6 py-6 rounded-l-lg">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 bg-surface-container rounded flex items-center justify-center">
-<span class="material-symbols-outlined text-outline">photo_camera</span>
-</div>
-<span class="font-bold text-on-surface">Canon EOS R6</span>
-</div>
-</td>
-<td class="px-6 py-6">€2.499,00</td>
-<td class="px-6 py-6 font-bold">€2.485,00</td>
-<td class="px-6 py-6 text-on-error-container">-€14,00</td>
-<td class="px-6 py-6">
-<span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded text-xs">0.5%</span>
-</td>
-<td class="px-6 py-6 rounded-r-lg font-bold text-primary">892</td>
-</tr>
+<!-- Rows rendered by report.js renderOpportunities() -->
 </tbody>
 </table>
 </div>
@@ -218,6 +213,10 @@
 <section class="mb-20">
 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
 <div>
+<div class="flex items-center gap-2 mb-2">
+<span class="w-6 h-[2px]" style="background: var(--mp-win);"></span>
+<span class="text-[11px] font-bold tracking-[0.12em] uppercase" style="color: var(--mp-win);">Secção 3 · Vitórias rápidas</span>
+</div>
 <h2 class="text-3xl font-extrabold text-primary tracking-tight mb-2">Vitórias rápidas</h2>
 <p class="text-on-surface-variant font-medium">Produtos onde uma redução de preço de ≤2% te coloca em primeiro lugar</p>
 </div>
@@ -230,43 +229,15 @@
 <table class="w-full text-left border-separate border-spacing-y-2">
 <thead>
 <tr class="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-black">
-<th class="px-6 pb-4">Produto</th>
-<th class="px-6 pb-4">O teu preço</th>
-<th class="px-6 pb-4">Preço do 1.º lugar</th>
-<th class="px-6 pb-4">Diferença €</th>
-<th class="px-6 pb-4">Diferença %</th>
-<th class="px-6 pb-4">Score</th>
+<th class="px-6 pb-4 whitespace-nowrap">Produto</th>
+<th class="px-6 pb-4 whitespace-nowrap">O teu preço</th>
+<th class="px-6 pb-4 whitespace-nowrap">1.º lugar €</th>
+<th class="px-6 pb-4 whitespace-nowrap">Δ €</th>
+<th class="px-6 pb-4 whitespace-nowrap">Δ %</th>
 </tr>
 </thead>
 <tbody class="text-sm">
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-6 py-5 border-b border-outline-variant/10 font-bold text-primary">Apple AirPods Pro 2</td>
-<td class="px-6 py-5 border-b border-outline-variant/10 text-on-surface-variant">€249,00</td>
-<td class="px-6 py-5 border-b border-outline-variant/10 font-bold">€246,90</td>
-<td class="px-6 py-5 border-b border-outline-variant/10 font-medium text-on-tertiary-fixed-variant">-€2,10</td>
-<td class="px-6 py-5 border-b border-outline-variant/10">
-<span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded text-xs">0.8%</span>
-</td>
-<td class="px-6 py-5 border-b border-outline-variant/10">
-<div class="w-24 h-1 bg-surface-variant rounded-full overflow-hidden">
-<div class="h-full bg-primary w-[92%]"></div>
-</div>
-</td>
-</tr>
-<tr class="hover:bg-surface-container transition-colors">
-<td class="px-6 py-5 border-b border-outline-variant/10 font-bold text-primary">Logitech MX Master 3S</td>
-<td class="px-6 py-5 border-b border-outline-variant/10 text-on-surface-variant">€99,00</td>
-<td class="px-6 py-5 border-b border-outline-variant/10 font-bold">€97,50</td>
-<td class="px-6 py-5 border-b border-outline-variant/10 font-medium text-on-tertiary-fixed-variant">-€1,50</td>
-<td class="px-6 py-5 border-b border-outline-variant/10">
-<span class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded text-xs">1.5%</span>
-</td>
-<td class="px-6 py-5 border-b border-outline-variant/10">
-<div class="w-24 h-1 bg-surface-variant rounded-full overflow-hidden">
-<div class="h-full bg-primary w-[88%]"></div>
-</div>
-</td>
-</tr>
+<!-- Rows rendered by report.js renderQuickWins() -->
 </tbody>
 </table>
 </div>
@@ -300,5 +271,8 @@
 <div class="hidden animate-pulse" aria-hidden="true"></div>
 <!-- Tailwind JIT safelist: Story 6.5 error card classes -->
 <div class="hidden py-24 max-w-lg hover:opacity-90" aria-hidden="true"></div>
+<!-- Tailwind JIT safelist: classes used by report.js renderers but no longer
+     present in static HTML after the 2026-04-27 design port. -->
+<div class="hidden py-6 px-2 mt-4 text-error text-6xl text-on-tertiary-fixed-variant" aria-hidden="true"></div>
 <script src="/js/report.js"></script>
 </body></html>
