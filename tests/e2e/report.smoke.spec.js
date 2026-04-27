@@ -35,6 +35,10 @@ const SAMPLE_REPORT = {
     { ean: '789', product_title: 'Apple AirPods Pro 2', my_price: 249, first_price: 246.90, gap_pct: 0.0085, wow_score: 920 },
   ],
   quickwins_es: [],
+  price_headroom_pt: [
+    { ean: '111', product_title: 'Dyson V15 Detect', my_price: 749, competitor_second: 789, headroom_eur: 40, headroom_pct: 0.0534 },
+  ],
+  price_headroom_es: [],
   generated_at: '2026-04-14T10:00:00Z',
 }
 
@@ -199,7 +203,7 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
   // couldn't interpret the opaque integer without a documented formula. Tables
   // now have 6 columns post-2026-04-27 (5 data + a "Ver" link column to the
   // Worten storefront via EAN search); ordering already encodes priority.
-  test('6.2 — both tables have 6 columns (5 data + Ver link)', async ({ page }) => {
+  test('6.2 — three 6-column tables render in order: Maiores, Margem, Vitórias', async ({ page }) => {
     await page.route(`**/api/reports/${SAMPLE_ID}`, (route) => route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({ data: SAMPLE_REPORT }),
@@ -209,23 +213,38 @@ test.describe('Report page (public/report.html served at /report/:id)', () => {
     await expect(page.locator('#stat-winning')).toHaveText('4.821')
     await expect(page.getByText('Apple AirPods Pro 2')).toBeVisible()
 
-    // Each thead row must have exactly 6 <th> cells
-    const oppHeaderCells = page.locator('table').nth(0).locator('thead tr th')
-    await expect(oppHeaderCells).toHaveCount(6)
-    const qwHeaderCells = page.locator('table').nth(1).locator('thead tr th')
-    await expect(qwHeaderCells).toHaveCount(6)
+    // Three tables on the report (post-2026-04-27): Maiores, Margem para subir, Vitórias
+    await expect(page.locator('table')).toHaveCount(3)
 
-    // First quick-wins row must have 6 <td> cells (one per data column + the link)
-    const firstQwRow = page.locator('tbody').nth(1).locator('tr').first()
+    // Each thead row must have exactly 6 <th> cells
+    for (const i of [0, 1, 2]) {
+      const headerCells = page.locator('table').nth(i).locator('thead tr th')
+      await expect(headerCells).toHaveCount(6)
+    }
+
+    // tbodies index: [0] Maiores, [1] Margem para subir, [2] Vitórias rápidas
+    // Quick-wins row must have 6 <td> cells (data + Ver link)
+    const firstQwRow = page.locator('tbody').nth(2).locator('tr').first()
     await expect(firstQwRow.locator('td')).toHaveCount(6)
 
-    // Link column points at Worten search-by-EAN (verified via Mirakl MCP
-    // 2026-04-27 — OF21/P11 expose no direct product-page URL).
+    // Margem para subir row from fixture (Dyson V15 Detect, +€40,00 headroom)
+    const firstHeadroomRow = page.locator('tbody').nth(1).locator('tr').first()
+    await expect(firstHeadroomRow.locator('td')).toHaveCount(6)
+    await expect(page.getByText('Dyson V15 Detect')).toBeVisible()
+    await expect(page.getByText('+€40,00').first()).toBeVisible()
+    await expect(page.getByText('+5.3%').first()).toBeVisible()
+
+    // Link column on Vitórias row points at Worten search-by-EAN (Mirakl MCP
+    // verified 2026-04-27 — OF21/P11 expose no direct product-page URL)
     const firstLink = firstQwRow.locator('a[href*="worten.pt/search?query="]')
     await expect(firstLink).toHaveAttribute('target', '_blank')
 
-    // Headers reflect the design-port labels (Δ symbols reverted to "Diferença"
-    // 2026-04-27 per Pedro feedback — clearer for non-technical readers)
+    // Section labels
+    await expect(page.getByText('Maiores oportunidades')).toBeVisible()
+    await expect(page.getByText('Margem para subir')).toBeVisible()
+    await expect(page.getByText('Vitórias rápidas')).toBeVisible()
+
+    // Diferença € / Diferença % headers from the losing-side tables
     await expect(page.getByText('1.º lugar €').first()).toBeVisible()
     await expect(page.getByText('Diferença €').first()).toBeVisible()
     await expect(page.getByText('Diferença %').first()).toBeVisible()

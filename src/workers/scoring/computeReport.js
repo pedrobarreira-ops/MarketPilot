@@ -113,9 +113,57 @@ function scoreChannel(product, my_price, channelData) {
 // Distinct from is_quick_win threshold (0.02) used for the Vitórias Rápidas table.
 const WITHIN_REACH_THRESHOLD = 0.05
 
+// "Margem para subir" thresholds — products where we're winning AND there's
+// meaningful headroom to the runner-up. Three filters keep the recommendations
+// honest and actionable:
+//
+//   HEADROOM_PCT_MIN (0.01): below 1% the gap is rounding noise; the runner-up
+//     could shift by a cent and you'd lose the buy box.
+//
+//   HEADROOM_EUR_MIN (0.10): keeps tiny € amounts on cheap items but filters
+//     sub-cent gaps that aren't worth a click.
+//
+//   HEADROOM_PCT_MAX (0.30): caps the upside. If the next seller is 30%+ above
+//     us, they're likely an outlier (clearance variant, mis-categorised listing,
+//     a different product) — recommending a 50% raise from a 50% headroom would
+//     erode trust the moment the seller hits "publish" and watches sales drop.
+//     Same intellectual-honesty rationale as not multiplying catalog value by
+//     stock or velocity.
+const HEADROOM_PCT_MIN = 0.01
+const HEADROOM_EUR_MIN = 0.10
+const HEADROOM_PCT_MAX = 0.30
+
+// Build a "Margem para subir" entry for a product where we're winning and
+// the runner-up is at a comfortable distance above us. Returns null when the
+// channel data doesn't qualify (missing second, headroom outside the band, etc.)
+function maybeBuildHeadroomEntry(product, my_price, channelData) {
+  const second = channelData?.second
+  if (!Number.isFinite(second) || second <= 0) return null
+  if (second <= my_price) return null  // no headroom (tied or runner-up below us)
+  const headroom_eur = second - my_price
+  // Denominator is my_price — semantic: "how much more I could charge as a
+  // % of my current price". Different from gap_pct in losing case (which
+  // uses competitor_first as the reference because the leader is the target).
+  const headroom_pct = headroom_eur / my_price
+  if (headroom_eur < HEADROOM_EUR_MIN) return null
+  if (headroom_pct < HEADROOM_PCT_MIN) return null
+  if (headroom_pct > HEADROOM_PCT_MAX) return null
+  return {
+    ean: product.ean,
+    shop_sku: product.shop_sku,
+    product_title: product.product_title,
+    my_price,
+    competitor_second: second,
+    headroom_eur,
+    headroom_pct,
+  }
+}
+
 export function computeReport(catalog, competitors) {
   const opportunities_pt = []
   const opportunities_es = []
+  const price_headroom_pt = []
+  const price_headroom_es = []
 
   // AC-7: total equals catalog.length for both channels — both channels see every
   // product, they just classify it differently.
@@ -157,6 +205,8 @@ export function computeReport(catalog, competitors) {
     } else if (ptResult.status === 'winning') {
       summary_pt.winning++
       summary_pt.winning_value += my_price
+      const headroom = maybeBuildHeadroomEntry(product, my_price, competitorData?.pt)
+      if (headroom) price_headroom_pt.push(headroom)
     } else {
       summary_pt.uncontested++
       summary_pt.uncontested_value += my_price
@@ -175,6 +225,8 @@ export function computeReport(catalog, competitors) {
     } else if (esResult.status === 'winning') {
       summary_es.winning++
       summary_es.winning_value += my_price
+      const headroom = maybeBuildHeadroomEntry(product, my_price, competitorData?.es)
+      if (headroom) price_headroom_es.push(headroom)
     } else {
       summary_es.uncontested++
       summary_es.uncontested_value += my_price
@@ -191,11 +243,18 @@ export function computeReport(catalog, competitors) {
   const quickwins_pt = opportunities_pt.filter(o => o.is_quick_win)
   const quickwins_es = opportunities_es.filter(o => o.is_quick_win)
 
+  // Margem para subir — sort by absolute € headroom DESC ("biggest money-on-the-
+  // table per click" framing). Stable sort preserves catalog order for ties.
+  price_headroom_pt.sort((a, b) => b.headroom_eur - a.headroom_eur)
+  price_headroom_es.sort((a, b) => b.headroom_eur - a.headroom_eur)
+
   return {
     opportunities_pt,
     opportunities_es,
     quickwins_pt,
     quickwins_es,
+    price_headroom_pt,
+    price_headroom_es,
     summary_pt,
     summary_es,
   }

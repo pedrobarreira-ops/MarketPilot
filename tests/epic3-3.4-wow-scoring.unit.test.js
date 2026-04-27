@@ -320,4 +320,127 @@ describe('Story 3.4 unit — gaps not covered by ATDD', async () => {
       }
     })
   })
+
+  // ── G-9: price_headroom arrays ("Margem para subir") ─────────────────────
+  // Surfaces winning products where the runner-up sits at a comfortable
+  // distance above us — pure profit on the table without losing position.
+  // Threshold band: 1% ≤ headroom_pct ≤ 30% AND headroom_eur ≥ €0.10.
+  describe('G-9: price_headroom_pt/es — "Margem para subir" entries', () => {
+    function competitorWithSecond({ ptFirst, ptSecond, esFirst, esSecond }) {
+      return {
+        pt: { first: ptFirst ?? null, second: ptSecond ?? null },
+        es: { first: esFirst ?? null, second: esSecond ?? null },
+      }
+    }
+
+    test('winning product with comfortable headroom appears in price_headroom_pt', () => {
+      // my=100, second=110 → headroom 10%, €10. Inside the band.
+      const catalog = [makeCatalogEntry({ ean: 'HR-OK', price: 100 })]
+      const competitors = new Map([
+        ['HR-OK', competitorWithSecond({ ptFirst: 100, ptSecond: 110 })],
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 1, 'one qualifying entry expected')
+      const e = result.price_headroom_pt[0]
+      assert.equal(e.ean, 'HR-OK')
+      assert.equal(e.competitor_second, 110)
+      assert.equal(e.my_price, 100)
+      assert.equal(e.headroom_eur, 10)
+      assert.ok(Math.abs(e.headroom_pct - 0.10) < 1e-9, 'headroom_pct must be 0.10')
+    })
+
+    test('headroom below 1% is filtered out (rounding-noise band)', () => {
+      // my=100, second=100.50 → 0.5% — below HEADROOM_PCT_MIN
+      const catalog = [makeCatalogEntry({ ean: 'HR-LOW', price: 100 })]
+      const competitors = new Map([
+        ['HR-LOW', competitorWithSecond({ ptFirst: 100, ptSecond: 100.50 })],
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 0, 'sub-1% headroom must be filtered')
+    })
+
+    test('headroom above 30% is filtered out (outlier-runner-up cap)', () => {
+      // my=50, second=120 → 140% — recommending a €70 raise based on an
+      // outlier listing erodes trust. Should be excluded.
+      const catalog = [makeCatalogEntry({ ean: 'HR-OUTLIER', price: 50 })]
+      const competitors = new Map([
+        ['HR-OUTLIER', competitorWithSecond({ ptFirst: 50, ptSecond: 120 })],
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 0, 'over-30% headroom must be filtered')
+    })
+
+    test('headroom below €0.10 is filtered (tiny-amount band)', () => {
+      // my=5, second=5.05 → 1% — passes pct min, but 0.05 € < 0.10 € floor
+      const catalog = [makeCatalogEntry({ ean: 'HR-TINY', price: 5 })]
+      const competitors = new Map([
+        ['HR-TINY', competitorWithSecond({ ptFirst: 5, ptSecond: 5.05 })],
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 0, 'sub-€0.10 headroom must be filtered')
+    })
+
+    test('losing product never appears in price_headroom (only winning)', () => {
+      // my=10, first(leader)=8 → losing. No headroom entry should be created
+      // even if a "second" value exists in the channel data.
+      const catalog = [makeCatalogEntry({ ean: 'HR-LOSING', price: 10 })]
+      const competitors = new Map([
+        ['HR-LOSING', competitorWithSecond({ ptFirst: 8, ptSecond: 12 })],
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 0, 'losing products do not carry headroom')
+      assert.ok(result.opportunities_pt.length >= 1, 'sanity: losing product still appears in opportunities_pt')
+    })
+
+    test('winning product without competitor_second is filtered (sole seller)', () => {
+      // my=100, first=100 (only us), second=null → no headroom info available
+      const catalog = [makeCatalogEntry({ ean: 'HR-SOLE', price: 100 })]
+      const competitors = new Map([
+        ['HR-SOLE', competitorWithSecond({ ptFirst: 100, ptSecond: null })],
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 0, 'sole-seller products skip headroom')
+    })
+
+    test('price_headroom_pt sorted by headroom_eur DESC (biggest € first)', () => {
+      const catalog = [
+        makeCatalogEntry({ ean: 'HR-A', price: 100 }),
+        makeCatalogEntry({ ean: 'HR-B', price: 200 }),
+        makeCatalogEntry({ ean: 'HR-C', price: 50 }),
+      ]
+      const competitors = new Map([
+        ['HR-A', competitorWithSecond({ ptFirst: 100, ptSecond: 110 })],   // €10
+        ['HR-B', competitorWithSecond({ ptFirst: 200, ptSecond: 220 })],   // €20
+        ['HR-C', competitorWithSecond({ ptFirst: 50,  ptSecond: 52 })],    // €2
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 3, 'all three qualify')
+      assert.deepEqual(
+        result.price_headroom_pt.map(e => e.ean),
+        ['HR-B', 'HR-A', 'HR-C'],
+        'must be sorted by headroom_eur DESC'
+      )
+    })
+
+    test('PT and ES channels independent — entry can appear in one and not the other', () => {
+      const catalog = [makeCatalogEntry({ ean: 'HR-MIX', price: 100 })]
+      const competitors = new Map([
+        ['HR-MIX', competitorWithSecond({
+          ptFirst: 100, ptSecond: 110,    // PT: 10% — qualifies
+          esFirst: 100, esSecond: 100.30, // ES: 0.3% — filtered
+        })],
+      ])
+      const result = computeReport(catalog, competitors)
+      assert.equal(result.price_headroom_pt.length, 1, 'PT entry expected')
+      assert.equal(result.price_headroom_es.length, 0, 'ES entry filtered')
+    })
+
+    test('shape contract: arrays exist on result for both channels even when empty', () => {
+      const result = computeReport([], new Map())
+      assert.ok(Array.isArray(result.price_headroom_pt), 'price_headroom_pt must be an array')
+      assert.ok(Array.isArray(result.price_headroom_es), 'price_headroom_es must be an array')
+      assert.equal(result.price_headroom_pt.length, 0)
+      assert.equal(result.price_headroom_es.length, 0)
+    })
+  })
 })

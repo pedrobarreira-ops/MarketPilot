@@ -217,6 +217,30 @@
 </table>
 </div>
 </section>
+<!-- Section 2.5: Margem para subir — winning products with headroom to runner-up -->
+<section class="mb-20 bg-surface-container-lowest border border-outline-variant/30 p-10 rounded-2xl">
+<div class="mb-10">
+<h2 class="text-3xl font-extrabold text-primary tracking-tight mb-2">Margem para subir</h2>
+<p class="text-on-surface-variant font-medium">Produtos onde estás em 1.º lugar com folga. Podes subir o preço sem perder a posição.</p>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-separate border-spacing-y-3">
+<thead>
+<tr class="text-label-sm uppercase tracking-widest text-slate-400 font-bold">
+<th class="px-6 py-4 whitespace-nowrap text-left">Produto</th>
+<th class="px-6 py-4 whitespace-nowrap text-center">O teu preço</th>
+<th class="px-6 py-4 whitespace-nowrap text-center">Próximo concorrente</th>
+<th class="px-6 py-4 whitespace-nowrap text-center">Margem extra €</th>
+<th class="px-6 py-4 whitespace-nowrap text-center">Margem extra %</th>
+<th class="px-6 py-4 whitespace-nowrap text-center">Ver</th>
+</tr>
+</thead>
+<tbody class="text-sm font-medium">
+<!-- Rows rendered by report.js renderHeadroom() -->
+</tbody>
+</table>
+</div>
+</section>
 <!-- Section 3: Vitórias rápidas -->
 <section class="mb-20 bg-surface-container-lowest border border-outline-variant/30 p-10 rounded-2xl">
 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
@@ -283,6 +307,6 @@
 <div class="hidden py-6 px-2 mt-4 text-error text-6xl text-on-tertiary-fixed-variant bg-surface-container" aria-hidden="true"></div>
 <!-- Tailwind JIT safelist: classes used by the row-link button + table footer
      note ("A mostrar 20 de N..."), added 2026-04-27. -->
-<div class="hidden inline-flex items-center justify-center gap-1 px-3 py-1.5 text-[12px] hover:text-primary hover:bg-primary-fixed text-on-surface-variant rounded-md transition-colors mt-4 pt-6" aria-hidden="true"></div>
+<div class="hidden inline-flex items-center justify-center gap-1 px-3 py-1.5 text-[12px] hover:text-primary hover:bg-primary-fixed text-on-surface-variant rounded-md rounded-l-lg rounded-r-lg transition-colors mt-4 pt-6" aria-hidden="true"></div>
 <script src="/js/report.js"></script>
 </body></html>
