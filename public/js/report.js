@@ -22,8 +22,12 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
   const ptBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[0] : null
   const esBtn = toggleContainer ? toggleContainer.querySelectorAll('button')[1] : null
 
-  // Stat card number spans (three large numbers)
+  // Stat card number spans (three large numbers in the existing 3-card row)
   const statNumbers = document.querySelectorAll('.text-6xl.font-extrabold.text-primary')
+
+  // PRODUTOS AO ALCANCE hero card — count element targeted by id (different
+  // styling from the 3-card row, so not picked up by the statNumbers query above)
+  const withinReachEl = document.getElementById('within-reach-count')
 
   // CSV download button (in the Quick Wins section — contains a download icon)
   let csvBtn = null
@@ -105,6 +109,15 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       el.style.minHeight = '1.5rem'
       el.style.display = 'inline-block'
     })
+    // PRODUTOS AO ALCANCE hero card — distinct skeleton (white-on-primary, larger)
+    if (withinReachEl) {
+      withinReachEl.textContent = ''
+      withinReachEl.classList.add('animate-pulse', 'rounded')
+      withinReachEl.style.background = 'rgba(255,255,255,0.15)'
+      withinReachEl.style.minWidth = '5rem'
+      withinReachEl.style.minHeight = '4rem'
+      withinReachEl.style.display = 'inline-block'
+    }
   }
 
   function applySkeleton () {
@@ -133,6 +146,13 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
       el.style.minHeight = ''
       el.style.display = ''
     })
+    if (withinReachEl) {
+      withinReachEl.classList.remove('animate-pulse', 'rounded')
+      withinReachEl.style.background = ''
+      withinReachEl.style.minWidth = ''
+      withinReachEl.style.minHeight = ''
+      withinReachEl.style.display = ''
+    }
   }
 
   function formatPortugueseDate (generatedAt) {
@@ -407,6 +427,10 @@ const CTA_URL = 'mailto:pedro.barreira.business@gmail.com'
     if (statNumbers[0]) statNumbers[0].textContent = formatPtPT(winning)
     if (statNumbers[1]) statNumbers[1].textContent = formatPtPT(losing)
     if (statNumbers[2]) statNumbers[2].textContent = formatPtPT(uncontested)
+
+    // PRODUTOS AO ALCANCE hero card — losing products with gap_pct ≤5%
+    const withinReach = summary.within_reach != null ? summary.within_reach : 0
+    if (withinReachEl) withinReachEl.textContent = formatPtPT(withinReach)
 
     const tbodies = document.querySelectorAll('tbody')
     if (tbodies.length < 2) return

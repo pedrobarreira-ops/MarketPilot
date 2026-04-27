@@ -99,14 +99,21 @@ function scoreChannel(product, my_price, channelData) {
  *   summary_es: { total: number, winning: number, losing: number, uncontested: number }
  * }}
  */
+// Threshold for "within reach" classification — losing products with gap_pct
+// at or below this value are competitive (closing the gap is realistic without
+// pricing below cost). Surfaced in summary.within_reach for the WOW hero card.
+// Distinct from is_quick_win threshold (0.02) used for the Vitórias Rápidas table.
+const WITHIN_REACH_THRESHOLD = 0.05
+
 export function computeReport(catalog, competitors) {
   const opportunities_pt = []
   const opportunities_es = []
 
   // AC-7: total equals catalog.length for both channels — both channels see every
   // product, they just classify it differently.
-  const summary_pt = { total: catalog.length, winning: 0, losing: 0, uncontested: 0 }
-  const summary_es = { total: catalog.length, winning: 0, losing: 0, uncontested: 0 }
+  // within_reach is a subset of losing — counted independently per channel.
+  const summary_pt = { total: catalog.length, winning: 0, losing: 0, uncontested: 0, within_reach: 0 }
+  const summary_es = { total: catalog.length, winning: 0, losing: 0, uncontested: 0, within_reach: 0 }
 
   for (const product of catalog) {
     const my_price = parseFloat(product.price)
@@ -127,6 +134,7 @@ export function computeReport(catalog, competitors) {
     if (ptResult.status === 'losing') {
       opportunities_pt.push(ptResult.entry)
       summary_pt.losing++
+      if (ptResult.entry.gap_pct <= WITHIN_REACH_THRESHOLD) summary_pt.within_reach++
     } else if (ptResult.status === 'winning') {
       summary_pt.winning++
     } else {
@@ -138,6 +146,7 @@ export function computeReport(catalog, competitors) {
     if (esResult.status === 'losing') {
       opportunities_es.push(esResult.entry)
       summary_es.losing++
+      if (esResult.entry.gap_pct <= WITHIN_REACH_THRESHOLD) summary_es.within_reach++
     } else if (esResult.status === 'winning') {
       summary_es.winning++
     } else {
