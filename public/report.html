@@ -115,9 +115,9 @@
                     Analise a sua competitividade nos mercados ibéricos. Identificamos as margens críticas onde o ajuste estratégico de preço pode desbloquear o primeiro lugar.
                 </p>
 </div>
-<div class="flex bg-surface-container p-1 rounded-lg">
-<button class="px-6 py-2 bg-surface-container-lowest text-primary font-bold rounded-md shadow-sm text-sm">PT</button>
-<button class="px-6 py-2 text-on-surface-variant font-medium hover:text-primary transition-colors text-sm">ES</button>
+<div id="channel-toggle" class="flex bg-surface-container-lowest border border-outline-variant/30 p-1 rounded-md">
+<button class="px-5 py-2 bg-primary text-white font-semibold brand-font text-sm rounded-sm transition-colors">Portugal</button>
+<button class="px-5 py-2 bg-transparent text-on-surface-variant font-semibold brand-font text-sm rounded-sm hover:text-primary transition-colors">Espanha</button>
 </div>
 </section>
 <!-- Section 1: A tua posição agora — 3-up stat grid + full-width hero card -->
@@ -194,7 +194,7 @@
 </div>
 </section>
 <!-- Section 2: Maiores oportunidades -->
-<section class="mb-20 bg-surface-container-low p-10 rounded-2xl">
+<section class="mb-20 bg-surface-container-lowest border border-outline-variant/30 p-10 rounded-2xl">
 <div class="mb-10">
 <h2 class="text-3xl font-extrabold text-primary tracking-tight mb-2">Maiores oportunidades</h2>
 <p class="text-on-surface-variant font-medium">Os produtos de maior valor onde estás a perder a primeira posição por uma pequena margem</p>
@@ -217,7 +217,7 @@
 </div>
 </section>
 <!-- Section 3: Vitórias rápidas -->
-<section class="mb-20">
+<section class="mb-20 bg-surface-container-lowest border border-outline-variant/30 p-10 rounded-2xl">
 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
 <div>
 <h2 class="text-3xl font-extrabold text-primary tracking-tight mb-2">Vitórias rápidas</h2>
@@ -275,7 +275,9 @@
 <!-- Tailwind JIT safelist: Story 6.5 error card classes -->
 <div class="hidden py-24 max-w-lg hover:opacity-90" aria-hidden="true"></div>
 <!-- Tailwind JIT safelist: classes used by report.js renderers but no longer
-     present in static HTML after the 2026-04-27 design port. -->
-<div class="hidden py-6 px-2 mt-4 text-error text-6xl text-on-tertiary-fixed-variant" aria-hidden="true"></div>
+     present in static HTML after the 2026-04-27 design port. bg-surface-container
+     is added by applySkeleton() shimmer rows / stat cards but no longer appears
+     statically since the toggle was redesigned. -->
+<div class="hidden py-6 px-2 mt-4 text-error text-6xl text-on-tertiary-fixed-variant bg-surface-container" aria-hidden="true"></div>
 <script src="/js/report.js"></script>
 </body></html>
