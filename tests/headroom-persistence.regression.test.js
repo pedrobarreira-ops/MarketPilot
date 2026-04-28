@@ -22,6 +22,14 @@
 import { test, describe, before } from 'node:test'
 import assert from 'node:assert/strict'
 
+// Provide minimum env required by src/config.js at import time (CI runs without
+// a .env file). Mirrors the pattern in epic3-3.5-report-persistence.atdd.test.js.
+process.env.NODE_ENV        = 'test'
+process.env.SQLITE_PATH     = ':memory:'
+process.env.REDIS_URL       = process.env.REDIS_URL       || 'redis://localhost:6379'
+process.env.APP_BASE_URL    = process.env.APP_BASE_URL    || 'http://localhost:3000'
+process.env.WORTEN_BASE_URL = process.env.WORTEN_BASE_URL || 'https://marketplace.worten.pt'
+
 function randomId() {
   return `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
