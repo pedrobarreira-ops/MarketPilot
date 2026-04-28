@@ -52,16 +52,23 @@ export default async function reportsRoute(fastify) {
         })
     }
 
+    // Headroom columns landed 2026-04-28 (PR fix/headroom-persistence). For
+    // pre-fix rows the column is NULL — fall back to [] so the renderer's
+    // empty-state path takes over instead of crashing on JSON.parse(null).
+    const parseArrayOrEmpty = (json) => json == null ? [] : JSON.parse(json)
+
     return reply
       .header('Cache-Control', 'private, no-store')
       .send({
         data: {
-          generated_at:     row.generated_at,
-          summary:          JSON.parse(row.summary_json),
-          opportunities_pt: JSON.parse(row.opportunities_pt_json),
-          opportunities_es: JSON.parse(row.opportunities_es_json),
-          quickwins_pt:     JSON.parse(row.quickwins_pt_json),
-          quickwins_es:     JSON.parse(row.quickwins_es_json),
+          generated_at:      row.generated_at,
+          summary:           JSON.parse(row.summary_json),
+          opportunities_pt:  JSON.parse(row.opportunities_pt_json),
+          opportunities_es:  JSON.parse(row.opportunities_es_json),
+          quickwins_pt:      JSON.parse(row.quickwins_pt_json),
+          quickwins_es:      JSON.parse(row.quickwins_es_json),
+          price_headroom_pt: parseArrayOrEmpty(row.price_headroom_pt_json),
+          price_headroom_es: parseArrayOrEmpty(row.price_headroom_es_json),
         },
       })
   })

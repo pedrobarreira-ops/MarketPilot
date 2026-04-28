@@ -28,5 +28,7 @@ export const reports = sqliteTable('reports', {
   opportunitiesEsJson: text('opportunities_es_json'),
   quickwinsPtJson:     text('quickwins_pt_json'),
   quickwinsEsJson:     text('quickwins_es_json'),
+  priceHeadroomPtJson: text('price_headroom_pt_json'),
+  priceHeadroomEsJson: text('price_headroom_es_json'),
   csvData:             text('csv_data'),
 })
