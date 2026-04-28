@@ -85,7 +85,7 @@ export function updateJobError(jobId, errorMessage) {
  *
  * Expected keys: report_id, generated_at, expires_at, email, summary_json,
  *   opportunities_pt_json, opportunities_es_json, quickwins_pt_json,
- *   quickwins_es_json, csv_data
+ *   quickwins_es_json, price_headroom_pt_json, price_headroom_es_json, csv_data
  *
  */
 export function insertReport(reportObj) {
@@ -99,6 +99,8 @@ export function insertReport(reportObj) {
     opportunitiesEsJson: reportObj.opportunities_es_json,
     quickwinsPtJson:     reportObj.quickwins_pt_json,
     quickwinsEsJson:     reportObj.quickwins_es_json,
+    priceHeadroomPtJson: reportObj.price_headroom_pt_json,
+    priceHeadroomEsJson: reportObj.price_headroom_es_json,
     csvData:             reportObj.csv_data,
   }).run()
 }
@@ -122,16 +124,18 @@ export function getReport(reportId, now) {
     .get()
   if (!row) return null
   return {
-    report_id:             row.reportId,
-    generated_at:          row.generatedAt,
-    expires_at:            row.expiresAt,
-    email:                 row.email,
-    summary_json:          row.summaryJson,
-    opportunities_pt_json: row.opportunitiesPtJson,
-    opportunities_es_json: row.opportunitiesEsJson,
-    quickwins_pt_json:     row.quickwinsPtJson,
-    quickwins_es_json:     row.quickwinsEsJson,
-    csv_data:              row.csvData,
+    report_id:              row.reportId,
+    generated_at:           row.generatedAt,
+    expires_at:             row.expiresAt,
+    email:                  row.email,
+    summary_json:           row.summaryJson,
+    opportunities_pt_json:  row.opportunitiesPtJson,
+    opportunities_es_json:  row.opportunitiesEsJson,
+    quickwins_pt_json:      row.quickwinsPtJson,
+    quickwins_es_json:      row.quickwinsEsJson,
+    price_headroom_pt_json: row.priceHeadroomPtJson,
+    price_headroom_es_json: row.priceHeadroomEsJson,
+    csv_data:               row.csvData,
   }
 }
 

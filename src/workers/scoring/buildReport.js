@@ -109,10 +109,11 @@ function escapeTextCell(val) {
  * @param {string} email     — recipient email address
  * @param {Array<{ ean: string, shop_sku: string, product_title: string, price: string|number }>} catalog
  * @param {{
- *   opportunities_pt: Array, opportunities_es: Array,
- *   quickwins_pt: Array,     quickwins_es: Array,
- *   summary_pt: object,      summary_es: object
- * }} computedReport — output of computeReport (Story 3.4)
+ *   opportunities_pt: Array,   opportunities_es: Array,
+ *   quickwins_pt: Array,       quickwins_es: Array,
+ *   price_headroom_pt: Array,  price_headroom_es: Array,
+ *   summary_pt: object,        summary_es: object
+ * }} computedReport — output of computeReport (Story 3.4 + 2026-04-27 headroom port)
  */
 export function buildAndPersistReport(reportId, email, catalog, computedReport) {
   // Defensive destructuring: default all arrays to [] so a partial upstream
@@ -120,12 +121,14 @@ export function buildAndPersistReport(reportId, email, catalog, computedReport) 
   // does not crash with "Cannot read properties of undefined (reading 'map')".
   // Summary objects default to empty objects for symmetric reasons.
   const {
-    opportunities_pt = [],
-    opportunities_es = [],
-    quickwins_pt     = [],
-    quickwins_es     = [],
-    summary_pt       = {},
-    summary_es       = {},
+    opportunities_pt  = [],
+    opportunities_es  = [],
+    quickwins_pt      = [],
+    quickwins_es      = [],
+    price_headroom_pt = [],
+    price_headroom_es = [],
+    summary_pt        = {},
+    summary_es        = {},
   } = computedReport ?? {}
 
   // Build EAN → opportunity entry lookup for O(1) access per catalog row.
@@ -180,15 +183,17 @@ export function buildAndPersistReport(reportId, email, catalog, computedReport) 
   const now = Math.floor(Date.now() / 1000)
 
   insertReport({
-    report_id:             reportId,
-    generated_at:          now,
-    expires_at:            now + TTL_SECONDS,
+    report_id:              reportId,
+    generated_at:           now,
+    expires_at:             now + TTL_SECONDS,
     email,
-    summary_json:          JSON.stringify({ pt: summary_pt, es: summary_es }),
-    opportunities_pt_json: JSON.stringify(opportunities_pt),
-    opportunities_es_json: JSON.stringify(opportunities_es),
-    quickwins_pt_json:     JSON.stringify(quickwins_pt),
-    quickwins_es_json:     JSON.stringify(quickwins_es),
-    csv_data:              csvData,
+    summary_json:           JSON.stringify({ pt: summary_pt, es: summary_es }),
+    opportunities_pt_json:  JSON.stringify(opportunities_pt),
+    opportunities_es_json:  JSON.stringify(opportunities_es),
+    quickwins_pt_json:      JSON.stringify(quickwins_pt),
+    quickwins_es_json:      JSON.stringify(quickwins_es),
+    price_headroom_pt_json: JSON.stringify(price_headroom_pt),
+    price_headroom_es_json: JSON.stringify(price_headroom_es),
+    csv_data:               csvData,
   })
 }

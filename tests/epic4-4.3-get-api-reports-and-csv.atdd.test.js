@@ -195,10 +195,23 @@ describe('Story 4.3 — GET /api/reports/:id + CSV routes', async () => {
       const res = await app.inject({ method: 'GET', url: `/api/reports/${report.report_id}` })
       const { data } = JSON.parse(res.body)
       const keys = Object.keys(data).sort()
+      // 2026-04-28: contract extended by 2 keys when "Margem para subir"
+      // (PR #79) added price_headroom_pt/es to the response. PR #79 missed this
+      // ATDD update and the broken persistence masked the drift; the
+      // headroom-persistence hotfix corrects both.
       assert.deepEqual(
         keys,
-        ['generated_at', 'opportunities_es', 'opportunities_pt', 'quickwins_es', 'quickwins_pt', 'summary'],
-        'data must contain exactly {generated_at, summary, opportunities_pt, opportunities_es, quickwins_pt, quickwins_es}'
+        [
+          'generated_at',
+          'opportunities_es',
+          'opportunities_pt',
+          'price_headroom_es',
+          'price_headroom_pt',
+          'quickwins_es',
+          'quickwins_pt',
+          'summary',
+        ],
+        'data must contain exactly {generated_at, summary, opportunities_pt, opportunities_es, quickwins_pt, quickwins_es, price_headroom_pt, price_headroom_es}'
       )
     })
 

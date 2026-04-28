@@ -49,6 +49,8 @@ export function runMigrations() {
       opportunities_es_json TEXT,
       quickwins_pt_json TEXT,
       quickwins_es_json TEXT,
+      price_headroom_pt_json TEXT,
+      price_headroom_es_json TEXT,
       csv_data TEXT
     );
 
@@ -60,4 +62,11 @@ export function runMigrations() {
   // to run against both fresh and pre-existing databases without error.
   ensureColumn('generation_jobs', 'progress_current', 'INTEGER')
   ensureColumn('generation_jobs', 'progress_total', 'INTEGER')
+
+  // 2026-04-28 — "Margem para subir" persistence (PR #79 added the arrays to the
+  // computeReport return value but missed the storage path; this is the hotfix).
+  // ensureColumn keeps the migration idempotent on production DBs that already have
+  // pre-headroom report rows (those rows simply get NULL in the new columns).
+  ensureColumn('reports', 'price_headroom_pt_json', 'TEXT')
+  ensureColumn('reports', 'price_headroom_es_json', 'TEXT')
 }
